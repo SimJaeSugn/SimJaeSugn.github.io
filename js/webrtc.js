@@ -318,11 +318,14 @@ function rtcRestorePre() {
 
 // ── 연결 종료 ─────────────────────────────────────────────────────
 function rtcDisconnect() {
-  _rtcConn?.close();
+  // close()를 호출하면 'close' 이벤트가 발생해 _rtcShowRestoreToast()가 자동 호출됨
+  // 중복 호출 방지를 위해 여기서는 직접 호출하지 않음
+  if (_rtcConn) {
+    _rtcConn.close(); // → 'close' 이벤트 → _rtcShowRestoreToast() 자동 실행
+  } else {
+    _rtcShowRestoreToast(); // 이미 끊긴 상태에서 호출된 경우 직접 실행
+  }
   _rtcDestroyPeer();
-  _rtcConn = null;
-  _rtcUpdateUI();
-  _rtcShowRestoreToast();
 }
 
 function _rtcDestroyPeer() {
