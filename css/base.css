@@ -1,0 +1,152 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg-base); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+canvas { display: block; cursor: grab; }
+canvas.dragging { cursor: grabbing; }
+
+/* ── CSS Custom Properties (Dark / default) ──────────────────── */
+:root {
+  --bg-base:     #1e1e2e;
+  --bg-panel:    #181825;
+  --bg-surface:  #313244;
+  --bg-surface2: #252535;
+  --bg-raised:   #45475a;
+  --tx-main:     #cdd6f4;
+  --tx-sub:      #6c7086;
+  --tx-muted:    #585b70;
+  --tx-attr:     #a6adc8;
+  --bd:          #313244;
+  --bd2:         #45475a;
+  --ac:          #89b4fa;
+  --ac-g:        #a6e3a1;
+  --ac-p:        #cba6f7;
+  --ac-o:        #fab387;
+  --ac-r:        #f38ba8;
+  --ac-y:        #f9e2af;
+  --ac-hover:    #b4d0fb;
+  --ac-g-hover:  #c3f0bf;
+  --sel-bg:      #2a2d4a;
+  --pk-bg:       #3d1f28;
+  --fk-bg:       #2d2013;
+  --danger-bg:   #3a1520;
+  --grid:        #2a2a3d;
+  --sel-fill:    rgba(137,180,250,0.08);
+  --shadow:      rgba(0,0,0,0.5);
+  --bg-overlay:        rgba(30,30,46,0.95);
+  --bg-panel-overlay:  rgba(24,24,37,0.98);
+  --bg-mini-overlay:   rgba(24,24,37,0.92);
+  --ac-dim:      rgba(137,180,250,0.25);
+  --pk-bg-dim:   rgba(243,139,168,0.15);
+  --fk-bg-dim:   rgba(250,179,135,0.15);
+  --surface-dim: rgba(49,50,68,0.3);
+}
+
+/* ── Light (Latte) ───────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-base:     #eff1f5;
+  --bg-panel:    #e6e9ef;
+  --bg-surface:  #ccd0da;
+  --bg-surface2: #dce0e8;
+  --bg-raised:   #bcc0cc;
+  --tx-main:     #4c4f69;
+  --tx-sub:      #7c7f93;
+  --tx-muted:    #9ca0b0;
+  --tx-attr:     #5c5f77;
+  --bd:          #ccd0da;
+  --bd2:         #bcc0cc;
+  --ac:          #1e66f5;
+  --ac-g:        #40a02b;
+  --ac-p:        #8839ef;
+  --ac-o:        #fe640b;
+  --ac-r:        #d20f39;
+  --ac-y:        #df8e1d;
+  --ac-hover:    #4f7ef7;
+  --ac-g-hover:  #5db53e;
+  --sel-bg:      #d4e2fb;
+  --pk-bg:       #fce8ec;
+  --fk-bg:       #fef0e4;
+  --danger-bg:   #fde0e6;
+  --grid:        #d4d8e8;
+  --sel-fill:    rgba(30,102,245,0.08);
+  --shadow:      rgba(0,0,0,0.15);
+  --bg-overlay:        rgba(239,241,245,0.97);
+  --bg-panel-overlay:  rgba(230,233,239,0.98);
+  --bg-mini-overlay:   rgba(230,233,239,0.95);
+  --ac-dim:      rgba(30,102,245,0.25);
+  --pk-bg-dim:   rgba(210,15,57,0.12);
+  --fk-bg-dim:   rgba(254,100,11,0.12);
+  --surface-dim: rgba(188,192,204,0.3);
+}
+
+/* ── Catppuccin Frappé ───────────────────────────────────────── */
+[data-theme="frappe"] {
+  --bg-base:     #303446;
+  --bg-panel:    #292c3c;
+  --bg-surface:  #414559;
+  --bg-surface2: #31344a;
+  --bg-raised:   #51576d;
+  --tx-main:     #c6d0f5;
+  --tx-sub:      #737994;
+  --tx-muted:    #626880;
+  --tx-attr:     #a5adce;
+  --bd:          #414559;
+  --bd2:         #51576d;
+  --ac:          #8caaee;
+  --ac-g:        #a6d189;
+  --ac-p:        #ca9ee6;
+  --ac-o:        #ef9f76;
+  --ac-r:        #e78284;
+  --ac-y:        #e5c890;
+  --ac-hover:    #a8c0f0;
+  --ac-g-hover:  #b8d8a0;
+  --sel-bg:      #2c3050;
+  --pk-bg:       #3d2040;
+  --fk-bg:       #302518;
+  --danger-bg:   #3a1a20;
+  --grid:        #272b3e;
+  --sel-fill:    rgba(140,170,238,0.08);
+  --shadow:      rgba(0,0,0,0.5);
+  --bg-overlay:        rgba(48,52,70,0.95);
+  --bg-panel-overlay:  rgba(41,44,60,0.98);
+  --bg-mini-overlay:   rgba(41,44,60,0.92);
+  --ac-dim:      rgba(140,170,238,0.25);
+  --pk-bg-dim:   rgba(231,130,132,0.15);
+  --fk-bg-dim:   rgba(239,159,118,0.15);
+  --surface-dim: rgba(65,69,89,0.3);
+}
+
+/* ── Catppuccin Macchiato ────────────────────────────────────── */
+[data-theme="macchiato"] {
+  --bg-base:     #24273a;
+  --bg-panel:    #1e2030;
+  --bg-surface:  #363a4f;
+  --bg-surface2: #2a2d42;
+  --bg-raised:   #494d64;
+  --tx-main:     #cad3f5;
+  --tx-sub:      #6e738d;
+  --tx-muted:    #5b6078;
+  --tx-attr:     #a5adcb;
+  --bd:          #363a4f;
+  --bd2:         #494d64;
+  --ac:          #8aadf4;
+  --ac-g:        #a6da95;
+  --ac-p:        #c6a0f6;
+  --ac-o:        #f5a97f;
+  --ac-r:        #ed8796;
+  --ac-y:        #eed49f;
+  --ac-hover:    #a5c0f6;
+  --ac-g-hover:  #bde3af;
+  --sel-bg:      #2a2d4a;
+  --pk-bg:       #3d1f30;
+  --fk-bg:       #2d2018;
+  --danger-bg:   #3a1520;
+  --grid:        #1e2138;
+  --sel-fill:    rgba(138,173,244,0.08);
+  --shadow:      rgba(0,0,0,0.5);
+  --bg-overlay:        rgba(36,39,58,0.95);
+  --bg-panel-overlay:  rgba(30,32,48,0.98);
+  --bg-mini-overlay:   rgba(30,32,48,0.92);
+  --ac-dim:      rgba(138,173,244,0.25);
+  --pk-bg-dim:   rgba(237,135,150,0.15);
+  --fk-bg-dim:   rgba(245,169,127,0.15);
+  --surface-dim: rgba(54,58,79,0.3);
+}

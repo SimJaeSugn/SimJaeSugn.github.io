@@ -1,0 +1,136 @@
+/* ── Left Toolbar ────────────────────────────── */
+#toolbar {
+  position: fixed; top: 12px; left: 12px;
+  display: flex; gap: 8px; z-index: 100; align-items: center;
+  background: var(--bg-overlay); padding: 8px 14px; border-radius: 10px;
+  border: 1px solid var(--bd); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.btn {
+  background: var(--bg-surface); color: var(--tx-main); border: none; padding: 6px 14px;
+  border-radius: 6px; cursor: pointer; font-size: 13px; transition: background 0.15s;
+}
+.btn:hover { background: var(--bd2); }
+.btn-primary {
+  background: var(--ac); color: var(--bg-base); border: none; padding: 6px 14px;
+  border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--ac-hover); }
+.btn-success {
+  background: var(--ac-g); color: var(--bg-base); border: none; padding: 6px 14px;
+  border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.15s;
+}
+.btn-success:hover { background: var(--ac-g-hover); }
+.tb-div { width: 1px; background: var(--bd2); height: 22px; flex-shrink: 0; }
+.tb-dropdown { position: relative; display: inline-flex; }
+.tb-dropdown-menu {
+  position: fixed; display: none;
+  background: var(--bg-base); border: 1px solid var(--bd2);
+  border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+  z-index: 300; overflow: hidden; min-width: 160px;
+}
+.tb-dropdown-menu.open { display: block; }
+.tb-dd-item {
+  padding: 9px 14px; color: var(--tx-main); cursor: pointer;
+  font-size: 13px; display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; transition: background 0.1s;
+}
+.tb-dd-item:hover { background: var(--bg-surface); }
+.tb-dd-item.danger { color: var(--ac-r); }
+.tb-dd-item.danger:hover { background: var(--danger-bg); }
+.tb-dd-sep { height: 1px; background: var(--bd); margin: 2px 0; }
+#toolbarButtons {
+  display: flex; gap: 8px; align-items: center;
+}
+
+/* ── Zoom Panel (top-right) ──────────────────── */
+#zoomPanel {
+  position: fixed; top: 12px; right: 12px;
+  display: flex; gap: 6px; z-index: 100; align-items: center;
+  background: var(--bg-overlay); padding: 6px 10px; border-radius: 10px;
+  border: 1px solid var(--bd); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+#zoomLabel {
+  color: var(--tx-main); font-size: 12px; min-width: 44px; text-align: center;
+}
+.btn-zoom {
+  background: var(--bg-surface); color: var(--tx-main); border: none;
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+  font-size: 16px; font-weight: bold; transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-zoom:hover { background: var(--bd2); }
+
+/* View Mode Toggle */
+.view-toggle {
+  display: flex; border: 1px solid var(--bd2); border-radius: 6px; overflow: hidden;
+}
+.vt-btn {
+  background: var(--bg-surface); color: var(--tx-sub); border: none;
+  padding: 5px 13px; cursor: pointer; font-size: 12px; font-weight: bold;
+  transition: background 0.15s, color 0.15s;
+}
+.vt-btn.active { background: var(--ac); color: var(--bg-base); }
+.vt-btn:hover:not(.active) { background: var(--bd2); color: var(--tx-main); }
+.btn.active { background: var(--ac-p) !important; color: var(--bg-base) !important; font-weight: bold; }
+
+/* ── 아이콘 전용 버튼 ────────────────────────────── */
+.btn-icon {
+  background: var(--bg-surface); color: var(--tx-main); border: none;
+  padding: 5px 8px; border-radius: 6px; cursor: pointer;
+  font-size: 14px; line-height: 1; transition: background 0.15s;
+}
+.btn-icon:hover  { background: var(--bd2); }
+.btn-icon.active { background: var(--ac-p) !important; box-shadow: 0 0 0 2px var(--ac); }
+
+/* ── 툴박스 그룹 (가로 접기) ─────────────────── */
+.toolbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.toolbox-hdr {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 7px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--tx-sub);
+  user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.toolbox-hdr:hover { background: var(--bg-surface); color: var(--tx-main); }
+.toolbox-caret {
+  font-size: 9px;
+  line-height: 1;
+  transform: rotate(180deg); /* 기본(펼침): ◀ */
+  transition: transform 0.18s ease;
+}
+.toolbox.tb-collapsed .toolbox-caret {
+  transform: rotate(0deg); /* 접힘: ▶ */
+}
+.toolbox-body {
+  display: flex;
+  flex-wrap: nowrap;       /* 항상 한 줄 유지 — 접힐 때 줄바꿈으로 높이 증가 방지 */
+  align-items: center;
+  gap: 6px;
+  max-width: 800px;
+  opacity: 1;
+  overflow: hidden;        /* 상시 숨김 — 너비 0 시 내용이 아래로 흘러내리지 않음 */
+  padding-left: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: max-width 0.25s ease, opacity 0.18s ease, padding-left 0.25s ease;
+}
+.toolbox.tb-collapsed .toolbox-body {
+  max-width: 0;
+  opacity: 0;
+  padding-left: 0;
+  pointer-events: none;
+}

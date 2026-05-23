@@ -1,0 +1,166 @@
+/* ── Diagram Panel (right side) ──────────────── */
+#diagramPanel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 240px;
+  background: var(--bg-panel-overlay); border-left: 1px solid var(--bd);
+  z-index: 90; display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+  transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+#diagramPanel.collapsed { transform: translateX(240px); }
+#panelReopenTab {
+  position: fixed; top: 50%; right: 0;
+  transform: translateY(-50%);
+  width: 22px; height: 58px;
+  background: var(--bg-panel-overlay); border: 1px solid var(--bd);
+  border-right: none; border-radius: 7px 0 0 7px;
+  display: none; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px;
+  cursor: pointer; z-index: 91;
+  color: var(--tx-sub); font-size: 11px;
+  box-shadow: -3px 0 12px rgba(0,0,0,0.35);
+  transition: color 0.15s, background 0.15s;
+}
+#panelReopenTab:hover { color: var(--ac); background: var(--bg-overlay); }
+#panelReopenTab.visible { display: flex; }
+.panel-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 10px 10px 8px; border-bottom: 1px solid var(--bd); flex-shrink: 0;
+  gap: 6px;
+}
+.panel-hdr-title { color: var(--ac); font-size: 13px; font-weight: bold; flex: 1; }
+.panel-collapse-btn {
+  background: none; border: none; color: var(--tx-sub); cursor: pointer;
+  width: 22px; height: 22px; border-radius: 4px; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s, color 0.1s; flex-shrink: 0;
+}
+.panel-collapse-btn:hover { background: var(--bg-surface); color: var(--tx-main); }
+.panel-add-btn {
+  background: var(--bg-surface); color: var(--ac-g); border: none;
+  width: 26px; height: 26px; border-radius: 6px; cursor: pointer;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s; line-height: 1;
+}
+.panel-add-btn:hover { background: var(--bd2); }
+/* ── 패널 2단 분할 ───────────────────────────── */
+#panelTop {
+  display: flex; flex-direction: column;
+  height: 20%; min-height: 64px; flex-shrink: 0;
+}
+#diagramList { flex: 1; overflow-y: auto; padding: 6px 0; }
+#diagramList::-webkit-scrollbar { width: 4px; }
+#diagramList::-webkit-scrollbar-track { background: transparent; }
+#diagramList::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 2px; }
+
+#panelDivider {
+  height: 6px; background: var(--bg-surface2); flex-shrink: 0;
+  cursor: ns-resize; position: relative;
+  transition: background 0.15s;
+}
+#panelDivider:hover, #panelDivider.dragging { background: var(--ac-dim); }
+#panelDivider::after {
+  content: ''; position: absolute;
+  left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: 28px; height: 2px;
+  background: var(--bd2); border-radius: 1px;
+}
+
+#panelBottom {
+  flex: 1; display: flex; flex-direction: column; min-height: 64px; overflow: hidden;
+}
+#entityTree { flex: 1; overflow-y: auto; padding: 4px 0; }
+#entityTree::-webkit-scrollbar { width: 4px; }
+#entityTree::-webkit-scrollbar-track { background: transparent; }
+#entityTree::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 2px; }
+
+/* ── 엔티티 트리 ────────────────────────────── */
+.tree-ent-hdr {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 8px 6px 8px; cursor: pointer;
+  transition: background 0.1s; user-select: none;
+  border-left: 2px solid transparent;
+}
+.tree-ent-hdr:hover { background: var(--bg-surface2); }
+.tree-ent-hdr.tree-selected { background: var(--sel-bg); border-left-color: var(--ac); }
+.tree-expand-icon {
+  color: var(--tx-muted); font-size: 10px; width: 12px; flex-shrink: 0;
+  text-align: center; transition: color 0.1s;
+}
+.tree-ent-hdr:hover .tree-expand-icon { color: var(--ac); }
+.tree-ent-name {
+  flex: 1; color: var(--tx-main); font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tree-ent-count {
+  color: var(--bd2); font-size: 10px; flex-shrink: 0;
+  background: var(--bg-surface2); padding: 1px 5px; border-radius: 8px;
+}
+.tree-attr-list { padding-bottom: 3px; }
+.tree-attr {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 8px 2px 20px; font-size: 11px;
+}
+.tree-line {
+  color: var(--tx-muted); font-size: 11px; width: 10px;
+  flex-shrink: 0; font-family: Consolas, monospace;
+}
+.tree-badge {
+  font-size: 9px; font-weight: bold;
+  padding: 0 4px; border-radius: 3px; flex-shrink: 0;
+  min-width: 18px; text-align: center; line-height: 15px; height: 15px;
+}
+.tree-badge-pk { background: var(--pk-bg-dim); color: var(--ac-r); }
+.tree-badge-fk { background: var(--fk-bg-dim); color: var(--ac-o); }
+.tree-badge-normal { min-width: 18px; }
+.tree-attr-name {
+  flex: 1; color: var(--tx-attr); font-size: 11px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tree-attr-type {
+  color: var(--tx-muted); font-size: 10px; flex-shrink: 0;
+  font-family: Consolas, monospace;
+}
+.tree-empty {
+  padding: 14px 12px; color: var(--bd2); font-size: 12px; text-align: center;
+}
+.diag-item {
+  display: flex; align-items: center; padding: 9px 12px;
+  cursor: pointer; transition: background 0.12s; gap: 6px;
+  border-left: 3px solid transparent;
+}
+.diag-item:hover { background: var(--bg-surface2); }
+.diag-item.active {
+  background: var(--sel-bg); border-left-color: var(--ac);
+}
+.diag-item-name {
+  flex: 1; color: var(--tx-main); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.diag-item.active .diag-item-name { color: var(--ac); font-weight: bold; }
+.diag-item-btns {
+  display: flex; gap: 3px; flex-shrink: 0;
+  opacity: 0; transition: opacity 0.15s;
+}
+.diag-item:hover .diag-item-btns { opacity: 1; }
+.diag-btn {
+  background: none; border: none; color: var(--tx-sub); cursor: pointer;
+  font-size: 12px; width: 22px; height: 22px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s, color 0.1s;
+}
+.diag-btn:hover { background: var(--bg-surface); color: var(--tx-main); }
+.diag-btn.danger:hover { background: var(--pk-bg); color: var(--ac-r); }
+
+/* ── Rename inline input ─────────────────────── */
+.diag-rename-input {
+  flex: 1; background: var(--bg-surface); border: 1px solid var(--ac);
+  border-radius: 4px; color: var(--tx-main); padding: 2px 6px;
+  font-size: 13px; font-family: inherit; outline: none;
+}
+
+/* ── Bottom-Left Panel ───────────────────────── */
+#bottomLeftPanel {
+  position: fixed; bottom: 16px; left: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 95; align-items: flex-start;
+}

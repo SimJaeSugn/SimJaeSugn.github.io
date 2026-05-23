@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(mkdir -p C:/Users/lvtlv/Downloads/UXERManager/.claude)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\ui.js\" | Measure-Object -Line\\).Lines)",
+      "Bash(grep -v \"//.*theme\")",
+      "Bash(grep -n \"fillStyle\\\\|strokeStyle\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\" \"C:/Users/lvtlv/Downloads/UXERManager/js/canvas.js\")",
+      "Bash(dir \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\\" /B)"
+    ]
+  }
+}

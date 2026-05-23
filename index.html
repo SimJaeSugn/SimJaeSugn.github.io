@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>BSSS ERD</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/toolbar.css">
+<link rel="stylesheet" href="css/panel.css">
+<link rel="stylesheet" href="css/modal.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<!-- ── Left Toolbar ─────────────────────────── -->
+<div id="toolbar">
+  <div id="toolbarButtons">
+
+    <!-- ── 툴박스 1: 추가 / 내보내기 / 도구 ── -->
+    <div class="toolbox" id="tb1">
+      <div class="toolbox-hdr" onclick="toggleToolbox('tb1')" title="접기 / 펼치기">
+        <span>✏️ 편집</span><span class="toolbox-caret">▶</span>
+      </div>
+      <div class="toolbox-body">
+        <div class="tb-dropdown">
+          <button class="btn-primary" onclick="tbToggle(event,'ddAdd')">＋ 추가 ▾</button>
+          <div class="tb-dropdown-menu" id="ddAdd">
+            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAddEntityModal()">📋 엔티티 추가</div>
+            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAddRelationModal()">⟷ 관계 추가</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAISchemaModal()">🤖 AI 스키마 생성</div>
+          </div>
+        </div>
+        <div class="tb-dropdown">
+          <button class="btn" onclick="tbToggle(event,'ddExport')">⬇ 내보내기 ▾</button>
+          <div class="tb-dropdown-menu" id="ddExport">
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportFullBackup()">💾 전체 백업 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');importFullBackup()">📥 전체 백업 불러오기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportData()">⬇ JSON 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');importData()">⬆ JSON 불러오기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');openDDLImportModal()">⬆ DDL 가져오기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');openDDLModal()">🗄 DDL 생성</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadImage(true)">🖼 이미지 (섹션 포함)</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadImage(false)">🖼 이미지 (섹션 제외)</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadSVG()">⬡ SVG 내보내기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportMarkdown()">📄 Markdown 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportHTML()">🌐 HTML 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportPDF()">🖨 인쇄 / PDF 저장</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');generateShareUrl()">🔗 공유 URL 생성</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');resetExportDir()">📁 내보내기 폴더 재설정</div>
+          </div>
+        </div>
+        <div class="tb-dropdown">
+          <button class="btn" onclick="tbToggle(event,'ddTools')">⚙ 도구 ▾</button>
+          <div class="tb-dropdown-menu" id="ddTools">
+            <div class="tb-dd-item" onclick="tbClose('ddTools');resetView()">↺ 뷰 초기화</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');fitAll()">⊟ 전체 맞춤</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('hierarchical')">⋹ 계층형 배치</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('grid')">⊞ 격자형 배치</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('circular')">◯ 원형 배치</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');deOverlapLines('관계선 겹침 해소 중...')">⇌ 선 겹침 해소</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" id="ddItemSnap" onclick="tbClose('ddTools');toggleGridSnap()">⊞ 스냅 켜기</div>
+            <div class="tb-dd-item" id="ddItemSection" onclick="tbClose('ddTools');toggleSectionMode()">▣ 섹션 모드</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openThemeModal()">🎨 테마 변경</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openRtcModal()">🔗 P2P 실시간 협업</div>
+            <div class="tb-dd-item" id="ddItemBcSync" onclick="tbClose('ddTools');toggleBcSync()">📡 탭 동기화 끄기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');saveSnapshot()">📷 스냅샷 저장</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openSnapshotListModal()">📋 스냅샷 목록</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openTimelineModal()">⏱ 타임라인 슬라이더</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openSqlRunner()">🗄 SQL 실행기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openJoinExplorer()">🔗 JOIN 경로 탐색기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');runNormalizeDiagnosis()">⚠ 정규화 진단</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');clearNormDiagnosis()">✓ 진단 배지 제거</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openTemplateModal()">📎 컬럼 템플릿 관리</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item danger" onclick="tbClose('ddTools');resetToDefault()">⚠ 데이터 초기화</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tb-div"></div>
+
+    <!-- ── 툴박스 2: 논리/물리 · 정렬 · 크로우풋 ── -->
+    <div class="toolbox" id="tb2">
+      <div class="toolbox-hdr" onclick="toggleToolbox('tb2')" title="접기 / 펼치기">
+        <span>📐 보기</span><span class="toolbox-caret">▶</span>
+      </div>
+      <div class="toolbox-body">
+        <div class="view-toggle">
+          <button class="vt-btn active" id="btn-logical" onclick="setViewMode('logical')">논리</button>
+          <button class="vt-btn" id="btn-physical" onclick="setViewMode('physical')">물리</button>
+        </div>
+        <div class="tb-div"></div>
+        <button class="btn-icon" onclick="alignEntities('left')"    title="왼쪽 정렬">◧</button>
+        <button class="btn-icon" onclick="alignEntities('hcenter')" title="수평 중앙">↔</button>
+        <button class="btn-icon" onclick="alignEntities('right')"   title="오른쪽 정렬">◨</button>
+        <button class="btn-icon" onclick="alignEntities('top')"     title="위 정렬">⬒</button>
+        <button class="btn-icon" onclick="alignEntities('vcenter')" title="수직 중앙">↕</button>
+        <button class="btn-icon" onclick="alignEntities('bottom')"  title="아래 정렬">⬓</button>
+        <button class="btn-icon" onclick="alignEntities('hdist')"   title="수평 균등 배분">⇔</button>
+        <button class="btn-icon" onclick="alignEntities('vdist')"   title="수직 균등 배분">⇕</button>
+        <div class="tb-div"></div>
+        <button id="ddItemNotation" class="btn-icon" onclick="toggleNotation()" title="크로우풋 켜기">🐦</button>
+      </div>
+    </div>
+
+    <div class="tb-div"></div>
+
+    <!-- ── 툴박스 3: 실행취소 / 다시실행 · 검색 · 단축키 ── -->
+    <div class="toolbox" id="tb3">
+      <div class="toolbox-hdr" onclick="toggleToolbox('tb3')" title="접기 / 펼치기">
+        <span>⚡ 기능</span><span class="toolbox-caret">▶</span>
+      </div>
+      <div class="toolbox-body">
+        <button class="btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩ 실행취소</button>
+        <button class="btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪ 다시실행</button>
+        <div class="tb-div"></div>
+        <button class="btn" onclick="openSearch()" title="엔티티 검색 (Ctrl+F)">🔍 검색</button>
+        <button class="btn" onclick="openShortcutsModal()" title="단축키 목록">⌨ 단축키</button>
+      </div>
+    </div>
+
+    <div class="tb-div"></div>
+    <span id="sessionBadge" title="저장되지 않은 변경사항">● 변경됨</span>
+  </div>
+</div>
+
+<!-- ── Zoom Panel (top-right) ───────────────── -->
+<div id="zoomPanel">
+  <button class="btn-zoom" onclick="zoom(0.87)" title="축소">－</button>
+  <span id="zoomLabel">100%</span>
+  <button class="btn-zoom" onclick="zoom(1.15)" title="확대">＋</button>
+</div>
+
+<!-- ── Search Panel ──────────────────────────── -->
+<div id="searchPanel" style="display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:300;background:rgba(30,30,46,0.97);border:1px solid #45475a;border-radius:10px;box-shadow:0 6px 28px rgba(0,0,0,0.55);padding:10px 12px;min-width:300px;max-width:400px;">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+    <span style="color:#89b4fa;font-size:14px;">🔍</span>
+    <input id="searchInput" class="form-input" placeholder="엔티티 검색… (Esc 닫기)" style="flex:1;padding:5px 9px;font-size:13px;" oninput="onSearchInput(this.value)" onkeydown="onSearchKey(event)">
+    <button style="background:none;border:none;color:#6c7086;cursor:pointer;font-size:16px;padding:2px 6px;line-height:1;border-radius:4px;" onmouseover="this.style.color='#cdd6f4'" onmouseout="this.style.color='#6c7086'" onclick="closeSearch()">✕</button>
+  </div>
+  <div id="searchResults" style="max-height:260px;overflow-y:auto;"></div>
+</div>
+
+<!-- ── Diagram Panel (right) ────────────────── -->
+<div id="diagramPanel" class="collapsed">
+  <div id="panelTop">
+    <div class="panel-hdr">
+      <button class="panel-collapse-btn" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
+      <span class="panel-hdr-title">다이어그램</span>
+      <button class="panel-add-btn" onclick="showNewDiagModal()" title="새 다이어그램 추가">＋</button>
+    </div>
+    <div id="diagramList"></div>
+  </div>
+  <div id="panelDivider"></div>
+  <div id="panelBottom">
+    <div class="panel-hdr" style="padding: 7px 10px 7px 8px;">
+      <span class="panel-hdr-title" style="font-size:12px;">엔티티 목록</span>
+    </div>
+    <div id="entityTree"></div>
+  </div>
+</div>
+<div id="panelReopenTab" class="visible" onclick="toggleDiagramPanel()" title="다이어그램 패널 열기">
+  <span>◀</span>
+  <span style="writing-mode:vertical-rl;font-size:9px;letter-spacing:1px;opacity:0.6">목록</span>
+</div>
+
+<!-- ── Bottom-Left: Legend + Minimap ────────── -->
+<div id="bottomLeftPanel">
+  <div id="legend" class="leg-collapsed">
+    <div class="legend-hdr">
+      <h4>범례</h4>
+      <button class="panel-mini-btn" id="legendToggleBtn" onclick="toggleLegend()" title="범례 펼치기">+</button>
+    </div>
+    <div id="legendBody">
+      <div class="legend-row"><div class="dot" style="background:#f38ba8"></div> PK (기본키)</div>
+      <div class="legend-row"><div class="dot" style="background:#fab387"></div> FK (외래키)</div>
+      <div class="legend-row"><div class="dot" style="background:#a6e3a1"></div> 일반 속성</div>
+      <div class="legend-row">
+        <svg width="34" height="12" style="flex-shrink:0">
+          <line x1="0" y1="6" x2="24" y2="6" stroke="#89b4fa" stroke-width="1.5"/>
+          <text x="26" y="10" fill="#89b4fa" font-size="9">1:N</text>
+        </svg>
+        관계선
+      </div>
+    </div>
+  </div>
+  <div id="minimapWrap" class="mm-collapsed">
+    <div class="minimap-hdr">
+      <span>미니맵</span>
+      <button class="panel-mini-btn" id="minimapToggleBtn" onclick="toggleMinimap()" title="미니맵 펼치기">+</button>
+    </div>
+    <canvas id="minimap"></canvas>
+  </div>
+</div>
+
+<!-- ── Context Menu ─────────────────────────── -->
+<div id="ctxMenu">
+  <div class="ctx-item" id="ctx-add-ent" onclick="ctxFn('addEnt')"><span class="ctx-ico">＋</span>엔티티 추가</div>
+  <div class="ctx-item" id="ctx-edit-ent" onclick="ctxFn('editEnt')"><span class="ctx-ico">✏</span>엔티티 편집</div>
+  <div class="ctx-item" id="ctx-dup-ent" onclick="ctxFn('dupEnt')"><span class="ctx-ico">⧉</span>엔티티 복제</div>
+  <div class="ctx-item" id="ctx-copy-diag" onclick="ctxFn('copyToDiag')"><span class="ctx-ico">⎘</span>다이어그램으로 복사</div>
+  <div class="ctx-sep" id="ctx-sep-ent"></div>
+  <div class="ctx-item" id="ctx-add-note" onclick="ctxFn('addNote')"><span class="ctx-ico">📝</span>메모 추가</div>
+  <div class="ctx-item danger" id="ctx-del-note" onclick="ctxFn('delNote')"><span class="ctx-ico">✕</span>메모 삭제</div>
+  <div class="ctx-item" id="ctx-add-rel" onclick="ctxFn('addRel')"><span class="ctx-ico">⟷</span>관계 추가</div>
+  <div class="ctx-item" id="ctx-edit-rel" onclick="ctxFn('editRel')"><span class="ctx-ico">✏</span>관계 편집</div>
+  <div class="ctx-item" id="ctx-reset-rel" onclick="ctxFn('resetRel')"><span class="ctx-ico">↺</span>경로 초기화</div>
+  <div class="ctx-sep" id="ctx-sep-del"></div>
+  <div class="ctx-item" id="ctx-focus-ent" onclick="ctxFn('focusEnt')"><span class="ctx-ico">🔍</span>포커스 모드</div>
+  <div class="ctx-item" id="ctx-unfocus-ent" onclick="ctxFn('unfocusEnt')"><span class="ctx-ico">🔍</span>포커스 모드 해제</div>
+  <div class="ctx-item danger" id="ctx-del-ent" onclick="ctxFn('delEnt')"><span class="ctx-ico">✕</span>엔티티 삭제</div>
+  <div class="ctx-item danger" id="ctx-del-rel" onclick="ctxFn('delRel')"><span class="ctx-ico">✕</span>관계 삭제</div>
+  <div class="ctx-item" id="ctx-rename-sec" onclick="ctxFn('renameSec')"><span class="ctx-ico">✏</span>섹션 이름 변경</div>
+  <div class="ctx-item danger" id="ctx-del-sec" onclick="ctxFn('delSec')"><span class="ctx-ico">✕</span>섹션 삭제</div>
+</div>
+
+<!-- ── Entity Modal ─────────────────────────── -->
+<div class="modal-overlay" id="entOverlay" onmousedown="overlayClose(event,'entOverlay')">
+  <div class="modal" style="width:1340px;max-width:97vw" onmousedown.stop>
+    <h3 id="entModalTitle">엔티티 추가</h3>
+    <div class="form-group">
+      <label>엔티티 ID <span style="color:#45475a">(영문, 관계 연결 키)</span></label>
+      <input class="form-input" id="entId" placeholder="예: order_detail" />
+      <div class="form-err" id="entIdErr"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-group" style="margin-bottom:0">
+        <label>논리명 <span style="color:#45475a">(한글 표시명)</span></label>
+        <input class="form-input" id="entLogical" placeholder="예: 주문상세" />
+        <div class="form-err" id="entLogicalErr">논리명을 입력하세요.</div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>물리명 <span style="color:#45475a">(테이블명)</span></label>
+        <input class="form-input" id="entPhysical" placeholder="예: TB_ORD_DTL" />
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 190px;gap:10px;margin-top:12px;margin-bottom:12px">
+      <div class="form-group" style="margin:0">
+        <label>설명</label>
+        <textarea class="form-input" id="entDesc" rows="2" placeholder="테이블 설명 (선택)" style="resize:vertical;min-height:52px;line-height:1.5"></textarea>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>예상 행 수 <span style="color:#45475a;font-weight:normal">(볼륨 시각화)</span></label>
+        <input class="form-input" id="entRowCount" type="number" min="0" placeholder="예: 100000" style="width:100%" />
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;margin-top:0">
+      <label>색상 태그</label>
+      <div id="colorSwatches" style="display:flex;gap:7px;margin-top:7px;align-items:center;flex-wrap:wrap;"></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span class="section-lbl" style="margin-bottom:0">속성 목록</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:#6c7086;font-size:11px">DB 유형</span>
+        <select class="form-select" id="entDbType" style="width:150px;padding:4px 8px;font-size:12px" onchange="onDbTypeChange(this.value)">
+          <option value="mysql">MySQL / MariaDB</option>
+          <option value="postgresql">PostgreSQL</option>
+          <option value="oracle">Oracle</option>
+          <option value="mssql">SQL Server</option>
+        </select>
+      </div>
+    </div>
+    <div id="attrList"></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button class="btn-add-attr" style="flex:1;margin:0" onclick="addAttrRow()">+ 속성 추가</button>
+      <button class="btn" style="padding:6px 12px;font-size:12px;flex-shrink:0;white-space:nowrap" onclick="openTemplateApplyMenu(event)">📎 템플릿 ▾</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <div class="idx-section-hdr">
+        <span class="section-lbl" style="margin-bottom:0">인덱스</span>
+        <button class="btn" style="padding:4px 10px;font-size:12px" onclick="addIndexRow()">+ 인덱스 추가</button>
+      </div>
+      <div id="indexList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-del-m" id="entDelBtn" onclick="deleteCurrentEntity()" style="display:none">엔티티 삭제</button>
+      <button class="btn" id="entExtractBtn" onclick="openExtractModal()" style="display:none">🔀 속성 추출</button>
+      <button class="btn-cancel-m" onclick="closeEntModal()">취소</button>
+      <button class="btn-save-m" onclick="saveEntity()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Relation Modal ───────────────────────── -->
+<div class="modal-overlay" id="relOverlay" onmousedown="overlayClose(event,'relOverlay')">
+  <div class="modal" style="width:420px" onmousedown.stop>
+    <h3 id="relModalTitle">관계 추가</h3>
+    <div class="form-group">
+      <label>시작 엔티티 (1쪽)</label>
+      <select class="form-select" id="relFrom"></select>
+    </div>
+    <div class="form-group">
+      <label>끝 엔티티</label>
+      <select class="form-select" id="relTo"></select>
+    </div>
+    <div class="form-group">
+      <label>카디널리티</label>
+      <select class="form-select" id="relCard">
+        <option value="1:N">1:N</option>
+        <option value="1:1">1:1</option>
+        <option value="N:M">N:M</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>선 스타일</label>
+      <select class="form-select" id="relLineStyle">
+        <option value="solid">실선 ——</option>
+        <option value="dashed">점선 - - -</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>관계명 <span style="color:#45475a">(선택)</span></label>
+      <input class="form-input" id="relLabel" placeholder="예: 소속, 포함, 참조">
+    </div>
+    <div class="form-group" id="relFkAutoGroup">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="relFkAuto" style="width:14px;height:14px;cursor:pointer">
+        <span>FK 컬럼 자동 추가</span>
+        <span style="color:#45475a;font-size:11px">끝 엔티티에 참조 컬럼 삽입</span>
+      </label>
+    </div>
+    <div class="form-err" id="relErr" style="margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn-del-m" id="relDelBtn" onclick="deleteCurrentRelation()" style="display:none">관계 삭제</button>
+      <button class="btn-cancel-m" onclick="closeRelModal()">취소</button>
+      <button class="btn-save-m" onclick="saveRelation()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── New Diagram Modal ─────────────────────── -->
+<div class="modal-overlay" id="newDiagOverlay" onmousedown="overlayClose(event,'newDiagOverlay')">
+  <div class="modal" style="width:360px" onmousedown.stop>
+    <h3>새 다이어그램</h3>
+    <div class="form-group">
+      <label>다이어그램 이름</label>
+      <input class="form-input" id="newDiagNameInput" placeholder="새 다이어그램" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeNewDiagModal()">취소</button>
+      <button class="btn-save-m" onclick="confirmNewDiag()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Modal ────────────────────────── -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="c-icon">⚠</div>
+    <p id="confirmMsg">삭제하시겠습니까?</p>
+    <div class="c-actions">
+      <button class="btn-cancel-m" onclick="closeConfirm()">취소</button>
+      <button class="btn-del-m" style="margin:0" id="confirmOkBtn" onclick="doConfirm()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Image Export Menu ─────────────────────── -->
+<div id="imgMenu">
+  <div class="img-menu-item" onclick="downloadImage(true)">🖼&nbsp; 섹션 포함</div>
+  <div class="img-menu-sep"></div>
+  <div class="img-menu-item" onclick="downloadImage(false)">🖼&nbsp; 섹션 제외</div>
+  <div class="img-menu-sep"></div>
+  <div class="img-menu-item" onclick="downloadSVG()">&#x2B21;&nbsp; SVG 내보내기</div>
+</div>
+
+<!-- ── DDL Modal ─────────────────────────────── -->
+<div class="modal-overlay" id="ddlOverlay" onmousedown="overlayClose(event,'ddlOverlay')">
+  <div class="modal" style="width:680px;max-height:80vh" onmousedown.stop>
+    <h3>DDL 생성 (물리 모델 기준)</h3>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <select class="form-select" id="ddlDialect" style="width:160px" onchange="generateDDL(this.value)">
+        <option value="mysql">MySQL / MariaDB</option>
+        <option value="postgresql">PostgreSQL</option>
+        <option value="oracle">Oracle</option>
+        <option value="mssql">SQL Server</option>
+      </select>
+      <button class="btn" onclick="copyDDL()">&#x1F4CB; 복사</button>
+    </div>
+    <pre id="ddlContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:14px;color:#a6e3a1;font-family:Consolas,monospace;font-size:12px;overflow:auto;max-height:54vh;white-space:pre;line-height:1.6"></pre>
+    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeDDLModal()">닫기</button></div>
+  </div>
+</div>
+
+<!-- ── Copy-to-Diagram Modal ─────────────────── -->
+<div class="modal-overlay" id="copyDiagOverlay" onmousedown="overlayClose(event,'copyDiagOverlay')">
+  <div class="modal" style="width:360px">
+    <h3>다이어그램으로 복사</h3>
+    <p style="color:#a6adc8;font-size:13px;margin-bottom:14px;">복사할 대상 다이어그램을 선택하세요.</p>
+    <div id="copyDiagList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeCopyDiagModal()">취소</button></div>
+  </div>
+</div>
+
+<!-- ── Note Edit Panel ──────────────────────────── -->
+<div id="noteEditPanel" style="display:none; position:fixed; z-index:1000;">
+  <div id="noteEditTabBar">
+    <button id="noteTabText"     class="note-tab-btn active" onclick="switchNoteTab('text')">Text</button>
+    <button id="noteTabMarkdown" class="note-tab-btn"        onclick="switchNoteTab('markdown')">MD</button>
+  </div>
+  <textarea id="noteEditInput"></textarea>
+</div>
+<input type="file" id="importFileInput"       accept=".json" style="display:none" onchange="handleImportFile(event)">
+<input type="file" id="fullBackupImportInput" accept=".json" style="display:none" onchange="handleFullBackupImport(event)">
+<div id="erdTooltip"></div>
+
+<!-- ── DDL Import Modal ───────────────────────── -->
+<div class="modal-overlay" id="ddlImportOverlay" onmousedown="overlayCloseExtra(event,'ddlImportOverlay')">
+  <div class="modal" style="width:680px;max-height:84vh" onmousedown.stop>
+    <h3>DDL 가져오기 (SQL → ERD)</h3>
+    <div class="form-group">
+      <label>CREATE TABLE 구문을 붙여넣으세요 (MySQL, PostgreSQL, Oracle 지원)</label>
+      <textarea class="form-input" id="ddlImportText" rows="14" placeholder="CREATE TABLE users (&#10;  user_id VARCHAR(20) PRIMARY KEY,&#10;  user_nm VARCHAR(100) NOT NULL,&#10;  email VARCHAR(255),&#10;  FOREIGN KEY (dept_id) REFERENCES dept(dept_id)&#10;);" style="font-family:Consolas,monospace;font-size:12px;resize:vertical;min-height:200px;line-height:1.5"></textarea>
+    </div>
+    <div id="ddlImportPreview" style="display:none;margin-bottom:12px;">
+      <label class="section-lbl">파싱 결과 미리보기</label>
+      <div id="ddlImportPreviewContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:10px 14px;max-height:160px;overflow-y:auto;font-size:12px;color:#a6adc8;font-family:Consolas,monospace;line-height:1.7;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeDDLImportModal()">취소</button>
+      <button class="btn" onclick="previewDDLImport()" style="margin-right:auto">미리보기</button>
+      <button class="btn-save-m" onclick="applyDDLImport()">다이어그램에 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Snapshot List Modal ───────────────────── -->
+<div class="modal-overlay" id="snapshotOverlay" onmousedown="overlayCloseExtra(event,'snapshotOverlay')">
+  <div class="modal" style="width:500px" onmousedown.stop>
+    <h3>변경 이력 스냅샷</h3>
+    <div id="snapshotList" style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;margin-bottom:8px;"></div>
+    <div id="snapshotEmpty" style="color:#45475a;font-size:13px;text-align:center;padding:24px 0;display:none;">저장된 스냅샷이 없습니다.</div>
+    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeSnapshotModal()">닫기</button></div>
+  </div>
+</div>
+
+<!-- ── Template Management Modal ────────────── -->
+<div class="modal-overlay" id="templateOverlay" onmousedown="overlayCloseExtra(event,'templateOverlay')">
+  <div class="modal" style="width:700px;max-height:84vh" onmousedown.stop>
+    <h3>📎 컬럼 템플릿 관리</h3>
+    <p style="color:#a6adc8;font-size:12px;margin-bottom:14px;">엔티티 편집 시 "템플릿 ▾" 버튼으로 컬럼 세트를 빠르게 추가할 수 있습니다.</p>
+    <div id="templateListWrap" style="max-height:52vh;overflow-y:auto;margin-bottom:8px;"></div>
+    <button class="btn-add-attr" onclick="addNewTemplate()">+ 새 템플릿 추가</button>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeTemplateModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Template Apply Menu ────────────────────── -->
+<div id="templateApplyMenu"></div>
+
+<!-- ── 속성 추출 모달 ───────────────────────────────── -->
+<div class="modal-overlay" id="extractOverlay" onmousedown="overlayCloseExtra(event,'extractOverlay')">
+  <div class="modal" style="width:480px" onmousedown.stop>
+    <h3>🔀 속성 분리 / 추출</h3>
+    <div class="form-group">
+      <label>새 엔티티 논리명</label>
+      <input class="form-input" id="extractLogical" placeholder="논리명">
+    </div>
+    <div class="form-group">
+      <label>새 엔티티 물리명 <span style="color:#45475a">(선택)</span></label>
+      <input class="form-input" id="extractPhysical" placeholder="물리명">
+    </div>
+    <div class="form-group">
+      <label>추출할 속성 선택</label>
+      <div id="extractAttrList" style="max-height:200px;overflow-y:auto;border:1px solid #313244;border-radius:6px;padding:4px 0;margin-top:4px;"></div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="extractKeepOriginal" style="width:14px;height:14px;cursor:pointer">
+        <span>원본 엔티티에서 속성 유지 <span style="color:#45475a;font-size:11px">(복사 방식)</span></span>
+      </label>
+    </div>
+    <div class="form-err" id="extractErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeExtractModal()">취소</button>
+      <button class="btn-save-m" onclick="doExtractEntity()">추출</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 다이어그램 비교(diff) 모달 ─────────────────────── -->
+<div class="modal-overlay" id="diffOverlay" onmousedown="overlayCloseExtra(event,'diffOverlay')">
+  <div class="modal" style="width:600px" onmousedown.stop>
+    <h3>📊 다이어그램 비교</h3>
+    <div id="diffContent" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeDiffModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI Schema Modal ───────────────────────── -->
+<div class="modal-overlay" id="aiSchemaOverlay" onmousedown="overlayCloseExtra(event,'aiSchemaOverlay')">
+  <div class="modal" style="width:540px" onmousedown.stop>
+    <h3>🤖 AI 스키마 자동 생성</h3>
+    <div class="form-group">
+      <label>Anthropic API Key</label>
+      <input class="form-input" id="aiApiKey" type="password" placeholder="sk-ant-..." autocomplete="off" />
+      <div style="color:#45475a;font-size:11px;margin-top:4px;">키는 브라우저 로컬 스토리지에만 저장됩니다.</div>
+    </div>
+    <div class="form-group">
+      <label>비즈니스 요구사항 설명</label>
+      <textarea class="form-input" id="aiPromptText" rows="5" placeholder="예: 쇼핑몰 주문 처리 시스템. 고객이 상품을 주문하고 결제하며, 배송 상태를 추적할 수 있어야 합니다." style="resize:vertical;min-height:100px;line-height:1.5"></textarea>
+    </div>
+    <div id="aiLoadingRow" style="display:none;align-items:center;gap:10px;margin-bottom:12px;color:#89b4fa;font-size:13px;">
+      <div style="width:18px;height:18px;border:2px solid #89b4fa;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+      Claude가 스키마를 생성 중입니다…
+    </div>
+    <div id="aiErrorMsg" style="color:#f38ba8;font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="form-group" style="margin-bottom:4px;">
+      <label>적용 방식</label>
+      <select class="form-select" id="aiApplyMode">
+        <option value="add">현재 다이어그램에 추가</option>
+        <option value="replace">현재 다이어그램 교체</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeAISchemaModal()">취소</button>
+      <button class="btn-save-m" id="aiGenBtn" onclick="runAISchemaGen()">생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Shortcuts Modal ───────────────────────── -->
+<div class="modal-overlay" id="shortcutsOverlay" onmousedown="overlayCloseExtra(event,'shortcutsOverlay')">
+  <div class="modal" style="width:min(880px,92vw)" onmousedown.stop>
+    <h3>⌨ 단축키 목록</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+      <colgroup>
+        <col style="width:22%">
+        <col style="width:38%">
+        <col style="width:40%">
+      </colgroup>
+      <thead>
+        <tr style="border-bottom:2px solid #313244;">
+          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">단축키</th>
+          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">기능</th>
+          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">부가기능</th>
+        </tr>
+      </thead>
+      <tbody id="shortcutsTableBody">
+        <!-- ── 엔티티 / 관계 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">N</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 추가</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">입력 필드 미포커스 상태</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">R</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">관계 추가</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">입력 필드 미포커스 상태</td>
+        </tr>
+        <!-- ── 저장 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+S</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">JSON 저장</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">현재 다이어그램 단일 저장</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Shift+S</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">전체 백업 내보내기</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">전체 다이어그램 + 스냅샷 포함</td>
+        </tr>
+        <!-- ── 실행취소 / 다시실행 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Z</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">실행취소</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">히스토리 범위 내 무제한</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Y&nbsp;/&nbsp;Ctrl+Shift+Z</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">다시실행</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">두 단축키 모두 동일 동작</td>
+        </tr>
+        <!-- ── 검색 / 복사 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+F</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 검색</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">논리명 · 물리명 · ID 대상</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+C</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 엔티티 복사</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 선택 상태에서 동작</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+V</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">붙여넣기</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">미선택 시: 클립보드의 콤마 구분 텍스트를 속성 논리명으로 자동 입력 후 엔티티 추가 팝업<br><span style="color:#a6adc8;font-family:Consolas,monospace;font-size:11px;">예) 식별자, 이름, 비밀번호, 등록일자</span></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+D</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 엔티티 복제</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">다중 선택 시 일괄 복제</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+A</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">전체 엔티티 선택</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;"></td>
+        </tr>
+        <!-- ── 뷰 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Home</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">전체 맞춤</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">모든 엔티티 · 메모 · 섹션이 화면에 맞게 축소/이동</td>
+        </tr>
+        <!-- ── 삭제 / 취소 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Delete</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 항목 삭제</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 · 관계 · 섹션 대상</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Escape</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 해제 / 모드 취소</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">모달 · 검색창 닫기도 포함</td>
+        </tr>
+        <!-- ── 마우스 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">마우스 휠</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">확대 / 축소</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">커서 위치 기준 줌</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">우클릭</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">컨텍스트 메뉴</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 · 관계 · 캔버스 대상별 메뉴 상이</td>
+        </tr>
+        <!-- ── 더블클릭 ── -->
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">더블클릭 (엔티티)</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 편집 / 접기·펼치기</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">헤더 클릭 시 접기, 본문 클릭 시 편집</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">더블클릭 (메모)</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">메모 인라인 편집</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">Text / MD 탭 전환 후 편집 가능</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeShortcutsModal()">닫기</button></div>
+  </div>
+</div>
+
+<!-- ── Focus Mode Badge ───────────────────────── -->
+<div id="focusBadge" style="display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);background:#313244;border:1px solid #89b4fa;color:#89b4fa;font-size:12px;padding:5px 16px;border-radius:20px;z-index:200;pointer-events:none;">
+  🔍 포커스: <span id="focusBadgeName"></span> &nbsp;<span style="color:#6c7086;font-size:11px;">(Esc로 해제)</span>
+</div>
+
+<canvas id="erd"></canvas>
+
+<!-- 마크다운 노트 오버레이 컨테이너 (pointer-events:none → 마우스 이벤트는 캔버스로 통과) -->
+<div id="noteMarkdownLayer" style="position:fixed;inset:0;pointer-events:none;z-index:9;overflow:hidden;"></div>
+
+<!-- ── Scripts (load order: config → state → diagrams → entities → relations → canvas → layout → export → import → ui → main) ── -->
+<!-- marked.js : markdown → HTML 파싱 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/diagrams.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/relations.js"></script>
+<script src="js/canvas.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/export.js"></script>
+<script src="js/import.js"></script>
+<script src="js/ui.js"></script>
+<!-- Feature scripts -->
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.12.0/dist/sql-wasm.js"></script>
+<script src="js/share.js"></script>
+<script src="js/join_explorer.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/normalize.js"></script>
+<script src="js/sql_runner.js"></script>
+<script src="js/broadcast.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/webrtc.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>

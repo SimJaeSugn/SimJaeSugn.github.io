@@ -1,0 +1,223 @@
+/* ── Markdown Note Overlay (DOM 렌더링) ──────── */
+.note-md-overlay {
+  position: fixed;
+  overflow: hidden;
+  pointer-events: none;
+  box-sizing: border-box;
+  background: transparent;
+  color: #11111b;
+  font-family: 'Segoe UI', sans-serif;
+  line-height: 1.55;
+  word-break: break-word;
+}
+/* 마크다운 요소별 스타일 */
+.note-md-overlay > *:first-child { margin-top: 0 !important; }
+.note-md-overlay > *:last-child  { margin-bottom: 0 !important; }
+.note-md-overlay h1 { font-size: 1.3em; font-weight: bold; margin: 0 0 .25em; line-height: 1.3; }
+.note-md-overlay h2 { font-size: 1.15em; font-weight: bold; margin: 0 0 .2em; line-height: 1.3; }
+.note-md-overlay h3 { font-size: 1.05em; font-weight: bold; margin: 0 0 .15em; line-height: 1.3; }
+.note-md-overlay p  { margin: 0 0 .35em; }
+.note-md-overlay ul,
+.note-md-overlay ol { margin: 0 0 .35em; padding-left: 1.35em; }
+.note-md-overlay li { margin-bottom: .1em; }
+.note-md-overlay strong { font-weight: bold; }
+.note-md-overlay em     { font-style: italic; }
+.note-md-overlay del    { text-decoration: line-through; }
+.note-md-overlay code {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: .88em;
+  background: rgba(0,0,0,0.10);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.note-md-overlay pre {
+  background: rgba(0,0,0,0.08);
+  padding: 5px 7px;
+  border-radius: 4px;
+  overflow-x: hidden;
+  margin: 0 0 .35em;
+  font-size: .88em;
+}
+.note-md-overlay pre code { background: none; padding: 0; }
+.note-md-overlay blockquote {
+  border-left: 3px solid rgba(0,0,0,0.28);
+  margin: 0 0 .35em;
+  padding-left: .6em;
+  color: rgba(17,17,27,0.70);
+}
+.note-md-overlay hr {
+  border: none;
+  border-top: 1px solid rgba(0,0,0,0.25);
+  margin: .35em 0;
+}
+.note-md-overlay a { color: #1a56db; text-decoration: underline; }
+.note-md-overlay table { border-collapse: collapse; margin-bottom: .35em; font-size: .9em; }
+.note-md-overlay th,
+.note-md-overlay td { border: 1px solid rgba(0,0,0,0.2); padding: 2px 6px; }
+.note-md-overlay th { font-weight: bold; background: rgba(0,0,0,0.06); }
+.note-md-overlay .md-placeholder { opacity: 0.38; font-style: italic; }
+
+/* ── Note Edit Panel ─────────────────────────── */
+#noteEditPanel {
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 2px 6px 20px rgba(0,0,0,0.55);
+  border: 2px solid #89b4fa;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+#noteEditTabBar {
+  display: flex;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.15);
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+.note-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Segoe UI', sans-serif;
+  color: rgba(17,17,27,0.45);
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.note-tab-btn:hover  { background: rgba(255,255,255,0.15); color: rgba(17,17,27,0.75); }
+.note-tab-btn.active { background: rgba(255,255,255,0.28); color: #11111b; }
+#noteEditInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Segoe UI', sans-serif;
+  line-height: 1.55;
+  padding: 7px 8px;
+  background: transparent;
+  color: #11111b;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* ── Legend ──────────────────────────────────── */
+#legend {
+  background: var(--bg-mini-overlay); border: 1px solid var(--bd);
+  border-radius: 10px; padding: 10px 14px; color: var(--tx-main); font-size: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4); width: 196px;
+  transition: padding 0.18s ease;
+}
+.legend-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.legend-hdr h4 { color: var(--ac); font-size: 12px; margin: 0; }
+#legend.leg-collapsed .legend-hdr { margin-bottom: 0; }
+#legend.leg-collapsed #legendBody { display: none; }
+.legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; }
+.legend-row:last-child { margin-bottom: 0; }
+.dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── Context Menu ────────────────────────────── */
+#ctxMenu {
+  position: fixed; display: none;
+  background: var(--bg-base); border: 1px solid var(--bd2);
+  border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  z-index: 2000; min-width: 170px; overflow: hidden;
+}
+.ctx-item {
+  padding: 9px 16px; color: var(--tx-main); cursor: pointer;
+  font-size: 13px; transition: background 0.1s;
+  display: flex; align-items: center; gap: 8px;
+}
+.ctx-item:hover { background: var(--bg-surface); }
+.ctx-sep { height: 1px; background: var(--bd); margin: 3px 0; }
+.ctx-item.danger { color: var(--ac-r); }
+.ctx-item.danger:hover { background: var(--danger-bg); }
+.ctx-ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+
+/* ── 토스트 알림 ───────────────────────────────── */
+.erd-toast {
+  position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-surface); color: var(--tx-main); border: 1px solid var(--bd2);
+  padding: 7px 18px; border-radius: 8px; font-size: 13px;
+  z-index: 3000; pointer-events: none;
+  animation: toastFade 1.6s ease-out forwards;
+}
+@keyframes toastFade {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+}
+
+/* ── 툴팁 ─────────────────────────────────────────── */
+#erdTooltip {
+  position: fixed; z-index: 400; pointer-events: none; display: none;
+  background: var(--bg-mini-overlay); border: 1px solid var(--bd2);
+  border-radius: 8px; padding: 8px 12px; max-width: 280px;
+  line-height: 1.5; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  word-break: break-word;
+}
+#erdTooltip .tt-title { color: var(--ac); font-size: 12px; font-weight: bold; }
+#erdTooltip .tt-desc  { color: var(--tx-attr); font-size: 11px; margin-top: 3px; white-space: pre-wrap; }
+
+/* ── Minimap ─────────────────────────────────── */
+#minimapWrap {
+  background: var(--bg-mini-overlay); border: 1px solid var(--bd);
+  border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  overflow: hidden; width: 196px;
+}
+.minimap-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 8px; border-bottom: 1px solid var(--bd);
+  color: var(--tx-sub); font-size: 11px; user-select: none;
+}
+#minimapWrap.mm-collapsed .minimap-hdr { border-bottom: none; }
+#minimapWrap.mm-collapsed #minimap { display: none; }
+#minimap { display: block; cursor: pointer; width: 196px; height: 120px; }
+#minimap { cursor: crosshair; }
+.panel-mini-btn {
+  background: none; border: none; color: var(--tx-sub); cursor: pointer;
+  font-size: 13px; padding: 0; line-height: 1; width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; transition: color 0.1s, background 0.1s;
+}
+.panel-mini-btn:hover { color: var(--ac); background: var(--bg-surface); }
+
+/* ── 검색 패널 ─────────────────────────────────── */
+.search-result-item { padding:6px 8px; cursor:pointer; border-radius:5px; color:var(--tx-main); font-size:12px; display:flex; gap:8px; align-items:center; transition:background 0.1s; }
+.search-result-item:hover { background:var(--bg-surface); }
+.search-result-item .sr-tag { color:var(--bd2); font-size:10px; margin-left:auto; font-family:Consolas,monospace; flex-shrink:0; }
+
+/* ── 색상 태그 ─────────────────────────────────── */
+.color-swatch { width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:border-color 0.1s, transform 0.1s; flex-shrink:0; }
+.color-swatch:hover { transform:scale(1.2); }
+.color-swatch.cs-active { border-color:#fff !important; box-shadow:0 0 0 2px var(--ac); }
+
+/* ── 스티커 메모 편집 (구 규칙 제거 — 패널 내부 textarea로 관리) ── */
+/* #noteEditInput 의 position:fixed 규칙은 삭제됨 */
+
+/* ── 변경 뱃지 ─────────────────────────────────── */
+#sessionBadge { background:var(--ac-r); color:var(--bg-base); font-size:10px; font-weight:bold; padding:1px 6px; border-radius:8px; display:none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 테마 선택 모달 ───────────────────────────── */
+.theme-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; }
+.theme-card {
+  border: 2px solid var(--bd2); border-radius: 10px; padding: 14px 12px 12px;
+  cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+  display: flex; flex-direction: column; gap: 8px; user-select: none;
+}
+.theme-card:hover { border-color: var(--ac); transform: translateY(-1px); }
+.theme-card.ts-active { border-color: var(--ac); box-shadow: 0 0 0 2px var(--ac); }
+.theme-card-preview {
+  border-radius: 6px; height: 56px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.theme-card-preview .tp-header { height: 18px; border-radius: 4px 4px 0 0; }
+.theme-card-preview .tp-body { flex: 1; display: flex; align-items: center; padding: 4px 6px; gap: 4px; }
+.theme-card-preview .tp-line { height: 4px; border-radius: 2px; flex: 1; }
+.theme-card-name { color: var(--tx-main); font-size: 13px; font-weight: bold; text-align: center; }

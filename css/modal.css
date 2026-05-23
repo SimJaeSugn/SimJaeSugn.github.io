@@ -1,0 +1,182 @@
+/* ── Modal Overlay ───────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  z-index: 500; display: none; align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+
+/* ── Modal ───────────────────────────────────── */
+.modal {
+  background: var(--bg-base); border: 1px solid var(--bd2); border-radius: 12px;
+  padding: 28px 28px 22px; width: 560px; max-height: 84vh; overflow-y: auto;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.75);
+}
+.modal h3 { color: var(--ac); margin-bottom: 22px; font-size: 16px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; color: var(--tx-sub); font-size: 12px; margin-bottom: 5px; }
+.form-input {
+  width: 100%; background: var(--bg-surface); border: 1px solid var(--bd2);
+  border-radius: 6px; color: var(--tx-main); padding: 8px 11px;
+  font-size: 13px; font-family: inherit;
+}
+.form-input:focus { outline: none; border-color: var(--ac); }
+.form-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.form-select {
+  width: 100%; background: var(--bg-surface); border: 1px solid var(--bd2);
+  border-radius: 6px; color: var(--tx-main); padding: 8px 11px;
+  font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.form-select:focus { outline: none; border-color: var(--ac); }
+.form-select option { background: var(--bg-surface); }
+
+/* Attr list */
+.section-lbl { color: var(--tx-sub); font-size: 12px; margin-bottom: 8px; display: block; }
+#attrList { margin-bottom: 8px; }
+.attr-entry { margin-bottom: 8px; }
+.attr-row-main {
+  display: flex; gap: 5px; align-items: center;
+}
+.attr-row-main .form-input, .attr-row-main .form-select { padding: 6px 7px; font-size: 12px; flex-shrink: 0; }
+.attr-logical, .attr-physical { flex: 1; min-width: 80px; flex-shrink: 1 !important; }
+.attr-type    { width: 110px; }
+.attr-kind    { width: 68px; }
+.attr-default { width: 120px; }
+.attr-desc    { flex: 1.2; min-width: 80px; flex-shrink: 1 !important; }
+.fk-lbl-inline { color: var(--ac-o); font-size: 11px; white-space: nowrap; flex-shrink: 0; }
+.fk-dot-inline { color: var(--tx-sub); font-size: 13px; font-weight: bold; flex-shrink: 0; }
+.fk-ent-sel   { flex: 1; min-width: 100px; flex-shrink: 1 !important; }
+.fk-att-sel   { width: 130px; }
+.attr-ck-label {
+  display: flex; align-items: center; gap: 3px;
+  color: var(--tx-sub); font-size: 11px; cursor: pointer;
+  white-space: nowrap; user-select: none;
+}
+.attr-ck-label input { cursor: pointer; accent-color: var(--ac); }
+.attr-drag-handle {
+  cursor: grab; color: var(--bd2); font-size: 15px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; padding: 0; transition: color 0.1s;
+}
+.attr-drag-handle:hover { color: var(--ac); }
+.attr-drag-handle:active { cursor: grabbing; }
+.attr-entry.attr-dragging { opacity: 0.3; }
+.attr-entry.drag-over-top { border-top: 2px solid var(--ac); }
+.attr-entry.drag-over-bottom { border-bottom: 2px solid var(--ac); }
+.attr-desc-row { margin-top: 3px; }
+.attr-desc-row .form-input { padding: 4px 8px; font-size: 11px; color: var(--tx-attr); border-color: var(--grid); }
+.attr-desc-row .form-input::placeholder { color: var(--bd2); }
+.attr-desc-row .form-input:focus { border-color: var(--tx-muted); color: var(--tx-main); }
+
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  border-top: 1px solid var(--bd); padding-top: 16px; margin-top: 4px;
+}
+.btn-cancel-m {
+  background: var(--bg-surface); color: var(--tx-main); border: none;
+  padding: 9px 20px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.btn-cancel-m:hover { background: var(--bd2); }
+
+.btn-save-m {
+  background: var(--ac); color: var(--bg-base); border: none;
+  padding: 9px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;
+}
+.btn-save-m:hover { background: var(--ac-hover); }
+.btn-del-m {
+  background: none; color: var(--ac-r); border: 1px solid var(--ac-r);
+  padding: 9px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-right: auto;
+}
+.btn-del-m:hover { background: var(--pk-bg); }
+
+/* Confirm modal */
+.confirm-box {
+  background: var(--bg-base); border: 1px solid var(--bd2); border-radius: 12px;
+  padding: 32px 28px 24px; width: 360px; text-align: center;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.75);
+}
+.confirm-box .c-icon { font-size: 34px; margin-bottom: 12px; }
+.confirm-box p { color: var(--tx-main); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+.confirm-box .c-actions { display: flex; gap: 10px; justify-content: center; }
+
+.modal::-webkit-scrollbar { width: 6px; }
+.modal::-webkit-scrollbar-track { background: var(--bg-panel); }
+.modal::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+
+.form-err { color: var(--ac-r); font-size: 12px; margin-top: 4px; display: none; }
+.form-err.show { display: block; }
+
+.btn-rm {
+  width: 28px; height: 28px; background: none; border: 1px solid var(--bd2);
+  color: var(--ac-r); border-radius: 4px; cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.btn-rm:hover { background: var(--pk-bg); border-color: var(--ac-r); }
+.btn-add-attr {
+  width: 100%; background: none; border: 1px dashed var(--bd2);
+  color: var(--ac-g); padding: 7px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; margin-bottom: 18px; transition: background 0.1s, border-color 0.1s;
+}
+.btn-add-attr:hover { background: var(--pk-bg-dim); border-color: var(--ac-g); }
+
+.fk-ent-sel, .fk-att-sel { padding: 6px 7px !important; font-size: 12px !important; }
+
+/* ── 인덱스 ────────────────────────────────────────── */
+.idx-entry { display:flex; gap:5px; align-items:center; margin-bottom:6px; }
+.idx-name-col { width:170px; flex-shrink:0; }
+.idx-cols-col { flex:1; min-width:80px; }
+.idx-section-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+
+/* ── 템플릿 ────────────────────────────────────────── */
+.tmpl-entry { background:var(--bg-surface2); border-radius:7px; border:1px solid var(--bd); margin-bottom:8px; overflow:hidden; }
+.tmpl-hdr   { display:flex; align-items:center; gap:6px; padding:8px 10px; user-select:none; }
+.tmpl-expand { color:var(--tx-muted); font-size:10px; cursor:pointer; flex-shrink:0; }
+.tmpl-hdr-name-inp { flex:1; background:transparent; border:none; color:var(--tx-main); font-size:13px; font-family:inherit; outline:none; cursor:text; }
+.tmpl-hdr-name-inp::placeholder { color:var(--bd2); }
+.tmpl-hdr-cnt  { color:var(--tx-sub); font-size:11px; flex-shrink:0; }
+.tmpl-body  { padding:6px 8px 8px; border-top:1px solid var(--bd); }
+
+/* ── 속성 추출 모달 ─────────────────────────────────── */
+.extract-attr-row { display:flex; align-items:center; gap:8px; padding:5px 8px;
+  border-radius:5px; cursor:pointer; transition:background 0.1s; }
+.extract-attr-row:hover { background:var(--bg-surface2); }
+
+/* ── diff 모달 ─────────────────────────────────────── */
+.diff-section { margin-bottom:14px; }
+.diff-section-title { font-weight:bold; font-size:12px; margin-bottom:6px; }
+.diff-row { padding:5px 10px; border-radius:5px; margin-bottom:3px; font-size:12px; }
+.diff-added   { background:var(--pk-bg-dim); color:var(--ac-g); }
+.diff-removed { background:var(--pk-bg-dim); color:var(--ac-r); }
+.diff-modified{ background:var(--fk-bg-dim); color:var(--ac-o); }
+.diff-attr    { font-size:11px; margin-top:3px; }
+
+.snapshot-item { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg-surface2); border-radius:7px; border:1px solid var(--bd); }
+.snapshot-item-name { flex:1; color:var(--tx-main); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.snapshot-item-ts { color:var(--tx-sub); font-size:11px; white-space:nowrap; flex-shrink:0; }
+.shortcuts-table tr:nth-child(odd) td { background:var(--surface-dim); }
+.shortcuts-table tr td { border-bottom:1px solid var(--bg-surface2); }
+
+/* ── 이미지 저장 드롭다운 ─────────────────────── */
+#imgMenu {
+  position: fixed; display: none;
+  background: var(--bg-base); border: 1px solid var(--bd2);
+  border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+  z-index: 300; overflow: hidden; min-width: 148px;
+}
+.img-menu-item {
+  padding: 9px 14px; color: var(--tx-main); cursor: pointer;
+  font-size: 13px; display: flex; align-items: center; gap: 8px;
+  transition: background 0.1s;
+}
+.img-menu-item:hover { background: var(--bg-surface); }
+.img-menu-sep { height: 1px; background: var(--bd); margin: 2px 0; }
+
+#templateApplyMenu {
+  position:fixed; display:none;
+  background:var(--bg-base); border:1px solid var(--bd2);
+  border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.55);
+  z-index:2100; overflow:hidden; min-width:160px;
+}
+.tmpl-apply-item { padding:9px 14px; color:var(--tx-main); cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; transition:background 0.1s; white-space:nowrap; }
+.tmpl-apply-item:hover { background:var(--bg-surface); }
+.tmpl-apply-manage { color:var(--tx-sub); font-size:11px; padding:7px 14px; border-top:1px solid var(--bd); cursor:pointer; }
+.tmpl-apply-manage:hover { color:var(--ac); background:var(--bg-surface2); }
