@@ -11,7 +11,15 @@
       "PowerShell(\\(Get-Content \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\ui.js\" | Measure-Object -Line\\).Lines)",
       "Bash(grep -v \"//.*theme\")",
       "Bash(grep -n \"fillStyle\\\\|strokeStyle\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\" \"C:/Users/lvtlv/Downloads/UXERManager/js/canvas.js\")",
-      "Bash(dir \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\\" /B)"
+      "Bash(dir \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\\" /B)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'Add pre-collaboration auto-snapshot and restore for WebRTC P2P' --body ' *)",
+      "Bash(where gh *)",
+      "Bash(winget list *)",
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)"
     ]
   }
 }

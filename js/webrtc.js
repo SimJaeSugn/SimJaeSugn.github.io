@@ -4,10 +4,11 @@
 // PeerJS 클라우드가 시그널링(연결 중개)만 담당, 데이터는 P2P 직전송
 // ══════════════════════════════════════════════════════════════════
 
-let _peer         = null;   // PeerJS Peer 인스턴스
-let _rtcConn      = null;   // 활성 DataConnection
-let _rtcReceiving = false;  // 수신 중 플래그 (무한루프 방지)
-let _rtcSendTimer = null;   // 디바운스 타이머
+let _peer            = null;   // PeerJS Peer 인스턴스
+let _rtcConn         = null;   // 활성 DataConnection
+let _rtcReceiving    = false;  // 수신 중 플래그 (무한루프 방지)
+let _rtcSendTimer    = null;   // 디바운스 타이머
+let _rtcPreSnapId    = null;   // 협업 전 자동 스냅샷 ID (종료 후 복원용)
 
 // ── 모달 열기 ─────────────────────────────────────────────────────
 function openRtcModal() {
@@ -192,7 +193,10 @@ function rtcConnectAsGuest() {
 // ── DataConnection 공통 설정 ──────────────────────────────────────
 function _rtcSetupConn(role) {
   _rtcConn.on('open', () => {
-    showToast('🔗 P2P 연결 성공!');
+    // ★ 연결 전 현재 작업을 자동 스냅샷으로 보존
+    _rtcAutoSnapshot();
+
+    showToast('🔗 P2P 연결 성공! (협업 전 작업이 스냅샷에 저장됨)');
     _rtcUpdateUI();
     // 호스트: 현재 ERD 상태 즉시 전송
     if (role === 'host') _rtcSendState();
@@ -215,9 +219,10 @@ function _rtcSetupConn(role) {
   });
 
   _rtcConn.on('close', () => {
-    showToast('🔌 P2P 연결이 종료됐습니다.');
     _rtcConn = null;
     _rtcUpdateUI();
+    // ★ 종료 후 복원 안내
+    _rtcShowRestoreToast();
   });
 
   _rtcConn.on('error', err => {
@@ -240,13 +245,84 @@ function _rtcSendState() {
   }
 }
 
+// ── 협업 전 자동 스냅샷 ───────────────────────────────────────────
+function _rtcAutoSnapshot() {
+  try {
+    flushCurrentState();
+    const now  = new Date();
+    const ts   = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const name = `협업 전 자동저장 (${ts})`;
+    const snap = {
+      id:    'rtc_pre_' + Date.now(),
+      name,
+      ts:    Date.now(),
+      state: JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap })
+    };
+    SNAPSHOTS.unshift(snap);
+    if (SNAPSHOTS.length > (typeof SNAPSHOT_MAX !== 'undefined' ? SNAPSHOT_MAX : 30)) {
+      SNAPSHOTS.length = SNAPSHOT_MAX;
+    }
+    persistSnapshots?.();
+    _rtcPreSnapId = snap.id;
+  } catch(e) {
+    console.warn('[WebRTC] 자동 스냅샷 실패:', e);
+    _rtcPreSnapId = null;
+  }
+}
+
+// ── 종료 후 복원 안내 토스트 ──────────────────────────────────────
+function _rtcShowRestoreToast() {
+  if (!_rtcPreSnapId) {
+    showToast('🔌 P2P 연결이 종료됐습니다.');
+    return;
+  }
+  // 토스트 대신 모달 안에 복원 버튼 표시
+  const overlay = document.getElementById('rtcOverlay');
+  if (overlay?.classList.contains('active')) {
+    // 모달이 열려 있으면 패널 안에 안내
+    const panel = document.getElementById('rtcPanelRole');
+    if (panel) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'margin-top:14px;padding:12px;background:var(--bg-surface);' +
+        'border-radius:8px;border-left:3px solid var(--ac-y);font-size:12px;';
+      notice.innerHTML =
+        `<b style="color:var(--ac-y)">⚠ 협업 종료</b><br>` +
+        `<span style="color:var(--tx-sub)">협업 전 작업이 스냅샷에 저장되어 있습니다.</span><br>` +
+        `<button class="btn-save-m" style="margin-top:8px;width:100%"
+          onclick="rtcRestorePre()">↩ 협업 전 작업으로 복원</button>`;
+      panel.appendChild(notice);
+    }
+  }
+  showToast('🔌 연결 종료 — 협업 전 작업은 스냅샷에 보존됨');
+}
+
+// ── 협업 전 상태 복원 ─────────────────────────────────────────────
+function rtcRestorePre() {
+  if (!_rtcPreSnapId) { showToast('저장된 스냅샷이 없습니다.'); return; }
+  const snap = SNAPSHOTS.find(s => s.id === _rtcPreSnapId);
+  if (!snap) { showToast('스냅샷을 찾을 수 없습니다.'); return; }
+  askConfirm(
+    `"${snap.name}" 으로 복원합니다.\n현재 협업 내용은 사라집니다.`,
+    () => {
+      restoreFromSnapshot(JSON.parse(snap.state));
+      saveState();
+      renderDiagramPanel?.();
+      render();
+      document.getElementById('rtcOverlay')?.classList.remove('active');
+      showToast('↩ 협업 전 작업으로 복원 완료');
+      _rtcPreSnapId = null;
+    },
+    '복원'
+  );
+}
+
 // ── 연결 종료 ─────────────────────────────────────────────────────
 function rtcDisconnect() {
   _rtcConn?.close();
   _rtcDestroyPeer();
   _rtcConn = null;
   _rtcUpdateUI();
-  showToast('🔌 P2P 연결을 종료했습니다.');
+  _rtcShowRestoreToast();
 }
 
 function _rtcDestroyPeer() {
