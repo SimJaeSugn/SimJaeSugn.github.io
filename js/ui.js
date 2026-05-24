@@ -746,10 +746,32 @@ function deleteSnapshot(id) {
 // ════════════════════════════════════════════════════════════════
 function openShortcutsModal() {
   document.getElementById('shortcutsOverlay').classList.add('active');
+  scGoTo(0);
 }
 function closeShortcutsModal() {
   document.getElementById('shortcutsOverlay').classList.remove('active');
 }
+
+// ── 단축키 슬라이더 ────────────────────────────────────────────
+(function () {
+  const SC_COUNT = 3;
+  let _idx = 0;
+
+  window.scGoTo = function (idx) {
+    _idx = Math.max(0, Math.min(SC_COUNT - 1, idx));
+    const slides = document.getElementById('scSlides');
+    if (slides) slides.style.transform = `translateX(-${_idx * 100}%)`;
+    document.querySelectorAll('.sc-envtab').forEach((t, i) => t.classList.toggle('active', i === _idx));
+    document.querySelectorAll('#scDots .sc-dot').forEach((d, i) => d.classList.toggle('active', i === _idx));
+    const prev = document.getElementById('scPrevBtn');
+    const next = document.getElementById('scNextBtn');
+    if (prev) prev.disabled = _idx === 0;
+    if (next) next.disabled = _idx === SC_COUNT - 1;
+  };
+
+  window.scPrev = function () { scGoTo(_idx - 1); };
+  window.scNext = function () { scGoTo(_idx + 1); };
+}());
 
 // ── ESC 키 확장 (포커스 모드 해제 + 새 모달) ────────────────────
 document.addEventListener('keydown', e => {
