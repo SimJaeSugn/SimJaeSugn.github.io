@@ -34,17 +34,31 @@ function tbClose(id) {
   document.getElementById(id).classList.remove('open');
 }
 
+function tbToggleSub(e, subId) {
+  e.stopPropagation();
+  const sub = document.getElementById(subId);
+  const hdr = sub.previousElementSibling;
+  const isOpen = sub.classList.contains('open');
+  sub.closest('.tb-dropdown-menu').querySelectorAll('.tb-dd-sub').forEach(s => {
+    s.classList.remove('open');
+    if (s.previousElementSibling) s.previousElementSibling.classList.remove('open');
+  });
+  if (!isOpen) {
+    sub.classList.add('open');
+    hdr.classList.add('open');
+  }
+}
+
 function syncToolDropdownLabels() {
   const snapEl = document.getElementById('ddItemSnap');
   const notEl  = document.getElementById('ddItemNotation');
   const secEl  = document.getElementById('ddItemSection');
-  if (snapEl) snapEl.textContent = (gridSnap ? '⊞ 스냅 끄기' : '⊞ 스냅 켜기');
+  if (snapEl) { snapEl.classList.toggle('active', gridSnap); snapEl.title = gridSnap ? '스냅 끄기' : '스냅 켜기'; }
   if (notEl) {
     notEl.classList.toggle('active', notationStyle === 'crowsfoot');
     notEl.title = notationStyle === 'crowsfoot' ? '크로우풋 끄기' : '크로우풋 켜기';
   }
-  if (secEl)  secEl.classList.toggle('active', sectionMode);
-  if (secEl)  secEl.textContent  = (sectionMode ? '▣ 섹션 모드 끄기' : '▣ 섹션 모드');
+  if (secEl) { secEl.classList.toggle('active', sectionMode); secEl.title = sectionMode ? '섹션 모드 끄기' : '섹션 모드 켜기'; }
 }
 
 document.addEventListener('click', () => {

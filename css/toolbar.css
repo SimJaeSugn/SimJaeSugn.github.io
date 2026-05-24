@@ -38,6 +38,36 @@
 .tb-dd-item.danger { color: var(--ac-r); }
 .tb-dd-item.danger:hover { background: var(--danger-bg); }
 .tb-dd-sep { height: 1px; background: var(--bd); margin: 2px 0; }
+
+/* ── 2-depth 아코디언 그룹 ──────────────────── */
+.tb-dd-group-hdr {
+  padding: 8px 12px 8px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  cursor: pointer; user-select: none;
+  color: var(--tx-sub); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  transition: background 0.1s, color 0.1s;
+  border-top: 1px solid var(--bd);
+}
+.tb-dd-group:first-child .tb-dd-group-hdr { border-top: none; }
+.tb-dd-group-hdr:hover { background: var(--bg-surface); color: var(--tx-main); }
+.tb-dd-group-hdr.open  { color: var(--ac); }
+.tb-dd-group-hdr .tb-dd-group-lbl { display: flex; align-items: center; gap: 6px; }
+.tb-dd-group-arrow {
+  font-size: 9px; color: var(--tx-muted); flex-shrink: 0;
+  transition: transform 0.18s, color 0.15s;
+}
+.tb-dd-group-hdr.open .tb-dd-group-arrow { transform: rotate(90deg); color: var(--ac); }
+.tb-dd-sub {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.22s ease;
+  background: var(--bg-surface2);
+}
+.tb-dd-sub.open { max-height: 400px; }
+.tb-dd-sub .tb-dd-item {
+  padding-left: 26px; font-size: 12.5px; color: var(--tx-attr);
+}
+.tb-dd-sub .tb-dd-item:hover { color: var(--tx-main); }
 #toolbarButtons {
   display: flex; gap: 8px; align-items: center;
 }
