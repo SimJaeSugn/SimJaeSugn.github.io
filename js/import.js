@@ -77,6 +77,11 @@ function _doImportWithGroups(data, groups) {
         _qbLarge = (s.qbLarge === '1');
         _applyQuickbarState();
       }
+      if (s.qbDock !== undefined) {
+        try { localStorage.setItem('_qbDock', s.qbDock); } catch {}
+        _qbDock = s.qbDock || 'top';
+        _applyQuickbarState();
+      }
       if (s.qbCustom) {
         try { localStorage.setItem('_qbCustom', s.qbCustom); } catch {}
         try { _qbCustomItems = JSON.parse(s.qbCustom) || []; _renderCustomQbItems(); } catch {}

@@ -102,6 +102,7 @@ async function _doExportWithGroups(groups) {
       data.settings.theme     = localStorage.getItem(THEME_STORAGE) || null;
       data.settings.qbOpen    = localStorage.getItem('_qbOpen') ?? '1';
       data.settings.qbLarge   = localStorage.getItem('_qbLarge') || '0';
+      data.settings.qbDock    = localStorage.getItem('_qbDock')  || 'top';
       data.settings.qbCustom  = localStorage.getItem('_qbCustom') || '[]';
       data.settings.panelW    = localStorage.getItem('_panelW') || null;
       data.settings.shortcuts = localStorage.getItem('_shortcuts') || '{}';
