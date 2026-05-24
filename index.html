@@ -96,7 +96,8 @@
     <div class="mb-menu" onmouseenter="mbHover('tools')">
       <span class="mb-lbl" onclick="mbToggle('tools')">도구</span>
       <div class="mb-drop" id="mb-drop-tools">
-        <div class="mb-item" onclick="mbClose();openSearch()"><span class="mb-ico">🔍</span><span class="mb-text">검색</span><span class="mb-kbd">Ctrl+F</span></div>
+        <div class="mb-item" onclick="mbClose();openCmdPalette()"><span class="mb-ico">⌘</span><span class="mb-text">메뉴 전체 검색</span><span class="mb-kbd">Ctrl+K</span></div>
+        <div class="mb-item" onclick="mbClose();openSearch()"><span class="mb-ico">🔍</span><span class="mb-text">엔티티 검색</span><span class="mb-kbd">Ctrl+F</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">탬플릿</div>
         <div class="mb-item" onclick="mbClose();openTemplateModal()"><span class="mb-ico">📎</span><span class="mb-text">컬럼 탬플릿 관리</span></div>
@@ -164,7 +165,8 @@
   <button class="qb-btn" id="qb-snap" onclick="toggleGridSnap()" title="그리드 스냅">⊞</button>
   <button class="qb-btn" id="qb-section" onclick="toggleSectionMode()" title="섹션 모드">▭</button>
   <div class="qb-sep"></div>
-  <button class="qb-btn" onclick="openSearch()" title="검색 (Ctrl+F)">🔍</button>
+  <button class="qb-btn" onclick="openCmdPalette()" title="메뉴 전체 검색 (Ctrl+K)">⌘</button>
+  <button class="qb-btn" onclick="openSearch()" title="엔티티 검색 (Ctrl+F)">🔍</button>
   <button class="qb-btn" onclick="saveSnapshot()" title="스냅샷 저장">📷</button>
   <div id="qb-custom-sep" class="qb-sep" style="display:none"></div>
   <div id="qb-custom-area" style="display:contents"></div>
@@ -183,6 +185,20 @@
     <button style="background:none;border:none;color:#6c7086;cursor:pointer;font-size:16px;padding:2px 6px;line-height:1;border-radius:4px;" onmouseover="this.style.color='#cdd6f4'" onmouseout="this.style.color='#6c7086'" onclick="closeSearch()">✕</button>
   </div>
   <div id="searchResults" style="max-height:260px;overflow-y:auto;"></div>
+</div>
+
+<!-- ── Command Palette ────────────────────────── -->
+<div id="cmdPalette" style="display:none;">
+  <div id="cmdPaletteBackdrop" onclick="closeCmdPalette()"></div>
+  <div id="cmdPaletteBox">
+    <div id="cmdPaletteHeader">
+      <span class="cmd-palette-icon">⌘</span>
+      <input id="cmdInput" class="form-input" placeholder="메뉴 이름 또는 단축키로 검색… (Esc 닫기)"
+             oninput="onCmdInput(this.value)" onkeydown="onCmdKey(event)" autocomplete="off" spellcheck="false">
+      <button class="cmd-close-btn" onclick="closeCmdPalette()" title="닫기">✕</button>
+    </div>
+    <div id="cmdResults"></div>
+  </div>
 </div>
 
 <!-- ── Diagram Panel (right) ────────────────── -->
@@ -678,6 +694,10 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--tx-attr);">🔍 검색 · 기타</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">K</span></div>
+                  <div class="sc-desc">메뉴 전체 검색<span class="sc-desc-note">기능명 · 단축키로 메뉴 항목 검색 후 실행</span></div>
+                </div>
                 <div class="sc-row" data-sc-id="search">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">F</span></div>
                   <div class="sc-desc">엔티티 검색<span class="sc-desc-note">논리명 · 물리명 · ID</span></div>

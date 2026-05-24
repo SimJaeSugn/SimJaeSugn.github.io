@@ -35,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── 메인 키보드 단축키 ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    // 커맨드 팔레트가 열려 있으면 먼저 닫기
+    const cp = document.getElementById('cmdPalette');
+    if (cp && cp.style.display !== 'none') { closeCmdPalette(); return; }
     if (document.getElementById('searchPanel').style.display !== 'none') { closeSearch(); return; }
     if (sectionMode) { toggleSectionMode(); return; }
     selectedEntities.clear();
@@ -44,7 +47,13 @@ document.addEventListener('keydown', e => {
     render();
     return;
   }
-  // 입력 필드 포커스 중에는 무시
+  // Ctrl+K: 메뉴 전체 검색 (커맨드 팔레트) — 입력 필드 포커스 중에도 동작
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (typeof openCmdPalette === 'function') openCmdPalette();
+    return;
+  }
+  // 입력 필드 포커스 중에는 이하 단축키 무시
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 

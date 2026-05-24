@@ -1879,3 +1879,191 @@ function loadSavedTheme() {
     if (saved && THEMES[saved]) applyTheme(saved, false);
   } catch {}
 }
+
+// ── 커맨드 팔레트 (메뉴 전체 검색) ──────────────────────────────
+const CMD_LIST = [
+  // 파일
+  { label: '엔티티 추가',                category: '파일', icon: '📋', scId: 'addEnt',  action: () => openAddEntityModal() },
+  { label: '관계 추가',                  category: '파일', icon: '⟷', scId: 'addRel',  action: () => openAddRelationModal() },
+  { label: 'JSON 내보내기',              category: '파일', icon: '💾', scId: 'save',    action: () => exportData() },
+  { label: '전체 백업 내보내기',          category: '파일', icon: '💾', scId: 'saveAll', action: () => exportFullBackup() },
+  { label: 'DDL 생성',                   category: '파일', icon: '🗄', action: () => openDDLModal() },
+  { label: '이미지 내보내기 (섹션 포함)', category: '파일', icon: '🖼', action: () => downloadImage(true) },
+  { label: '이미지 내보내기 (섹션 제외)', category: '파일', icon: '🖼', action: () => downloadImage(false) },
+  { label: 'SVG 내보내기',               category: '파일', icon: '⬡', action: () => downloadSVG() },
+  { label: 'Markdown 내보내기',          category: '파일', icon: '📄', action: () => exportMarkdown() },
+  { label: 'HTML 내보내기',              category: '파일', icon: '🌐', action: () => exportHTML() },
+  { label: '인쇄 / PDF 저장',            category: '파일', icon: '🖨', action: () => exportPDF() },
+  { label: '내보내기 폴더 재설정',        category: '파일', icon: '📁', action: () => resetExportDir() },
+  { label: 'JSON 불러오기',              category: '파일', icon: '📂', action: () => importData() },
+  { label: '전체 백업 불러오기',          category: '파일', icon: '📥', action: () => importFullBackup() },
+  { label: 'DDL 가져오기',               category: '파일', icon: '⬆', action: () => openDDLImportModal() },
+  // 편집
+  { label: '실행취소',       category: '편집', icon: '↩', scId: 'undo',   action: () => undo() },
+  { label: '다시실행',       category: '편집', icon: '↪', scId: 'redo',   action: () => redo() },
+  { label: '복사',           category: '편집', icon: '⧉', scId: 'copy',   action: () => copyEntity() },
+  { label: '붙여넣기',       category: '편집', icon: '📋', scId: 'paste',  action: () => pasteEntity() },
+  { label: '복제',           category: '편집', icon: '⧉', scId: 'dup',    action: () => {} },
+  { label: '전체 선택',      category: '편집', icon: '⊡', scId: 'selAll', action: () => { ENTITIES.forEach(en => selectedEntities.add(en.id)); render(); } },
+  { label: '섹션 모드',      category: '편집', icon: '▭', action: () => toggleSectionMode() },
+  { label: '그리드 스냅',    category: '편집', icon: '⊞', action: () => toggleGridSnap() },
+  { label: 'AI 스키마 생성', category: '편집', icon: '🤖', action: () => openAISchemaModal() },
+  { label: '데이터 초기화',  category: '편집', icon: '⚠', action: () => resetToDefault() },
+  // 보기
+  { label: '테마 변경',      category: '보기', icon: '🎨', action: () => openThemeModal() },
+  { label: '뷰 초기화',      category: '보기', icon: '↺',  action: () => resetView() },
+  { label: '전체 맞춤',      category: '보기', icon: '⊟', scId: 'fitAll', action: () => fitAll() },
+  { label: '계층형 배치',    category: '보기', icon: '⋹', action: () => autoLayout('hierarchical') },
+  { label: '격자형 배치',    category: '보기', icon: '⊞', action: () => autoLayout('grid') },
+  { label: '원형 배치',      category: '보기', icon: '◯', action: () => autoLayout('circular') },
+  { label: '선 겹침 해소',   category: '보기', icon: '⇌', action: () => deOverlapLines('관계선 겹침 해소 중...') },
+  { label: '논리 보기',      category: '보기', icon: '𝐋',  action: () => setViewMode('logical') },
+  { label: '물리 보기',      category: '보기', icon: '𝐏',  action: () => setViewMode('physical') },
+  { label: '크로우풋 표기',  category: '보기', icon: '⋈', action: () => toggleNotation() },
+  { label: '왼쪽 정렬',      category: '보기', icon: '◧', action: () => alignEntities('left') },
+  { label: '수평 중앙 정렬', category: '보기', icon: '↔', action: () => alignEntities('hcenter') },
+  { label: '오른쪽 정렬',    category: '보기', icon: '◨', action: () => alignEntities('right') },
+  { label: '위 정렬',        category: '보기', icon: '⬒', action: () => alignEntities('top') },
+  { label: '수직 중앙 정렬', category: '보기', icon: '↕', action: () => alignEntities('vcenter') },
+  { label: '아래 정렬',      category: '보기', icon: '⬓', action: () => alignEntities('bottom') },
+  { label: '수평 균등 배분', category: '보기', icon: '⇔', action: () => alignEntities('hdist') },
+  { label: '수직 균등 배분', category: '보기', icon: '⇕', action: () => alignEntities('vdist') },
+  // 도구
+  { label: '엔티티 검색',     category: '도구', icon: '🔍', scId: 'search', action: () => openSearch() },
+  { label: '컬럼 탬플릿 관리', category: '도구', icon: '📎', action: () => openTemplateModal() },
+  { label: 'SQL 실행기',       category: '도구', icon: '🗄', action: () => openSqlRunner() },
+  { label: 'JOIN 경로 탐색기', category: '도구', icon: '🔗', action: () => openJoinExplorer() },
+  { label: '정규화 진단',      category: '도구', icon: '⚠', action: () => runNormalizeDiagnosis() },
+  { label: '진단 배지 제거',   category: '도구', icon: '✓', action: () => clearNormDiagnosis() },
+  { label: '스냅샷 저장',      category: '도구', icon: '📷', action: () => saveSnapshot() },
+  { label: '스냅샷 목록',      category: '도구', icon: '📋', action: () => openSnapshotListModal() },
+  { label: '타임라인 슬라이더', category: '도구', icon: '⏱', action: () => openTimelineModal() },
+  { label: '단축키 편집기',    category: '도구', icon: '⌨', action: () => openShortcutsModal() },
+  // 공유
+  { label: 'P2P 실시간 협업', category: '공유', icon: '🔗', action: () => openRtcModal() },
+  { label: '탭 동기화',       category: '공유', icon: '🔄', action: () => toggleBcSync() },
+  { label: '공유 URL 생성',   category: '공유', icon: '🔗', action: () => generateShareUrl() },
+  // Help
+  { label: '단축키 목록',     category: 'Help', icon: '⌨', action: () => openShortcutsModal() },
+];
+
+let _cmdActiveIdx = -1;
+let _cmdFiltered  = [];
+
+function openCmdPalette() {
+  const el = document.getElementById('cmdPalette');
+  if (!el) return;
+  el.style.display = 'flex';
+  _cmdActiveIdx = 0;
+  _cmdFiltered  = [...CMD_LIST];
+  const input = document.getElementById('cmdInput');
+  if (input) { input.value = ''; input.focus(); }
+  _renderCmdResults();
+}
+
+function closeCmdPalette() {
+  const el = document.getElementById('cmdPalette');
+  if (el) el.style.display = 'none';
+  _cmdActiveIdx = -1;
+  _cmdFiltered  = [];
+}
+
+function onCmdInput(q) {
+  const query = q.trim().toLowerCase();
+  if (!query) {
+    _cmdFiltered  = [...CMD_LIST];
+    _cmdActiveIdx = 0;
+  } else {
+    _cmdFiltered = CMD_LIST.filter(cmd => {
+      if (cmd.label.toLowerCase().includes(query))    return true;
+      if (cmd.category.toLowerCase().includes(query)) return true;
+      if (cmd.scId) {
+        // 단축키 문자열 매칭 (예: "ctrl+k", "ctrl s", "ctrl", "k")
+        const raw = _scParts(cmd.scId).join('+').toLowerCase();
+        if (raw.includes(query)) return true;
+        const compact = _scParts(cmd.scId).join('').toLowerCase();
+        if (compact.includes(query.replace(/[\+\s\-]/g, ''))) return true;
+      }
+      return false;
+    });
+    _cmdActiveIdx = _cmdFiltered.length > 0 ? 0 : -1;
+  }
+  _renderCmdResults();
+}
+
+function _highlightMatch(text, query) {
+  if (!query) return escHtml(text);
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return escHtml(text);
+  return escHtml(text.slice(0, idx))
+    + '<mark>' + escHtml(text.slice(idx, idx + query.length)) + '</mark>'
+    + escHtml(text.slice(idx + query.length));
+}
+
+function _renderCmdResults() {
+  const el = document.getElementById('cmdResults');
+  if (!el) return;
+  const query = (document.getElementById('cmdInput')?.value || '').trim().toLowerCase();
+  if (!_cmdFiltered.length) {
+    el.innerHTML = '<div class="cmd-empty">검색 결과 없음</div>';
+    return;
+  }
+  el.innerHTML = _cmdFiltered.map((cmd, i) => {
+    const keysHtml = cmd.scId
+      ? _scParts(cmd.scId).map((p, j, arr) =>
+          `<span class="cmd-key">${escHtml(p)}</span>` +
+          (j < arr.length - 1 ? '<span class="cmd-key-sep">+</span>' : '')
+        ).join('')
+      : '';
+    const isActive = i === _cmdActiveIdx;
+    return `<div class="cmd-item${isActive ? ' cmd-active' : ''}" onmouseenter="_cmdSetActive(${i})" onclick="_execCmd(${i})" data-cmd-idx="${i}">
+      <span class="cmd-item-icon">${escHtml(cmd.icon || '')}</span>
+      <span class="cmd-item-label">${_highlightMatch(cmd.label, query)}</span>
+      <span class="cmd-item-cat">${escHtml(cmd.category)}</span>
+      ${keysHtml ? `<span class="cmd-item-keys">${keysHtml}</span>` : ''}
+    </div>`;
+  }).join('');
+  // 활성 항목이 보이도록 스크롤
+  const active = el.querySelector('.cmd-active');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function _cmdSetActive(idx) {
+  _cmdActiveIdx = idx;
+  _renderCmdResults();
+}
+
+function onCmdKey(e) {
+  if (e.key === 'Escape')    { closeCmdPalette(); return; }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (_cmdFiltered.length) {
+      _cmdActiveIdx = (_cmdActiveIdx + 1) % _cmdFiltered.length;
+      _renderCmdResults();
+    }
+    return;
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (_cmdFiltered.length) {
+      _cmdActiveIdx = (_cmdActiveIdx - 1 + _cmdFiltered.length) % _cmdFiltered.length;
+      _renderCmdResults();
+    }
+    return;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (_cmdActiveIdx >= 0 && _cmdActiveIdx < _cmdFiltered.length) {
+      _execCmd(_cmdActiveIdx);
+    }
+    return;
+  }
+}
+
+function _execCmd(idx) {
+  const cmd = _cmdFiltered[idx];
+  if (!cmd) return;
+  closeCmdPalette();
+  // 팔레트 닫힌 뒤 실행 (모달 포커스 이슈 방지)
+  setTimeout(() => { try { cmd.action(); } catch(err) { console.warn('[CMD]', err); } }, 30);
+}
