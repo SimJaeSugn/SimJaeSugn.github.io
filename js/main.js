@@ -81,27 +81,37 @@ document.addEventListener('keydown', e => {
   if (matchSC(e, 'saveAll')) { e.preventDefault(); exportFullBackup(); return; }
   if (matchSC(e, 'dup')) {
     e.preventDefault();
-    const targets = selectedEntities.size > 0
+    const entTargets = selectedEntities.size > 0
       ? [...selectedEntities].map(id => ENTITIES.find(en => en.id === id)).filter(Boolean)
       : selectedEntity ? [selectedEntity] : [];
-    if (targets.length) {
-      selectedEntities.clear();
-      targets.forEach(en => {
-        const copy = JSON.parse(JSON.stringify(en));
-        copy.id = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-        copy.logicalName = en.logicalName ? en.logicalName + ' (복사)' : en.logicalName;
-        copy.x = en.x + 30; copy.y = en.y + 30;
-        ENTITIES.push(copy);
-        selectedEntities.add(copy.id);
-      });
-      render(); saveState();
-    }
+    const sectTargets = [...selectedSections];
+    if (!entTargets.length && !sectTargets.length) return;
+    selectedEntities.clear();
+    selectedSections.clear();
+    entTargets.forEach(en => {
+      const copy = JSON.parse(JSON.stringify(en));
+      copy.id = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+      copy.logicalName = en.logicalName ? en.logicalName + ' (복사)' : en.logicalName;
+      copy.x = en.x + 30; copy.y = en.y + 30;
+      ENTITIES.push(copy);
+      selectedEntities.add(copy.id);
+    });
+    sectTargets.forEach(s => {
+      const copy = JSON.parse(JSON.stringify(s));
+      copy.id = makeSectionId();
+      copy.x = s.x + 30; copy.y = s.y + 30;
+      SECTIONS.push(copy);
+      selectedSections.add(copy);
+    });
+    render(); saveState();
     return;
   }
   if (matchSC(e, 'selAll')) {
     e.preventDefault();
     selectedEntities.clear();
     ENTITIES.forEach(en => selectedEntities.add(en.id));
+    selectedSections.clear();
+    SECTIONS.forEach(s => selectedSections.add(s));
     render(); return;
   }
   // 화살표 키: 선택 엔티티 이동

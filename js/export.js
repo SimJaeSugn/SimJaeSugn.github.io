@@ -77,23 +77,42 @@ async function exportData() {
 // ── 전체 백업 내보내기 ───────────────────────────────────────
 async function exportFullBackup() {
   flushCurrentState();
+  openBackupConfigModal('export', null);
+}
+
+async function _doExportWithGroups(groups) {
   const data = {
-    backupVersion: 2,
+    backupVersion: 3,
     exportedAt: new Date().toISOString(),
     appVersion: 'bsss-erd',
-    main: { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap },
-    snapshots: JSON.parse(JSON.stringify(SNAPSHOTS)),
-    templates: loadTemplates(),
-    settings: {
-      theme:     localStorage.getItem(THEME_STORAGE) || null,
-      qbOpen:    localStorage.getItem('_qbOpen') ?? '1',
-      qbCustom:  localStorage.getItem('_qbCustom') || '[]',
-      aiKey:     localStorage.getItem(AI_KEY_STORAGE) || ''
-    }
   };
+  if (groups.includes('diagrams')) {
+    data.main = { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap };
+  }
+  if (groups.includes('snapshots')) {
+    data.snapshots = JSON.parse(JSON.stringify(SNAPSHOTS));
+  }
+  if (groups.includes('templates')) {
+    data.templates = loadTemplates();
+  }
+  const needSettings = groups.includes('uiSettings') || groups.includes('aiKey');
+  if (needSettings) {
+    data.settings = {};
+    if (groups.includes('uiSettings')) {
+      data.settings.theme     = localStorage.getItem(THEME_STORAGE) || null;
+      data.settings.qbOpen    = localStorage.getItem('_qbOpen') ?? '1';
+      data.settings.qbLarge   = localStorage.getItem('_qbLarge') || '0';
+      data.settings.qbCustom  = localStorage.getItem('_qbCustom') || '[]';
+      data.settings.panelW    = localStorage.getItem('_panelW') || null;
+      data.settings.shortcuts = localStorage.getItem('_shortcuts') || '{}';
+    }
+    if (groups.includes('aiKey')) {
+      data.settings.aiKey = localStorage.getItem(AI_KEY_STORAGE) || '';
+    }
+  }
+
   const text = JSON.stringify(data, null, 2);
   const filename = 'bsss_erd_backup_' + new Date().toISOString().slice(0, 10) + '.json';
-
   const saved = await _writeExportFile(filename, text);
   if (saved) {
     showToast(`💾 ${filename} 저장 완료`);

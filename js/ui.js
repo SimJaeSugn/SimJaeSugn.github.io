@@ -716,7 +716,21 @@ function ctxFn(action) {
   hideCtxMenu();
   if (action === 'addEnt')  openAddEntityModal();
   if (action === 'editEnt') openEditEntityModal(ctxTargetEntity);
-  if (action === 'dupEnt')    { selectedEntity = ctxTargetEntity; copyEntity(); pasteEntity(); }
+  if (action === 'dupEnt') {
+    // clipboard을 건드리지 않고 직접 복제
+    const e = ctxTargetEntity;
+    if (e) {
+      const copy = JSON.parse(JSON.stringify(e));
+      copy.id = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      copy.logicalName = (copy.logicalName || '') + ' (복사)';
+      copy.x = e.x + 30; copy.y = e.y + 30;
+      copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
+      ENTITIES.push(copy);
+      selectedEntity = copy; selectedEntities.clear(); selectedSections.clear();
+      render(); saveState();
+      if (typeof renderEntityTree === 'function') renderEntityTree();
+    }
+  }
   if (action === 'copyToDiag') { if (ctxTargetEntity) openCopyDiagModal(ctxTargetEntity); }
   if (action === 'colorEnt')  showCtxEntityColorPicker();
   if (action === 'selRelated') selectRelatedEntities(ctxTargetEntity);
@@ -819,10 +833,11 @@ function overlayClose(e, overlayId) {
 function overlayCloseExtra(e, overlayId) {
   overlayClose(e, overlayId);
   if (e.target.id === overlayId) {
-    if (overlayId === 'ddlImportOverlay')  closeDDLImportModal();
-    if (overlayId === 'snapshotOverlay')   closeSnapshotModal();
-    if (overlayId === 'aiSchemaOverlay')   closeAISchemaModal();
-    if (overlayId === 'shortcutsOverlay')  closeShortcutsModal();
+    if (overlayId === 'ddlImportOverlay')    closeDDLImportModal();
+    if (overlayId === 'snapshotOverlay')     closeSnapshotModal();
+    if (overlayId === 'aiSchemaOverlay')     closeAISchemaModal();
+    if (overlayId === 'shortcutsOverlay')    closeShortcutsModal();
+    if (overlayId === 'backupConfigOverlay') closeBackupConfigModal();
   }
 }
 
@@ -1021,6 +1036,100 @@ function restoreSnapshot(id) {
 function deleteSnapshot(id) {
   const idx = SNAPSHOTS.findIndex(s => s.id === id);
   if (idx >= 0) { SNAPSHOTS.splice(idx, 1); persistSnapshots(); renderSnapshotList(); }
+}
+
+// ── 백업 설정 모달 컨트롤러 ─────────────────────────────────────
+let _bkMode = 'export';
+let _bkFileData = null;
+
+const _BK_GROUPS = [
+  { id: 'diagrams',   icon: '📊', label: '다이어그램 데이터', descFn: (fd) => {
+      const n = fd ? (fd.main?.diagrams?.length ?? 0) : diagrams.length;
+      return `다이어그램 ${n}개 · 엔티티 · 관계 · 섹션 · 메모`;
+    }
+  },
+  { id: 'snapshots',  icon: '⏱', label: '스냅샷', descFn: (fd) => {
+      const n = fd ? (Array.isArray(fd.snapshots) ? fd.snapshots.length : 0) : SNAPSHOTS.length;
+      return `타임라인 스냅샷 ${n}개`;
+    }
+  },
+  { id: 'templates',  icon: '📋', label: '컬럼 템플릿', descFn: (fd) => {
+      const src = fd ? (fd.templates || []) : (typeof loadTemplates === 'function' ? loadTemplates() : []);
+      return `저장된 컬럼 템플릿 ${src.length}개`;
+    }
+  },
+  { id: 'uiSettings', icon: '🎨', label: '화면 · UI 설정', descFn: () => '테마 · 퀵바 · 단축키 · 패널 너비' },
+  { id: 'aiKey',      icon: '🔑', label: 'AI API 키',      descFn: () => 'Anthropic API 키' },
+];
+
+function _bkGroupInFile(gid, fd) {
+  if (!fd) return false;
+  if (gid === 'diagrams')   return !!(fd.main && Array.isArray(fd.main.diagrams) && fd.main.diagrams.length);
+  if (gid === 'snapshots')  return Array.isArray(fd.snapshots) && fd.snapshots.length > 0;
+  if (gid === 'templates')  return Array.isArray(fd.templates) && fd.templates.length > 0;
+  if (gid === 'uiSettings') return !!(fd.settings && (fd.settings.theme || fd.settings.qbOpen !== undefined || fd.settings.shortcuts));
+  if (gid === 'aiKey')      return !!(fd.settings?.aiKey);
+  return false;
+}
+
+function openBackupConfigModal(mode, fileData) {
+  _bkMode = mode;
+  _bkFileData = fileData || null;
+
+  document.getElementById('bkModalTitle').textContent =
+    mode === 'export' ? '전체 백업 내보내기' : '전체 백업 불러오기';
+  document.getElementById('bkConfirmBtn').textContent =
+    mode === 'export' ? '백업 시작' : '선택 항목 복원';
+
+  const metaEl = document.getElementById('bkModalMeta');
+  if (mode === 'import' && fileData?.exportedAt) {
+    metaEl.textContent = '내보낸 일시: ' + new Date(fileData.exportedAt).toLocaleString('ko-KR');
+    metaEl.classList.add('visible');
+  } else {
+    metaEl.classList.remove('visible');
+  }
+
+  const listEl = document.getElementById('bkGroupList');
+  listEl.innerHTML = _BK_GROUPS.map(g => {
+    const avail = mode === 'export' ? true : _bkGroupInFile(g.id, fileData);
+    const desc = g.descFn(fileData);
+    return `<label class="bk-group${avail ? '' : ' bk-na'}" onclick="if(!${avail})event.preventDefault()">
+      <input type="checkbox" class="bk-group-chk" data-gid="${g.id}" ${avail ? 'checked' : 'disabled'}>
+      <span class="bk-group-ico">${g.icon}</span>
+      <span class="bk-group-info">
+        <span class="bk-group-label">${g.label}</span>
+        <span class="bk-group-desc">${desc}</span>
+      </span>
+    </label>`;
+  }).join('');
+
+  // 체크 상태에 따라 .bk-checked 토글
+  listEl.querySelectorAll('.bk-group-chk').forEach(chk => {
+    const row = chk.closest('.bk-group');
+    if (chk.checked) row.classList.add('bk-checked');
+    chk.addEventListener('change', () => row.classList.toggle('bk-checked', chk.checked));
+  });
+
+  document.getElementById('backupConfigOverlay').classList.add('active');
+}
+
+function closeBackupConfigModal() {
+  document.getElementById('backupConfigOverlay').classList.remove('active');
+  _bkFileData = null;
+}
+
+function doBackupAction() {
+  const groups = [...document.querySelectorAll('.bk-group-chk:checked')].map(el => el.dataset.gid);
+  if (!groups.length) { showToast('항목을 하나 이상 선택하세요.'); return; }
+  // closeBackupConfigModal()이 _bkFileData를 null로 초기화하므로 먼저 로컬에 보관
+  const mode     = _bkMode;
+  const fileData = _bkFileData;
+  closeBackupConfigModal();
+  if (mode === 'export') {
+    _doExportWithGroups(groups);
+  } else {
+    _doImportWithGroups(fileData, groups);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════

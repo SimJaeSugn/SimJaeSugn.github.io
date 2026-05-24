@@ -1742,6 +1742,12 @@ canvas.addEventListener('mousemove', e => {
       const ent = ENTITIES.find(en => en.id === id);
       if (ent) { ent.x += dx; ent.y += dy; }
     });
+    // 양쪽 엔티티가 모두 선택된 관계선의 중간 포인트도 함께 이동
+    RELATIONS.forEach(rel => {
+      if (selectedEntities.has(rel.from) && selectedEntities.has(rel.to) && rel.bend?.wpts?.length) {
+        rel.bend.wpts.forEach(p => { p[0] += dx; p[1] += dy; });
+      }
+    });
     _didMove = true;
     render(); return;
   }
@@ -1755,6 +1761,12 @@ canvas.addEventListener('mousemove', e => {
         if (ent) { ent.x += dx; ent.y += dy; }
       });
       selectedSections.forEach(s => { s.x += dx; s.y += dy; });
+      // 양쪽 엔티티가 모두 선택된 관계선의 중간 포인트도 함께 이동
+      RELATIONS.forEach(rel => {
+        if (selectedEntities.has(rel.from) && selectedEntities.has(rel.to) && rel.bend?.wpts?.length) {
+          rel.bend.wpts.forEach(p => { p[0] += dx; p[1] += dy; });
+        }
+      });
     } else {
       draggingEntity.x = newX;
       draggingEntity.y = newY;
