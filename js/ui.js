@@ -1144,7 +1144,7 @@ const _BK_GROUPS = [
       return `저장된 컬럼 템플릿 ${src.length}개`;
     }
   },
-  { id: 'uiSettings', icon: '🎨', label: '화면 · UI 설정', descFn: () => '테마 · 퀵바 · 단축키 · 패널 너비' },
+  { id: 'uiSettings', icon: '🎨', label: '화면 · UI 설정', descFn: () => '테마 · 퀵바 · 단축키 · 패널 너비 · 도킹' },
   { id: 'aiKey',      icon: '🔑', label: 'AI API 키',      descFn: () => 'Anthropic API 키' },
 ];
 

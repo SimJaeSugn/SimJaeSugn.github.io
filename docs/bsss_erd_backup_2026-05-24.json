@@ -1,6 +1,6 @@
 {
   "backupVersion": 3,
-  "exportedAt": "2026-05-24T13:56:35.081Z",
+  "exportedAt": "2026-05-24T14:32:33.319Z",
   "appVersion": "bsss-erd",
   "main": {
     "diagrams": [
@@ -13,8 +13,8 @@
             "logicalName": "하이퍼파라미터",
             "physicalName": "TB_HYPR_PRMTR",
             "description": "LLM 파라미터 설정",
-            "x": 396.0107873924874,
-            "y": 520.1593637201033,
+            "x": 440.9521850463818,
+            "y": 530.0666034364572,
             "attrs": [
               {
                 "logicalName": "파라미터일련번호",
@@ -148,8 +148,8 @@
             "logicalName": "사용자별활성모델",
             "physicalName": "TB_ACTV_MDL",
             "description": "사용자가 선택한 활성 모델",
-            "x": 397.0158017559056,
-            "y": 331.3370589893008,
+            "x": 441.95719940980007,
+            "y": 341.2442987056563,
             "attrs": [
               {
                 "logicalName": "활성모델일련번호",
@@ -238,8 +238,8 @@
             "logicalName": "공통모델",
             "physicalName": "TB_CMM_MDL",
             "description": "AI 모델 정보",
-            "x": -93.00640089735145,
-            "y": 328.66466507880205,
+            "x": -48.06500324345669,
+            "y": 338.5719047951577,
             "attrs": [
               {
                 "logicalName": "모델일련번호",
@@ -397,8 +397,8 @@
             "logicalName": "공통프롬프트",
             "physicalName": "TB_CMM_PRMPT",
             "description": "서비스가 공통으로 제공하는 프롬프트",
-            "x": -91.51882271019258,
-            "y": 715.6095651170949,
+            "x": -46.57742505629781,
+            "y": 725.5168048334488,
             "attrs": [
               {
                 "logicalName": "프롬프트일련번호",
@@ -481,8 +481,8 @@
             "logicalName": "공통벡터DB설정",
             "physicalName": "TB_CMM_VCTR_CFG",
             "description": "유시스 공통 벡터DB설정",
-            "x": -96.52646381881493,
-            "y": 960.3058201372598,
+            "x": -51.585066164920164,
+            "y": 970.2130598536157,
             "attrs": [
               {
                 "logicalName": "백터설정일련번호",
@@ -565,8 +565,8 @@
             "logicalName": "벡터DB설정",
             "physicalName": "TB_VCTR_CFG",
             "description": "사용자별 벡터DB설정",
-            "x": 402.3614682411095,
-            "y": 818.9816684509065,
+            "x": 447.30286589500383,
+            "y": 828.8889081672605,
             "attrs": [
               {
                 "logicalName": "백터설정일련번호",
@@ -664,8 +664,8 @@
             "logicalName": "공통밴더",
             "physicalName": "TB_CNN_VNDR",
             "description": "밴더 정보",
-            "x": -91.35671165303222,
-            "y": 73.71976504050883,
+            "x": -46.41531399913745,
+            "y": 83.62700475686498,
             "attrs": [
               {
                 "logicalName": "밴더일련번호",
@@ -748,8 +748,8 @@
             "logicalName": "에이전트설정",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 1262.6418789670365,
-            "y": 344.5984576515435,
+            "x": 1320.359435531611,
+            "y": 359.6161609321721,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -867,102 +867,12 @@
             "indexes": []
           },
           {
-            "id": "prompt",
-            "logicalName": "프롬프트",
-            "physicalName": "TB_PRMPT",
-            "description": "사용자 정의 프롬프트",
-            "x": 1264.4488491656648,
-            "y": 128.98834658914973,
-            "attrs": [
-              {
-                "logicalName": "사용자프롬프트일련번호",
-                "physicalName": "USER_PRMPT_SN",
-                "type": "INTEGER",
-                "kind": "pk",
-                "description": "",
-                "ref": null,
-                "notNull": true,
-                "unique": true,
-                "autoIncrement": true,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "사용자ID",
-                "physicalName": "USER_ID",
-                "type": "VARCHAR(50)",
-                "kind": "fk",
-                "description": "",
-                "ref": {
-                  "entity": "user",
-                  "attr": "USER_ID"
-                },
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "프롬프트일련번호",
-                "physicalName": "PRMPT_SN",
-                "type": "INTEGER",
-                "kind": "fk",
-                "description": "프롬프트중 사용자가 재정의한 프롬프트의 일련번호",
-                "ref": {
-                  "entity": "prompt_copy",
-                  "attr": "PRMPT_SN"
-                },
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "프롬프트내용",
-                "physicalName": "PRMPT_CN",
-                "type": "TEXT",
-                "kind": "normal",
-                "description": "프롬프트내용",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "등록일시",
-                "physicalName": "REG_DT",
-                "type": "TIMESTAMP",
-                "kind": "normal",
-                "description": "",
-                "ref": null,
-                "notNull": false,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "수정일시",
-                "physicalName": "MDF_DT",
-                "type": "TIMESTAMP",
-                "kind": "normal",
-                "description": "",
-                "ref": null,
-                "notNull": false,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              }
-            ],
-            "colorTag": "orange",
-            "indexes": []
-          },
-          {
             "id": "apikey",
             "logicalName": "API키정보",
             "physicalName": "TB_API_KEY",
             "description": "API 키 관리",
-            "x": 399.3775445761887,
-            "y": 76.51475425849793,
+            "x": 444.31894223008317,
+            "y": 86.42199397485408,
             "attrs": [
               {
                 "logicalName": "API키일련번호",
@@ -1076,8 +986,8 @@
             "logicalName": "사용자",
             "physicalName": "TB_USER",
             "description": "시스템 사용자 계정",
-            "x": 804.1699961279239,
-            "y": 110.59225050256293,
+            "x": 861.8875526925017,
+            "y": 125.6099537831922,
             "attrs": [
               {
                 "logicalName": "사용자ID",
@@ -1169,8 +1079,8 @@
             "logicalName": "사용자 (복사)",
             "physicalName": "TB_USER",
             "description": "시스템 사용자 계정",
-            "x": 1195.9178632371031,
-            "y": 713.1577518385354,
+            "x": 1240.8592608909955,
+            "y": 723.0649915548893,
             "attrs": [
               {
                 "logicalName": "사용자ID",
@@ -1262,8 +1172,8 @@
             "logicalName": "프롬프트 (복사)",
             "physicalName": "TB_PRMPT",
             "description": "사용자 정의 프롬프트",
-            "x": 831.4020027419404,
-            "y": 1062.449217221073,
+            "x": 876.3434003958359,
+            "y": 1072.3564569374314,
             "attrs": [
               {
                 "logicalName": "사용자프롬프트일련번호",
@@ -1352,8 +1262,8 @@
             "logicalName": "에이전트설정 (복사)",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 1183.6794320073277,
-            "y": 1070.6671602036104,
+            "x": 1228.6208296612201,
+            "y": 1080.5743999199688,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -1377,126 +1287,6 @@
                   "entity": "user",
                   "attr": "USER_ID"
                 },
-                "notNull": true,
-                "unique": false,
-                "defaultValue": "",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "청크토큰수",
-                "physicalName": "CHUNK_TKN_CNT",
-                "type": "INTEGER",
-                "kind": "normal",
-                "description": "검색 후보 수",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "defaultValue": "500",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "청크오버랩",
-                "physicalName": "CHUNK_OVLP",
-                "type": "INTEGER",
-                "kind": "normal",
-                "description": "리랭킹 결과 수",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "defaultValue": "100",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "최소청크크기",
-                "physicalName": "MIN_CHUNK_SZ",
-                "type": "INTEGER",
-                "kind": "normal",
-                "description": "이 값 미만의 청크는 인접 청크에 병합.",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "defaultValue": "50",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "리랭킹여부",
-                "physicalName": "RERNK_YN",
-                "type": "CHAR(1)",
-                "kind": "normal",
-                "description": "리랭커 적용 여부",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "defaultValue": "Y",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "유사도임계값",
-                "physicalName": "SIML_THRS_VL",
-                "type": "NUMERIC",
-                "kind": "normal",
-                "description": "유사도 검색시 Threshold 값 (0.0~1.0)",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "defaultValue": "0.5",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "등록일시",
-                "physicalName": "REG_DT",
-                "type": "TIMESTAMP",
-                "kind": "normal",
-                "description": "",
-                "ref": null,
-                "notNull": false,
-                "unique": false,
-                "defaultValue": "",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "수정일시",
-                "physicalName": "MDF_DT",
-                "type": "TIMESTAMP",
-                "kind": "normal",
-                "description": "",
-                "ref": null,
-                "notNull": false,
-                "unique": false,
-                "defaultValue": "",
-                "autoIncrement": false
-              }
-            ],
-            "colorTag": "orange",
-            "indexes": []
-          },
-          {
-            "id": "entity_mpjtyljqvqf_copy",
-            "logicalName": "에이전트설정 (복사)",
-            "physicalName": "TB_AIAGT_CFG",
-            "description": "RAG 에이전트 검색 설정",
-            "x": 1570.5823727993459,
-            "y": 1060.7649680653724,
-            "attrs": [
-              {
-                "logicalName": "에이전트설정순번",
-                "physicalName": "AIAGT_CFG_SN",
-                "type": "INTEGER",
-                "kind": "pk",
-                "description": "",
-                "ref": null,
-                "notNull": true,
-                "unique": true,
-                "defaultValue": "",
-                "autoIncrement": false
-              },
-              {
-                "logicalName": "사용자ID",
-                "physicalName": "USER_ID",
-                "type": "VARCHAR(50)",
-                "kind": "fk",
-                "description": "",
-                "ref": null,
                 "notNull": true,
                 "unique": false,
                 "defaultValue": "",
@@ -1595,8 +1385,8 @@
             "logicalName": "에이전트설정 (복사)",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 835.7903568164497,
-            "y": 1343.4788516075466,
+            "x": 880.7317544703453,
+            "y": 1353.3860913239052,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -1715,8 +1505,8 @@
             "logicalName": "에이전트설정 (복사) (복사)",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 1208.2108167733381,
-            "y": 1347.9124285117955,
+            "x": 1253.1522144272305,
+            "y": 1357.819668228154,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -1835,8 +1625,8 @@
             "logicalName": "에이전트설정 (복사) (복사)",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 1574.1276231664963,
-            "y": 1350.2759287565627,
+            "x": 1619.0690208203885,
+            "y": 1360.1831684729211,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -1955,8 +1745,8 @@
             "logicalName": "에이전트설정 (복사)",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 1978.6181597828665,
-            "y": 1065.345256762264,
+            "x": 2023.5595574367608,
+            "y": 1075.2524964786223,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -2069,6 +1859,216 @@
             ],
             "colorTag": "orange",
             "indexes": []
+          },
+          {
+            "id": "entity_mpjtyljqvqf_copy",
+            "logicalName": "에이전트설정 (복사)",
+            "physicalName": "TB_AIAGT_CFG",
+            "description": "RAG 에이전트 검색 설정",
+            "x": 1615.523770453238,
+            "y": 1070.672207781731,
+            "attrs": [
+              {
+                "logicalName": "에이전트설정순번",
+                "physicalName": "AIAGT_CFG_SN",
+                "type": "INTEGER",
+                "kind": "pk",
+                "description": "",
+                "ref": null,
+                "notNull": true,
+                "unique": true,
+                "defaultValue": "",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "사용자ID",
+                "physicalName": "USER_ID",
+                "type": "VARCHAR(50)",
+                "kind": "fk",
+                "description": "",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "defaultValue": "",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "청크토큰수",
+                "physicalName": "CHUNK_TKN_CNT",
+                "type": "INTEGER",
+                "kind": "normal",
+                "description": "검색 후보 수",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "defaultValue": "500",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "청크오버랩",
+                "physicalName": "CHUNK_OVLP",
+                "type": "INTEGER",
+                "kind": "normal",
+                "description": "리랭킹 결과 수",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "defaultValue": "100",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "최소청크크기",
+                "physicalName": "MIN_CHUNK_SZ",
+                "type": "INTEGER",
+                "kind": "normal",
+                "description": "이 값 미만의 청크는 인접 청크에 병합.",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "defaultValue": "50",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "리랭킹여부",
+                "physicalName": "RERNK_YN",
+                "type": "CHAR(1)",
+                "kind": "normal",
+                "description": "리랭커 적용 여부",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "defaultValue": "Y",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "유사도임계값",
+                "physicalName": "SIML_THRS_VL",
+                "type": "NUMERIC",
+                "kind": "normal",
+                "description": "유사도 검색시 Threshold 값 (0.0~1.0)",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "defaultValue": "0.5",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "등록일시",
+                "physicalName": "REG_DT",
+                "type": "TIMESTAMP",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "defaultValue": "",
+                "autoIncrement": false
+              },
+              {
+                "logicalName": "수정일시",
+                "physicalName": "MDF_DT",
+                "type": "TIMESTAMP",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "defaultValue": "",
+                "autoIncrement": false
+              }
+            ],
+            "colorTag": "orange",
+            "indexes": []
+          },
+          {
+            "id": "prompt",
+            "logicalName": "프롬프트",
+            "physicalName": "TB_PRMPT",
+            "description": "사용자 정의 프롬프트",
+            "x": 1322.1664057302394,
+            "y": 144.00604986977893,
+            "attrs": [
+              {
+                "logicalName": "사용자프롬프트일련번호",
+                "physicalName": "USER_PRMPT_SN",
+                "type": "INTEGER",
+                "kind": "pk",
+                "description": "",
+                "ref": null,
+                "notNull": true,
+                "unique": true,
+                "autoIncrement": true,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "사용자ID",
+                "physicalName": "USER_ID",
+                "type": "VARCHAR(50)",
+                "kind": "fk",
+                "description": "",
+                "ref": {
+                  "entity": "user",
+                  "attr": "USER_ID"
+                },
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "프롬프트일련번호",
+                "physicalName": "PRMPT_SN",
+                "type": "INTEGER",
+                "kind": "fk",
+                "description": "프롬프트중 사용자가 재정의한 프롬프트의 일련번호",
+                "ref": {
+                  "entity": "prompt_copy",
+                  "attr": "PRMPT_SN"
+                },
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "프롬프트내용",
+                "physicalName": "PRMPT_CN",
+                "type": "TEXT",
+                "kind": "normal",
+                "description": "프롬프트내용",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "등록일시",
+                "physicalName": "REG_DT",
+                "type": "TIMESTAMP",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "수정일시",
+                "physicalName": "MDF_DT",
+                "type": "TIMESTAMP",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              }
+            ],
+            "colorTag": "orange",
+            "indexes": []
           }
         ],
         "relations": [
@@ -2118,12 +2118,12 @@
               "toPct": 0.056931969471844646,
               "wpts": [
                 [
-                  971.4189835548585,
-                  511.37806330441066
+                  1002.7780801443432,
+                  511.8705180459476
                 ],
                 [
-                  687.7345139084875,
-                  511.37806330441066
+                  719.0936104979723,
+                  511.8705180459476
                 ]
               ]
             },
@@ -2140,8 +2140,8 @@
               "toPct": 0.5554405751292295,
               "wpts": [
                 [
-                  923.1519099974895,
-                  439.1692748927762
+                  954.5110065869744,
+                  439.66172963431336
                 ]
               ]
             },
@@ -2191,16 +2191,16 @@
               "toPct": 0.49050663925602717,
               "wpts": [
                 [
-                  -185.9054455223628,
-                  785.4081628136904
+                  -135.6075863223415,
+                  808.4503600019852
                 ],
                 [
-                  -185.9054455223628,
-                  -30.254249412085223
+                  -135.6075863223415,
+                  3.3540092259409846
                 ],
                 [
-                  1405.872034262193,
-                  -30.254249412085223
+                  1441.313546489405,
+                  3.3540092259409846
                 ]
               ]
             },
@@ -2227,12 +2227,12 @@
               "toPct": 0.10723126142844422,
               "wpts": [
                 [
-                  1030.4189835548586,
-                  815.9997235218258
+                  1061.7780801443434,
+                  816.4921782633633
                 ],
                 [
-                  694.0851947571097,
-                  815.9997235218258
+                  725.4442913465945,
+                  816.4921782633633
                 ]
               ]
             },
@@ -2262,12 +2262,12 @@
               "toPct": 0.4982139610245617,
               "wpts": [
                 [
-                  51.286370369705,
-                  297.2349891124993
+                  82.64546695918978,
+                  297.72744385403723
                 ],
                 [
-                  50.690444120894455,
-                  297.2349891124993
+                  82.04954071037923,
+                  297.72744385403723
                 ]
               ]
             }
@@ -2284,26 +2284,26 @@
               "toPct": 0.5,
               "wpts": [
                 [
-                  853.4189835548585,
-                  391.98117438881553
+                  884.7780801443434,
+                  392.4736291303533
                 ],
                 [
-                  688.7395282719058,
-                  391.98117438881553
+                  720.0986248613906,
+                  392.4736291303533
                 ]
               ]
             }
           }
         ],
-        "vx": 214.45824827167098,
-        "vy": 113.11905583717646,
-        "scale": 0.3,
+        "vx": 370.31761996359114,
+        "vy": 164.29689859594976,
+        "scale": 0.3993000000000001,
         "sections": [
           {
             "id": "sec_mpgf08v0a1",
             "name": "유시스공통",
-            "x": -149.13710583017763,
-            "y": 8.07407857376495,
+            "x": -97.52904150961635,
+            "y": 34.64798495678761,
             "w": 404.85032285153545,
             "h": 1171.704590965587,
             "colorIdx": 0
@@ -2311,8 +2311,8 @@
           {
             "id": "sec_mpgf89u4q0",
             "name": "에이전트",
-            "x": 1180.7389080724186,
-            "y": 64.16000860310152,
+            "x": 1245.1231313036594,
+            "y": 95.84437855039701,
             "w": 466.37813420693215,
             "h": 538.8099900955822,
             "colorIdx": 0
@@ -2320,8 +2320,8 @@
           {
             "id": "sec_mpgfbwn8sg",
             "name": "사용자벌 모델설정",
-            "x": 357.8606210672398,
-            "y": -4.660732427681296,
+            "x": 409.4686853878011,
+            "y": 21.913173955341364,
             "w": 379.0769152389005,
             "h": 1170.0872996252556,
             "colorIdx": 0
@@ -2329,8 +2329,8 @@
           {
             "id": "sec_mphomcx9da",
             "name": "사용자",
-            "x": 778.9034199009789,
-            "y": 34.347163498171085,
+            "x": 843.2876431322231,
+            "y": 66.03153344546664,
             "w": 380.28068091715454,
             "h": 294.10870396055793,
             "colorIdx": 0
@@ -2338,8 +2338,8 @@
           {
             "id": "sec_mpjd94zpbd",
             "name": "섹션",
-            "x": 1130.3313874605108,
-            "y": 656.8670661315637,
+            "x": 1181.9394517810695,
+            "y": 683.440972514584,
             "w": 417.6548690678835,
             "h": 336.2404132828191,
             "colorIdx": 0
@@ -2349,8 +2349,8 @@
         "notes": [
           {
             "id": "note_mphwa4lcfwh",
-            "x": -535.8391472504663,
-            "y": -20.26999928053754,
+            "x": -521.8439258441744,
+            "y": -49.815466693820625,
             "w": 327.5528953135762,
             "h": 432.59300837068025,
             "text": "# BSSS 데이터\n## 사용자 \n- 사용자 ID\n- 비밀번호\n\n\n## 카테고리\n| **순번** | **논리** |**물리** |\n|----|--|---|\n| 순번 | 논리 | 물리 |\n\n```sql\nselect * from dual;\n```\n\n테스트 테이블\n식별자,이름 , 비번, 등록일자\n\n",
@@ -3722,8 +3722,8 @@
     "theme": "frappe",
     "qbOpen": "1",
     "qbLarge": "1",
-    "qbCustom": "[{\"icon\":\"⌨\",\"text\":\"단축키 목록\",\"action\":\"openShortcutsModal()\"},{\"type\":\"sep\"},{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"},{\"type\":\"sep\"},{\"icon\":\"🔗\",\"text\":\"공유 URL 생성\",\"action\":\"generateShareUrl()\"},{\"icon\":\"탭\",\"text\":\"탭 동기화\",\"action\":\"toggleBcSync()\"},{\"type\":\"sep\"}]",
-    "panelW": "216",
+    "qbCustom": "[{\"icon\":\"⌨\",\"text\":\"단축키 목록\",\"action\":\"openShortcutsModal()\"},{\"type\":\"sep\"},{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"},{\"type\":\"sep\"},{\"icon\":\"🔗\",\"text\":\"공유 URL 생성\",\"action\":\"generateShareUrl()\"},{\"icon\":\"탭\",\"text\":\"탭 동기화\",\"action\":\"toggleBcSync()\"},{\"type\":\"sep\"},{\"icon\":\"섹\",\"text\":\"섹션 모드\",\"action\":\"toggleSectionMode()\"}]",
+    "panelW": "329",
     "shortcuts": "{}",
     "aiKey": ""
   }
