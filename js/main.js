@@ -127,8 +127,9 @@ document.addEventListener('keydown', e => {
       const ent = selectedEntity; selectedEntity = null;
       deleteEntity(ent); render(); saveState(); return;
     }
-    if (selectedSection) {
-      deleteSection(selectedSection); return;
+    if (selectedSections.size > 0) {
+      [...selectedSections].forEach(s => deleteSection(s));
+      selectedSections.clear(); render(); saveState(); return;
     }
   }
 });

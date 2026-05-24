@@ -71,7 +71,7 @@ function loadDiagramIntoWorkspace(d) {
   SECTIONS.length = 0;  (d.sections || []).forEach(s => SECTIONS.push(JSON.parse(JSON.stringify(s))));
   NOTES.length = 0;     (d.notes    || []).forEach(n => NOTES.push(JSON.parse(JSON.stringify(n))));
   collapsedEntities = new Set(d.collapsed || []);
-  selectedSection = null;
+  selectedSection = null; selectedSections = new Set();
   vx = d.vx ?? 40; vy = d.vy ?? 40; scale = d.scale ?? 1;
   renderEntityTree();
 }
