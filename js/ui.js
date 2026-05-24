@@ -92,8 +92,23 @@ let _quickbarOpen = true;
 let _qbLarge = false;
 let _qbDock  = 'top'; // 'top' | 'left'
 
-function _qbBarH() { return _qbLarge ? 40 : 28; }
+function _qbBarH() {
+  if (_qbDock === 'left' || !_quickbarOpen) return 0;
+  const qb = document.getElementById('quickbar');
+  return (qb && qb.offsetHeight) ? qb.offsetHeight : (_qbLarge ? 40 : 28);
+}
 function _qbBarW() { return _qbLarge ? 52 : 42; }
+
+// 패널 top을 퀵바의 실제 높이에 맞춰 동기화
+function _syncPanelTop() {
+  const panel = document.getElementById('diagramPanel');
+  if (!panel) return;
+  if (!_quickbarOpen || _qbDock === 'left') {
+    panel.style.top = '32px';
+  } else {
+    panel.style.top = (32 + _qbBarH()) + 'px';
+  }
+}
 
 function _applyQuickbarState() {
   const qb      = document.getElementById('quickbar');
@@ -112,14 +127,12 @@ function _applyQuickbarState() {
   }
   if (_quickbarOpen) {
     if (qb) qb.style.display = 'flex';
-    // 상단 도킹: 패널 top = 메뉴바 + 퀵바 높이
-    // 좌측 도킹: 패널 top = 메뉴바만 (퀵바가 왼쪽에 있으므로)
-    if (panel) panel.style.top = isLeft ? '32px' : (32 + _qbBarH()) + 'px';
-    if (btn)   btn.textContent = '▼';
+    _syncPanelTop();
+    if (btn) btn.textContent = '▼';
   } else {
-    if (qb)    qb.style.display = 'none';
-    if (panel) panel.style.top  = '32px';
-    if (btn)   btn.textContent  = '▶';
+    if (qb) qb.style.display = 'none';
+    _syncPanelTop();
+    if (btn) btn.textContent = '▶';
   }
 
   // 좌측 도킹 시 하단 플로팅 패널·상태바가 퀵바에 덮이지 않도록 left 보정
@@ -153,6 +166,14 @@ function loadQuickbarState() {
   _loadCustomQbItems();
   _initQuickbarDnd();
   _initQbDockDrag();
+  // 퀵바 높이 변화(줄 수 증감) 시 패널 위치 자동 동기화
+  const _qbEl = document.getElementById('quickbar');
+  if (_qbEl && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+      _syncPanelTop();
+      if (typeof render === 'function') render();
+    }).observe(_qbEl);
+  }
 }
 
 // ── 퀵바 도킹 드래그 ─────────────────────────────────────────
@@ -798,10 +819,381 @@ function showCtxMenu(x, y, mode) {
 function hideCtxMenu() { ctxMenu.style.display = 'none'; }
 document.addEventListener('click', e => { if (!ctxMenu.contains(e.target)) hideCtxMenu(); });
 
+// ── 속성 패널 (우측 인라인 편집) ──────────────────────────────────
+let _ppMode   = null;  // 'entity' | 'relation'
+let _ppTarget = null;  // 현재 표시 대상 (entity or relation object)
+
+function _ensurePanelOpen() {
+  if (typeof panelOpen !== 'undefined' && !panelOpen) toggleDiagramPanel();
+}
+
+function showPropPanel(entity) {
+  if (!entity) { hidePropPanel(); return; }
+  _ppMode   = 'entity';
+  _ppTarget = entity;
+  if (!document.getElementById('propPanel')) return;
+  _ensurePanelOpen();
+  const title = document.getElementById('ppTitle');
+  const icon  = document.getElementById('ppIcon');
+  const btn   = document.getElementById('ppModalBtn');
+  if (title) title.textContent = entity.logicalName || entity.physicalName || '엔티티';
+  if (icon)  icon.textContent  = '📋';
+  if (btn)   btn.style.display = '';
+  _renderEntityPropPanel(entity);
+}
+
+function showRelPropPanel(rel) {
+  if (!rel) { hidePropPanel(); return; }
+  _ppMode   = 'relation';
+  _ppTarget = rel;
+  if (!document.getElementById('propPanel')) return;
+  _ensurePanelOpen();
+  const fe = ENTITIES.find(e => e.id === rel.from);
+  const te = ENTITIES.find(e => e.id === rel.to);
+  const title = document.getElementById('ppTitle');
+  const icon  = document.getElementById('ppIcon');
+  const btn   = document.getElementById('ppModalBtn');
+  if (title) title.textContent = `${fe?.logicalName || rel.from} → ${te?.logicalName || rel.to}`;
+  if (icon)  icon.textContent  = '↔';
+  if (btn)   btn.style.display = '';
+  _renderRelPropPanel(rel);
+}
+
+function hidePropPanel() {
+  _ppMode = null; _ppTarget = null;
+  _renderEmptyPropPanel();
+}
+
+function _renderEmptyPropPanel() {
+  const title    = document.getElementById('ppTitle');
+  const icon     = document.getElementById('ppIcon');
+  const modalBtn = document.getElementById('ppModalBtn');
+  const content  = document.getElementById('ppContent');
+  if (title)    title.textContent    = '속성';
+  if (icon)     icon.textContent     = '📋';
+  if (modalBtn) modalBtn.style.display = 'none';
+  if (!content) return;
+  content.innerHTML =
+    `<div class="pp-empty">
+       <div class="pp-empty-ico">📋</div>
+       <div class="pp-empty-msg">엔티티 또는 관계선을 클릭하면<br>속성을 인라인으로 편집합니다</div>
+     </div>`;
+}
+
+function openPropPanelModal() {
+  if (_ppMode === 'entity'   && _ppTarget) openEditEntityModal(_ppTarget);
+  if (_ppMode === 'relation' && _ppTarget) openEditRelationModal(_ppTarget);
+}
+
+// 속성 패널이 열려 있고 대상이 같으면 제목만 동기화
+function refreshPropPanel() {
+  if (!_ppTarget || !_ppMode) return;
+  if (_ppMode === 'entity') {
+    const t = document.getElementById('ppTitle');
+    if (t) t.textContent = _ppTarget.logicalName || _ppTarget.physicalName || '엔티티';
+  }
+}
+
+// ── 엔티티 속성 패널 렌더 ─────────────────────────────────────────
+function _renderEntityPropPanel(entity) {
+  const content = document.getElementById('ppContent');
+  if (!content) return;
+  const scrollTop = content.scrollTop;
+  content.innerHTML = '';
+
+  // ── 기본 정보 ──
+  const fieldsWrap = document.createElement('div');
+  fieldsWrap.className = 'pp-fields';
+
+  const mkField = (labelText, inputEl) => {
+    const row = document.createElement('div');
+    row.className = 'pp-field';
+    const lbl = document.createElement('span');
+    lbl.className = 'pp-lbl';
+    lbl.textContent = labelText;
+    row.appendChild(lbl);
+    row.appendChild(inputEl);
+    return row;
+  };
+
+  const logInp = document.createElement('input');
+  logInp.className = 'pp-inp'; logInp.value = entity.logicalName || '';
+  logInp.placeholder = '논리명';
+  logInp.addEventListener('input', () => {
+    entity.logicalName = logInp.value;
+    document.getElementById('ppTitle').textContent = logInp.value || entity.physicalName || '엔티티';
+    render(); renderEntityTree();
+  });
+  logInp.addEventListener('blur', saveState);
+  fieldsWrap.appendChild(mkField('논리', logInp));
+
+  const phyInp = document.createElement('input');
+  phyInp.className = 'pp-inp pp-mono'; phyInp.value = entity.physicalName || '';
+  phyInp.placeholder = '물리명';
+  phyInp.addEventListener('input', () => { entity.physicalName = phyInp.value; render(); });
+  phyInp.addEventListener('blur', saveState);
+  fieldsWrap.appendChild(mkField('물리', phyInp));
+
+  const descInp = document.createElement('textarea');
+  descInp.className = 'pp-inp pp-desc'; descInp.value = entity.description || '';
+  descInp.placeholder = '설명'; descInp.rows = 2;
+  descInp.addEventListener('input', () => { entity.description = descInp.value; });
+  descInp.addEventListener('blur', saveState);
+  fieldsWrap.appendChild(mkField('설명', descInp));
+
+  content.appendChild(fieldsWrap);
+  content.appendChild(Object.assign(document.createElement('div'), { className: 'pp-sep' }));
+
+  // ── 컬럼 목록 ──
+  const attrHdr = document.createElement('div');
+  attrHdr.className = 'pp-attr-hdr';
+  attrHdr.innerHTML = `<span class="pp-attr-hdr-lbl">컬럼 <span style="color:var(--tx-muted);font-weight:normal">(${entity.attrs.length})</span></span>`;
+  const addBtn = document.createElement('button');
+  addBtn.className = 'pp-attr-add'; addBtn.innerHTML = '＋'; addBtn.title = '컬럼 추가';
+  addBtn.addEventListener('click', () => {
+    entity.attrs.push({ logicalName: '', physicalName: '', type: 'VARCHAR(50)',
+      kind: 'normal', description: '', notNull: false, unique: false, autoIncrement: false });
+    render(); saveState(); _renderEntityPropPanel(entity);
+    // 마지막 행 논리명에 포커스
+    setTimeout(() => {
+      const rows = content.querySelectorAll('.pp-attr-row');
+      if (rows.length) rows[rows.length - 1].querySelector('.pp-aname')?.focus();
+    }, 30);
+  });
+  attrHdr.appendChild(addBtn);
+  content.appendChild(attrHdr);
+
+  entity.attrs.forEach((attr, i) => content.appendChild(_buildAttrRow(entity, attr, i)));
+
+  // 스크롤 위치 복원
+  content.scrollTop = scrollTop;
+}
+
+function _buildAttrRow(entity, attr, i) {
+  const row = document.createElement('div');
+  row.className = 'pp-attr-row';
+
+  // ── Line 1: kind badge | 논리명 | ▲ ▼ ✕ ──
+  const l1 = document.createElement('div');
+  l1.className = 'pp-attr-l1';
+
+  const KINDS = ['normal', 'pk', 'fk'];
+  const KIND_LABELS = { pk: 'PK', fk: 'FK', normal: '일반' };
+  const KIND_CLS    = { pk: 'pp-kind-pk', fk: 'pp-kind-fk', normal: 'pp-kind-n' };
+
+  const kindEl = document.createElement('span');
+  kindEl.className = `pp-kind ${KIND_CLS[attr.kind] || 'pp-kind-n'}`;
+  kindEl.textContent = KIND_LABELS[attr.kind] || '일반';
+  kindEl.title = '클릭 → PK / FK / 일반 순환';
+  kindEl.addEventListener('click', () => {
+    const idx = KINDS.indexOf(attr.kind ?? 'normal');
+    attr.kind = KINDS[(idx + 1) % KINDS.length];
+    render(); saveState(); _renderEntityPropPanel(entity);
+  });
+
+  const nameInp = document.createElement('input');
+  nameInp.className = 'pp-ai pp-aname'; nameInp.value = attr.logicalName || '';
+  nameInp.placeholder = '논리명';
+  nameInp.addEventListener('input', () => { attr.logicalName = nameInp.value; render(); });
+  nameInp.addEventListener('blur', () => { saveState(); renderEntityTree(); });
+
+  const mkBtn = (html, title, cls, handler) => {
+    const b = document.createElement('button');
+    b.className = `pp-abtn${cls ? ' ' + cls : ''}`;
+    b.innerHTML = html; b.title = title;
+    b.addEventListener('click', handler);
+    return b;
+  };
+
+  const upBtn   = mkBtn('▲', '위로', '', () => {
+    if (i === 0) return;
+    [entity.attrs[i-1], entity.attrs[i]] = [entity.attrs[i], entity.attrs[i-1]];
+    render(); saveState(); _renderEntityPropPanel(entity);
+  });
+  const downBtn = mkBtn('▼', '아래로', '', () => {
+    if (i >= entity.attrs.length - 1) return;
+    [entity.attrs[i+1], entity.attrs[i]] = [entity.attrs[i], entity.attrs[i+1]];
+    render(); saveState(); _renderEntityPropPanel(entity);
+  });
+  const delBtn  = mkBtn('✕', '컬럼 삭제', 'pp-adel', () => {
+    entity.attrs.splice(i, 1);
+    render(); saveState(); _renderEntityPropPanel(entity);
+  });
+  if (i === 0) upBtn.disabled = true;
+  if (i === entity.attrs.length - 1) downBtn.disabled = true;
+
+  l1.append(kindEl, nameInp, upBtn, downBtn, delBtn);
+
+  // ── Line 2: 물리명 | 타입 | N U A ──
+  const l2 = document.createElement('div');
+  l2.className = 'pp-attr-l2';
+
+  const physInp = document.createElement('input');
+  physInp.className = 'pp-ai pp-aphys'; physInp.value = attr.physicalName || '';
+  physInp.placeholder = '물리명';
+  physInp.addEventListener('input', () => { attr.physicalName = physInp.value; render(); });
+  physInp.addEventListener('blur', saveState);
+
+  const typeInp = document.createElement('input');
+  typeInp.className = 'pp-ai pp-atype'; typeInp.value = attr.type || '';
+  typeInp.placeholder = 'VARCHAR(50)';
+  typeInp.addEventListener('input', () => { attr.type = typeInp.value; render(); });
+  typeInp.addEventListener('blur', saveState);
+
+  const mkCb = (label, title, get, set) => {
+    const b = document.createElement('button');
+    b.className = 'pp-cb' + (get() ? ' on' : '');
+    b.textContent = label; b.title = title;
+    b.addEventListener('click', () => {
+      set(!get()); b.classList.toggle('on', get()); render(); saveState();
+    });
+    return b;
+  };
+  const nnBtn = mkCb('N', 'NOT NULL',        () => !!attr.notNull,       v => { attr.notNull       = v; });
+  const uqBtn = mkCb('U', 'UNIQUE',          () => !!attr.unique,        v => { attr.unique        = v; });
+  const aiBtn = mkCb('A', 'AUTO_INCREMENT',  () => !!attr.autoIncrement, v => { attr.autoIncrement = v; });
+
+  l2.append(physInp, typeInp, nnBtn, uqBtn, aiBtn);
+
+  row.appendChild(l1);
+  row.appendChild(l2);
+  return row;
+}
+
+// ── 관계 속성 패널 렌더 ──────────────────────────────────────────
+function _renderRelPropPanel(rel) {
+  const content = document.getElementById('ppContent');
+  if (!content) return;
+  content.innerHTML = '';
+
+  const fe = ENTITIES.find(e => e.id === rel.from);
+  const te = ENTITIES.find(e => e.id === rel.to);
+
+  const mkRow = (label, val) => {
+    const d = document.createElement('div');
+    d.className = 'pp-rel-row';
+    d.innerHTML = `<span class="pp-rel-lbl">${label}</span><span class="pp-rel-val">${escHtml(val || '-')}</span>`;
+    return d;
+  };
+  content.appendChild(mkRow('출발', fe?.logicalName || rel.from));
+  content.appendChild(mkRow('도착', te?.logicalName || rel.to));
+  content.appendChild(Object.assign(document.createElement('div'), { className: 'pp-sep' }));
+
+  // 관계 유형
+  const cardRow = document.createElement('div');
+  cardRow.className = 'pp-rel-row';
+  cardRow.innerHTML = `<span class="pp-rel-lbl">관계</span>`;
+  const cardGrp = document.createElement('div');
+  cardGrp.className = 'pp-card-grp';
+  ['1:1', '1:N', 'N:M'].forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'pp-card-btn' + (rel.card === c ? ' on' : '');
+    btn.textContent = c;
+    btn.addEventListener('click', () => {
+      rel.card = c;
+      cardGrp.querySelectorAll('.pp-card-btn').forEach(b => b.classList.toggle('on', b.textContent === c));
+      render(); saveState();
+    });
+    cardGrp.appendChild(btn);
+  });
+  cardRow.appendChild(cardGrp);
+  content.appendChild(cardRow);
+
+  // 레이블
+  const labelRow = document.createElement('div');
+  labelRow.className = 'pp-rel-row';
+  labelRow.innerHTML = `<span class="pp-rel-lbl">레이블</span>`;
+  const labelInp = document.createElement('input');
+  labelInp.className = 'pp-inp'; labelInp.style.cssText = 'flex:1;font-size:12px;padding:2px 6px;';
+  labelInp.value = rel.label || ''; labelInp.placeholder = '레이블';
+  labelInp.addEventListener('input', () => { rel.label = labelInp.value || undefined; render(); });
+  labelInp.addEventListener('blur', saveState);
+  labelRow.appendChild(labelInp);
+  content.appendChild(labelRow);
+
+  // 선 스타일
+  const lineRow = document.createElement('div');
+  lineRow.className = 'pp-rel-row';
+  lineRow.innerHTML = `<span class="pp-rel-lbl">선</span>`;
+  const lineGrp = document.createElement('div');
+  lineGrp.className = 'pp-card-grp';
+  [['solid','실선'], ['dashed','점선']].forEach(([v, txt]) => {
+    const btn = document.createElement('button');
+    btn.className = 'pp-card-btn' + ((rel.lineStyle || 'solid') === v ? ' on' : '');
+    btn.textContent = txt;
+    btn.addEventListener('click', () => {
+      rel.lineStyle = v;
+      lineGrp.querySelectorAll('.pp-card-btn').forEach(b => b.classList.toggle('on', b.textContent === txt));
+      render(); saveState();
+    });
+    lineGrp.appendChild(btn);
+  });
+  lineRow.appendChild(lineGrp);
+  content.appendChild(lineRow);
+
+  content.appendChild(Object.assign(document.createElement('div'), { className: 'pp-sep' }));
+
+  // 삭제
+  const delBtn = document.createElement('button');
+  delBtn.className = 'pp-del-rel'; delBtn.textContent = '관계선 삭제';
+  delBtn.addEventListener('click', () => {
+    askConfirm('이 관계를 삭제합니다.', () => {
+      const idx = RELATIONS.indexOf(rel);
+      if (idx >= 0) RELATIONS.splice(idx, 1);
+      hidePropPanel(); render(); saveState();
+    }, '삭제');
+  });
+  content.appendChild(delBtn);
+}
+
+// ── 속성 패널 구분선 드래그 리사이즈 ──────────────────────────────
+function _initPropDividerDrag() {
+  const divider = document.getElementById('propDivider');
+  const panel   = document.getElementById('propPanel');
+  const bottom  = document.getElementById('panelBottom');
+  if (!divider || !panel) return;
+
+  let startY = 0, startPpH = 0, startPbH = 0;
+  divider.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    startY   = e.clientY;
+    startPpH = panel.offsetHeight;
+    startPbH = bottom ? bottom.offsetHeight : 0;
+    // flex:N 은 flex-basis:0% 를 설정하므로 style.height 을 override함
+    // 드래그 시작 시점에 명시적 px 높이로 전환해야 resize가 동작함
+    panel.style.flex   = 'none';
+    panel.style.height = startPpH + 'px';
+    if (bottom) { bottom.style.flex = 'none'; bottom.style.height = startPbH + 'px'; }
+    divider.classList.add('dragging');
+    const onMove = ev => {
+      const delta  = startY - ev.clientY; // 위로 드래그 → propPanel 증가
+      const totalH = startPpH + startPbH;
+      const newPpH = Math.max(80, Math.min(totalH - 60, startPpH + delta));
+      const newPbH = totalH - newPpH;
+      panel.style.height  = newPpH + 'px';
+      if (bottom) bottom.style.height = newPbH + 'px';
+    };
+    const onUp = () => {
+      divider.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // 더블클릭 → 기본 3:7 비율로 리셋
+  divider.addEventListener('dblclick', () => {
+    panel.style.height = ''; panel.style.flex = '';
+    if (bottom) { bottom.style.height = ''; bottom.style.flex = ''; }
+  });
+}
+
 function ctxFn(action) {
   hideCtxMenu();
   if (action === 'addEnt')  openAddEntityModal();
-  if (action === 'editEnt') openEditEntityModal(ctxTargetEntity);
+  if (action === 'editEnt') { showPropPanel(ctxTargetEntity); }
   if (action === 'dupEnt') {
     // clipboard을 건드리지 않고 직접 복제
     const e = ctxTargetEntity;
@@ -824,7 +1216,7 @@ function ctxFn(action) {
   if (action === 'delNote')   { if (ctxTargetNote) { const i = NOTES.indexOf(ctxTargetNote); if (i>=0) NOTES.splice(i,1); render(); saveState(); } }
   if (action === 'delEnt')  askConfirm(`'${entDisplayName(ctxTargetEntity)}' 엔티티와 연결된 모든 관계를 삭제합니다.`, () => deleteEntity(ctxTargetEntity), '삭제');
   if (action === 'addRel')  openAddRelationModal();
-  if (action === 'editRel') openEditRelationModal(ctxTargetRelation);
+  if (action === 'editRel') showRelPropPanel(ctxTargetRelation);
   if (action === 'styleRel') {
     if (!ctxTargetRelation) return;
     ctxTargetRelation.lineStyle = (ctxTargetRelation.lineStyle === 'dashed') ? 'solid' : 'dashed';

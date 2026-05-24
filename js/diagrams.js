@@ -280,7 +280,8 @@ function toggleDiagramPanel() {
 
   document.getElementById('panelReopenTab').classList.toggle('visible', !panelOpen);
   const rOff = panelOpen ? PANEL_W + 12 : 12;
-  document.getElementById('zoomPanel').style.right = rOff + 'px';
+  const _zp = document.getElementById('zoomPanel');
+  if (_zp) _zp.style.right = rOff + 'px';
   render();
 }
 

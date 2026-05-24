@@ -1993,12 +1993,22 @@ canvas.addEventListener('mouseup', e => {
     straightenWpts(draggingSegment.rel);
     collapseCollinearWpts(draggingSegment.rel);
   }
+  // ── 속성 패널 연동: 패널 열기가 canvas 크기를 바꾸므로
+  //    draggingEntity = null 이후에 호출해야 drag 오작동을 막는다
+  const _ppEnt   = (!wasDragging && !_didMove && draggingEntity && selectedEntities.size <= 1)
+                   ? draggingEntity : null;
+  const _ppEmpty = (!draggingEntity && !draggingSegment && !draggingSection && panStart && !_didMove);
+
   draggingEntity = null; draggingSegment = null; draggingSection = null;
   resizingSection = null; resizeDir = null; resizeStart = null;
   panStart = null;
   canvas.classList.remove('dragging');
   render();
   if (wasDragging) setTimeout(saveState, 0);
+
+  // cleanup 완료 후 패널 조작 (이 시점엔 draggingEntity가 null이므로 안전)
+  if (_ppEnt && typeof showPropPanel === 'function')        showPropPanel(_ppEnt);
+  else if (_ppEmpty && typeof hidePropPanel === 'function') hidePropPanel();
 });
 
 canvas.addEventListener('mouseleave', () => {

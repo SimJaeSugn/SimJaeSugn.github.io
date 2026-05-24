@@ -203,6 +203,16 @@
     </div>
     <div id="entityTree"></div>
   </div>
+  <div id="propDivider"></div>
+  <div id="propPanel">
+    <div class="panel-hdr pp-hdr">
+      <span id="ppIcon" class="pp-icon">📋</span>
+      <span class="panel-hdr-title pp-title" id="ppTitle"></span>
+      <button class="diag-btn" id="ppModalBtn" onclick="openPropPanelModal()" title="모달에서 전체 편집 (⤢)">⤢</button>
+      <button class="diag-btn" onclick="hidePropPanel()" title="닫기">✕</button>
+    </div>
+    <div id="ppContent"></div>
+  </div>
 </div>
 <div id="panelReopenTab" class="visible" onclick="toggleDiagramPanel()" title="다이어그램 패널 열기">
   <span>◀</span>

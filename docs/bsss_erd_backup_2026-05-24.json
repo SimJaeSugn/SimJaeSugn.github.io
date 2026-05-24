@@ -1,6 +1,6 @@
 {
   "backupVersion": 3,
-  "exportedAt": "2026-05-24T14:32:33.319Z",
+  "exportedAt": "2026-05-24T14:39:07.522Z",
   "appVersion": "bsss-erd",
   "main": {
     "diagrams": [
@@ -3722,6 +3722,7 @@
     "theme": "frappe",
     "qbOpen": "1",
     "qbLarge": "1",
+    "qbDock": "left",
     "qbCustom": "[{\"icon\":\"⌨\",\"text\":\"단축키 목록\",\"action\":\"openShortcutsModal()\"},{\"type\":\"sep\"},{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"},{\"type\":\"sep\"},{\"icon\":\"🔗\",\"text\":\"공유 URL 생성\",\"action\":\"generateShareUrl()\"},{\"icon\":\"탭\",\"text\":\"탭 동기화\",\"action\":\"toggleBcSync()\"},{\"type\":\"sep\"},{\"icon\":\"섹\",\"text\":\"섹션 모드\",\"action\":\"toggleSectionMode()\"}]",
     "panelW": "329",
     "shortcuts": "{}",
