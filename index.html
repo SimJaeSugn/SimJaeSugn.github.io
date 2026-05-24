@@ -182,6 +182,7 @@
 
 <!-- ── Diagram Panel (right) ────────────────── -->
 <div id="diagramPanel" class="collapsed">
+  <div id="panelWidthHandle"></div>
   <div id="panelTop">
     <div class="panel-hdr">
       <button class="panel-collapse-btn" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
@@ -238,11 +239,14 @@
   <div class="ctx-item" id="ctx-edit-ent" onclick="ctxFn('editEnt')"><span class="ctx-ico">✏</span>엔티티 편집</div>
   <div class="ctx-item" id="ctx-dup-ent" onclick="ctxFn('dupEnt')"><span class="ctx-ico">⧉</span>엔티티 복제</div>
   <div class="ctx-item" id="ctx-copy-diag" onclick="ctxFn('copyToDiag')"><span class="ctx-ico">⎘</span>다이어그램으로 복사</div>
+  <div class="ctx-item" id="ctx-color-ent" onclick="ctxFn('colorEnt')"><span class="ctx-ico">🎨</span>헤더 색상 변경</div>
+  <div class="ctx-item" id="ctx-sel-related" onclick="ctxFn('selRelated')"><span class="ctx-ico">⊡</span>관련 엔티티 선택</div>
   <div class="ctx-sep" id="ctx-sep-ent"></div>
   <div class="ctx-item" id="ctx-add-note" onclick="ctxFn('addNote')"><span class="ctx-ico">📝</span>메모 추가</div>
   <div class="ctx-item danger" id="ctx-del-note" onclick="ctxFn('delNote')"><span class="ctx-ico">✕</span>메모 삭제</div>
   <div class="ctx-item" id="ctx-add-rel" onclick="ctxFn('addRel')"><span class="ctx-ico">⟷</span>관계 추가</div>
   <div class="ctx-item" id="ctx-edit-rel" onclick="ctxFn('editRel')"><span class="ctx-ico">✏</span>관계 편집</div>
+  <div class="ctx-item" id="ctx-style-rel" onclick="ctxFn('styleRel')"><span class="ctx-ico">╌</span>실선 / 점선 전환</div>
   <div class="ctx-item" id="ctx-reset-rel" onclick="ctxFn('resetRel')"><span class="ctx-ico">↺</span>경로 초기화</div>
   <div class="ctx-sep" id="ctx-sep-del"></div>
   <div class="ctx-item" id="ctx-focus-ent" onclick="ctxFn('focusEnt')"><span class="ctx-ico">🔍</span>포커스 모드</div>
@@ -251,7 +255,13 @@
   <div class="ctx-item danger" id="ctx-del-rel" onclick="ctxFn('delRel')"><span class="ctx-ico">✕</span>관계 삭제</div>
   <div class="ctx-item" id="ctx-rename-sec" onclick="ctxFn('renameSec')"><span class="ctx-ico">✏</span>섹션 이름 변경</div>
   <div class="ctx-item danger" id="ctx-del-sec" onclick="ctxFn('delSec')"><span class="ctx-ico">✕</span>섹션 삭제</div>
+  <div class="ctx-sep" id="ctx-sep-canvas"></div>
+  <div class="ctx-item" id="ctx-sel-all" onclick="ctxFn('selAll')"><span class="ctx-ico">⊞</span>전체 선택</div>
+  <div class="ctx-item" id="ctx-auto-arrange" onclick="ctxFn('autoArrange')"><span class="ctx-ico">⋹</span>계층형 자동 배치</div>
 </div>
+
+<!-- ── Entity Color Picker (context) ───────── -->
+<div id="ctxColorPicker"></div>
 
 <!-- ── Entity Modal ─────────────────────────── -->
 <div class="modal-overlay" id="entOverlay" onmousedown="overlayClose(event,'entOverlay')">
@@ -569,6 +579,7 @@
     <!-- Header -->
     <div class="sc-hdr">
       <span class="sc-hdr-title">⌨ 단축키</span>
+      <button class="sc-reset-all-btn" onclick="scResetAll()" title="모든 단축키 기본값으로 초기화">↺ 전체 초기화</button>
       <button class="sc-hdr-close" onclick="closeShortcutsModal()" title="닫기">×</button>
     </div>
 
@@ -592,11 +603,11 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--ac-g);">➕ 생성</div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="addEnt">
                   <div class="sc-keys"><span class="sc-key">N</span></div>
                   <div class="sc-desc">엔티티 추가<span class="sc-desc-note">입력 필드 미포커스 상태</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="addRel">
                   <div class="sc-keys"><span class="sc-key">R</span></div>
                   <div class="sc-desc">관계 추가<span class="sc-desc-note">입력 필드 미포커스 상태</span></div>
                 </div>
@@ -608,11 +619,11 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--ac);">💾 저장</div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="save">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
                   <div class="sc-desc">JSON 저장<span class="sc-desc-note">현재 다이어그램만</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="saveAll">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
                   <div class="sc-desc">전체 백업 내보내기<span class="sc-desc-note">스냅샷 포함 전체</span></div>
                 </div>
@@ -620,11 +631,11 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--ac-y);">↩ 실행취소</div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="undo">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Z</span></div>
                   <div class="sc-desc">실행취소<span class="sc-desc-note">히스토리 범위 내 무제한</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="redo">
                   <div class="sc-keys" style="flex-wrap:wrap;row-gap:3px;">
                     <span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Y</span>
                     &thinsp;<span class="sc-key-sep">/</span>&thinsp;
@@ -636,7 +647,7 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--tx-attr);">🔍 검색 · 기타</div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="search">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">F</span></div>
                   <div class="sc-desc">엔티티 검색<span class="sc-desc-note">논리명 · 물리명 · ID</span></div>
                 </div>
@@ -657,19 +668,19 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--ac-o);">✂ 편집</div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="copy">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">C</span></div>
                   <div class="sc-desc">복사<span class="sc-desc-note">선택된 엔티티 클립보드 저장</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="paste">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">V</span></div>
                   <div class="sc-desc">붙여넣기<span class="sc-desc-note">미선택 시: 텍스트 → 속성 자동 입력 후 엔티티 생성 팝업</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="dup">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">D</span></div>
                   <div class="sc-desc">복제<span class="sc-desc-note">다중 선택 시 일괄 복제</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="del">
                   <div class="sc-keys"><span class="sc-key">Delete</span></div>
                   <div class="sc-desc">삭제<span class="sc-desc-note">엔티티 · 관계 · 섹션</span></div>
                 </div>
@@ -685,7 +696,7 @@
 
               <div class="sc-card">
                 <div class="sc-card-hdr" style="color:var(--ac-p);">⬜ 선택</div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="selAll">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">A</span></div>
                   <div class="sc-desc">전체 선택</div>
                 </div>
@@ -710,13 +721,21 @@
                   </div>
                   <div class="sc-desc">선택 엔티티 이동<span class="sc-desc-note">1px · Shift: 10px · 그리드 스냅 시: 그리드 단위</span></div>
                 </div>
-                <div class="sc-row">
+                <div class="sc-row" data-sc-id="fitAll">
                   <div class="sc-keys"><span class="sc-key">Home</span></div>
                   <div class="sc-desc">전체 맞춤<span class="sc-desc-note">모든 객체를 화면에 맞게 축소/이동</span></div>
                 </div>
                 <div class="sc-row">
                   <div class="sc-keys"><span class="sc-key sc-key-mouse">휠</span></div>
                   <div class="sc-desc">확대 / 축소<span class="sc-desc-note">커서 위치 기준</span></div>
+                </div>
+              </div>
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac-o);">⚡ 퀵바</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key sc-key-mouse">우클릭</span></div>
+                  <div class="sc-desc">구분선 추가<span class="sc-desc-note">커스텀 버튼 영역 우클릭</span></div>
                 </div>
               </div>
 
@@ -821,7 +840,23 @@
 <script src="js/broadcast.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="js/webrtc.js"></script>
+<script src="js/shortcuts.js"></script>
 <script src="js/main.js"></script>
+
+<!-- ── Status Bar ───────────────────────────── -->
+<div id="statusbar">
+  <span id="sb-entities">엔티티 0</span>
+  <span class="sb-sep">·</span>
+  <span id="sb-relations">관계 0</span>
+  <span class="sb-sep">·</span>
+  <span id="sb-notes">메모 0</span>
+  <span id="sb-sel-wrap" style="display:none"><span class="sb-sep">·</span><span id="sb-sel-text"></span></span>
+  <div class="sb-right">
+    <span id="sb-coords">0, 0</span>
+    <span class="sb-sep">·</span>
+    <span id="sb-zoom-stat">100%</span>
+  </div>
+</div>
 
 </body>
 </html>

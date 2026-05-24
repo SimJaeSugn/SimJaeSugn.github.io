@@ -1523,6 +1523,7 @@ function renderNow() {
   ctx.restore();
   renderMinimap();
   syncMarkdownOverlays();   // 마크다운 노트 DOM 오버레이 위치/내용 동기화
+  if (typeof updateStatusBar === 'function') updateStatusBar();
 }
 
 // ── 좌표 변환 / 거리 계산 ──────────────────────────────────────
@@ -1870,6 +1871,8 @@ canvas.addEventListener('mousemove', e => {
   hoveredNote    = (!hitEnt && !hitSeg) ? hitTestNote(w.x, w.y) : null;
   hoveredPort    = hitPort || null;
   updateTooltip(e.clientX, e.clientY, w.x, w.y, hitPort ? null : hitEnt);
+  const sbCoords = document.getElementById('sb-coords');
+  if (sbCoords) sbCoords.textContent = `${Math.round(w.x)}, ${Math.round(w.y)}`;
   if (hoveredEntity !== prevEnt || (hoveredRelSeg?.rel ?? null) !== prevRelRef || hoveredSection !== prevSec || hoveredLabel !== prevLbl || hoveredNote !== prevNote || hoveredPort !== prevPort) render();
 });
 

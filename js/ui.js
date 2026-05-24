@@ -3,6 +3,22 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── 상태 표시줄 ──────────────────────────────────────────────────
+function updateStatusBar() {
+  const sbE = document.getElementById('sb-entities');
+  const sbR = document.getElementById('sb-relations');
+  const sbN = document.getElementById('sb-notes');
+  const sbS = document.getElementById('sb-sel-wrap');
+  const sbT = document.getElementById('sb-sel-text');
+  const sbZ = document.getElementById('sb-zoom-stat');
+  if (sbE) sbE.textContent = `엔티티 ${ENTITIES.length}`;
+  if (sbR) sbR.textContent = `관계 ${RELATIONS.length}`;
+  if (sbN) sbN.textContent = `메모 ${(typeof NOTES !== 'undefined' ? NOTES.length : 0)}`;
+  const sel = typeof selectedEntities !== 'undefined' ? selectedEntities.size : 0;
+  if (sbS && sbT) { sbT.textContent = `선택 ${sel}개`; sbS.style.display = sel ? '' : 'none'; }
+  if (sbZ) sbZ.textContent = `${Math.round((typeof scale !== 'undefined' ? scale : 1) * 100)}%`;
+}
+
 // ── 토스트 알림 ──────────────────────────────────────────────────
 function showToast(msg) {
   document.querySelector('.erd-toast')?.remove();
@@ -106,19 +122,45 @@ function loadQuickbarState() {
 // ── 퀵바 커스텀 버튼 (드래그 앤 드롭) ────────────────────────
 let _qbCustomItems = [];
 
+let _qbDragSrcIdx = null;
+
 function _renderCustomQbItems() {
   const area = document.getElementById('qb-custom-area');
   const sep  = document.getElementById('qb-custom-sep');
   if (!area) return;
   area.innerHTML = '';
   if (sep) sep.style.display = _qbCustomItems.length ? '' : 'none';
+
   _qbCustomItems.forEach((item, idx) => {
+    // ── 구분선 타입 ──
+    if (item.type === 'sep') {
+      const sepEl = document.createElement('div');
+      sepEl.className = 'qb-sep qb-csep';
+      sepEl.draggable = true;
+      sepEl.dataset.qbIdx = idx;
+      const delBtn = document.createElement('span');
+      delBtn.className = 'qb-csep-del';
+      delBtn.textContent = '×';
+      delBtn.title = '구분선 제거';
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        _qbCustomItems.splice(idx, 1);
+        _renderCustomQbItems(); _saveCustomQbItems();
+      });
+      sepEl.appendChild(delBtn);
+      _attachQbReorderDrag(sepEl, idx);
+      area.appendChild(sepEl);
+      return;
+    }
+
+    // ── 일반 버튼 ──
     const btn = document.createElement('button');
     btn.className = 'qb-btn qb-cbtn';
     btn.title = item.text;
+    btn.draggable = true;
+    btn.dataset.qbIdx = idx;
     const ico = document.createElement('span');
     ico.textContent = item.icon;
-    // 한글 텍스트 아이콘이면 작게 표시
     if (/[가-힣]/.test(item.icon)) ico.style.cssText = 'font-size:11px;font-weight:bold';
     const del = document.createElement('span');
     del.className = 'qb-cbtn-del';
@@ -127,16 +169,44 @@ function _renderCustomQbItems() {
     del.addEventListener('click', e => {
       e.stopPropagation();
       _qbCustomItems.splice(idx, 1);
-      _renderCustomQbItems();
-      _saveCustomQbItems();
+      _renderCustomQbItems(); _saveCustomQbItems();
     });
-    btn.appendChild(ico);
-    btn.appendChild(del);
+    btn.appendChild(ico); btn.appendChild(del);
     btn.addEventListener('click', e => {
       if (e.target === del) return;
       try { new Function(item.action)(); } catch {}
     });
+    _attachQbReorderDrag(btn, idx);
     area.appendChild(btn);
+  });
+}
+
+function _attachQbReorderDrag(el, idx) {
+  el.addEventListener('dragstart', e => {
+    // 내부 재정렬인지 외부(메뉴) 드롭인지 구분
+    if (e.dataTransfer.types.includes('application/qb-item')) return;
+    _qbDragSrcIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/qb-reorder', String(idx));
+    setTimeout(() => { if (el.style) el.style.opacity = '0.4'; }, 0);
+  });
+  el.addEventListener('dragend', () => { el.style.opacity = ''; _qbDragSrcIdx = null; });
+  el.addEventListener('dragover', e => {
+    if (!e.dataTransfer.types.includes('application/qb-reorder')) return;
+    e.preventDefault(); e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    el.style.outline = '2px solid var(--ac)';
+  });
+  el.addEventListener('dragleave', () => { el.style.outline = ''; });
+  el.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    el.style.outline = '';
+    const fromIdx = parseInt(e.dataTransfer.getData('application/qb-reorder'));
+    const toIdx = idx;
+    if (isNaN(fromIdx) || fromIdx === toIdx) return;
+    const [moved] = _qbCustomItems.splice(fromIdx, 1);
+    _qbCustomItems.splice(toIdx, 0, moved);
+    _renderCustomQbItems(); _saveCustomQbItems();
   });
 }
 
@@ -186,11 +256,12 @@ function _initQuickbarDnd() {
   qb.addEventListener('drop', e => {
     e.preventDefault();
     qb.classList.remove('qb-drag-over');
+    if (e.dataTransfer.types.includes('application/qb-reorder')) return; // 내부 재정렬은 개별 핸들러가 처리
     const raw = e.dataTransfer.getData('application/qb-item');
     if (!raw) return;
     try {
       const newItem = JSON.parse(raw);
-      if (_qbCustomItems.some(i => i.action === newItem.action)) {
+      if (_qbCustomItems.some(i => i.action && i.action === newItem.action)) {
         showToast('이미 등록된 항목입니다.');
         return;
       }
@@ -200,6 +271,17 @@ function _initQuickbarDnd() {
       showToast(`"${newItem.text}" 추가됨`);
     } catch {}
   });
+
+  // 우클릭 → 구분선 추가
+  const customArea = document.getElementById('qb-custom-area');
+  if (customArea) {
+    customArea.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      _qbCustomItems.push({ type: 'sep' });
+      _renderCustomQbItems(); _saveCustomQbItems();
+      showToast('구분선 추가됨');
+    });
+  }
 }
 
 // ── 범례 / 미니맵 토글 ───────────────────────────────────────────
@@ -584,10 +666,10 @@ let ctxTargetSection = null;
 const ctxMenu = document.getElementById('ctxMenu');
 
 const CTX_VISIBILITY = {
-  canvas:        { 'ctx-add-ent':1, 'ctx-add-rel':1, 'ctx-add-note':1 },
-  entity:        { 'ctx-edit-ent':1, 'ctx-dup-ent':1, 'ctx-copy-diag':1, 'ctx-sep-ent':1, 'ctx-add-rel':1, 'ctx-sep-del':1, 'ctx-del-ent':1 },
-  relation:      { 'ctx-edit-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
-  relation_bent: { 'ctx-edit-rel':1, 'ctx-reset-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
+  canvas:        { 'ctx-add-ent':1, 'ctx-add-rel':1, 'ctx-add-note':1, 'ctx-sep-canvas':1, 'ctx-sel-all':1, 'ctx-auto-arrange':1 },
+  entity:        { 'ctx-edit-ent':1, 'ctx-dup-ent':1, 'ctx-copy-diag':1, 'ctx-color-ent':1, 'ctx-sel-related':1, 'ctx-sep-ent':1, 'ctx-add-rel':1, 'ctx-sep-del':1, 'ctx-del-ent':1 },
+  relation:      { 'ctx-edit-rel':1, 'ctx-style-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
+  relation_bent: { 'ctx-edit-rel':1, 'ctx-style-rel':1, 'ctx-reset-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
   section:       { 'ctx-rename-sec':1, 'ctx-sep-del':1, 'ctx-del-sec':1 },
   note:          { 'ctx-add-note':1, 'ctx-sep-del':1, 'ctx-del-note':1 },
 };
@@ -595,10 +677,14 @@ const CTX_VISIBILITY = {
 function showCtxMenu(x, y, mode) {
   const modeKey = (mode === 'relation' && ctxTargetRelation?.bend) ? 'relation_bent' : mode;
   const visible = CTX_VISIBILITY[modeKey] || {};
-  ['ctx-add-ent','ctx-edit-ent','ctx-dup-ent','ctx-copy-diag','ctx-add-note','ctx-sep-ent','ctx-add-rel',
-   'ctx-edit-rel','ctx-reset-rel','ctx-sep-del','ctx-del-ent','ctx-del-rel',
-   'ctx-rename-sec','ctx-del-sec','ctx-del-note'].forEach(id => {
-    document.getElementById(id).style.display = visible[id] ? '' : 'none';
+  ['ctx-add-ent','ctx-edit-ent','ctx-dup-ent','ctx-copy-diag','ctx-color-ent','ctx-sel-related',
+   'ctx-add-note','ctx-sep-ent','ctx-add-rel',
+   'ctx-edit-rel','ctx-style-rel','ctx-reset-rel',
+   'ctx-sep-del','ctx-del-ent','ctx-del-rel',
+   'ctx-rename-sec','ctx-del-sec','ctx-del-note',
+   'ctx-sep-canvas','ctx-sel-all','ctx-auto-arrange'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible[id] ? '' : 'none';
   });
   ctxMenu.style.left = x + 'px'; ctxMenu.style.top = y + 'px'; ctxMenu.style.display = 'block';
   const r = ctxMenu.getBoundingClientRect();
@@ -614,15 +700,68 @@ function ctxFn(action) {
   if (action === 'editEnt') openEditEntityModal(ctxTargetEntity);
   if (action === 'dupEnt')    { selectedEntity = ctxTargetEntity; copyEntity(); pasteEntity(); }
   if (action === 'copyToDiag') { if (ctxTargetEntity) openCopyDiagModal(ctxTargetEntity); }
+  if (action === 'colorEnt')  showCtxEntityColorPicker();
+  if (action === 'selRelated') selectRelatedEntities(ctxTargetEntity);
   if (action === 'addNote')   addNoteAt(ctxLastWorld.x, ctxLastWorld.y);
   if (action === 'delNote')   { if (ctxTargetNote) { const i = NOTES.indexOf(ctxTargetNote); if (i>=0) NOTES.splice(i,1); render(); saveState(); } }
   if (action === 'delEnt')  askConfirm(`'${entDisplayName(ctxTargetEntity)}' 엔티티와 연결된 모든 관계를 삭제합니다.`, () => deleteEntity(ctxTargetEntity), '삭제');
   if (action === 'addRel')  openAddRelationModal();
   if (action === 'editRel') openEditRelationModal(ctxTargetRelation);
+  if (action === 'styleRel') {
+    if (!ctxTargetRelation) return;
+    ctxTargetRelation.lineStyle = (ctxTargetRelation.lineStyle === 'dashed') ? 'solid' : 'dashed';
+    render(); saveState();
+  }
   if (action === 'delRel')  askConfirm('이 관계를 삭제합니다.', () => deleteRelation(ctxTargetRelation), '삭제');
   if (action === 'resetRel') { ctxTargetRelation.bend = null; render(); saveState(); }
   if (action === 'renameSec') showSectionNameInput(ctxTargetSection);
   if (action === 'delSec')    askConfirm(`'${ctxTargetSection.name || '섹션'}' 섹션을 삭제합니다.`, () => deleteSection(ctxTargetSection), '삭제');
+  if (action === 'selAll')    { ENTITIES.forEach(e => selectedEntities.add(e.id)); render(); }
+  if (action === 'autoArrange') autoLayout('hierarchical');
+}
+
+// ── 관련 엔티티 선택 ─────────────────────────────────────────────
+function selectRelatedEntities(ent) {
+  if (!ent) return;
+  selectedEntities.clear();
+  const connected = new Set([ent.id]);
+  const queue = [ent.id]; let qi = 0;
+  while (qi < queue.length) {
+    const cur = queue[qi++];
+    RELATIONS.forEach(r => {
+      if (r.from === cur && !connected.has(r.to))   { connected.add(r.to);   queue.push(r.to); }
+      if (r.to   === cur && !connected.has(r.from)) { connected.add(r.from); queue.push(r.from); }
+    });
+  }
+  connected.forEach(id => selectedEntities.add(id));
+  render();
+}
+
+// ── 컨텍스트 엔티티 색상 피커 ────────────────────────────────────
+function showCtxEntityColorPicker() {
+  const picker = document.getElementById('ctxColorPicker');
+  if (!picker || !ctxTargetEntity) return;
+  picker.innerHTML = ENTITY_COLOR_PALETTE.map(c => {
+    const active = (c.id === (ctxTargetEntity.colorTag || null)) ? ' active' : '';
+    return `<div class="ctx-color-swatch${active}" title="${c.label}"
+      style="background:${c.bg};"
+      onclick="applyCtxEntityColor(${c.id === null ? 'null' : `'${c.id}'`})"></div>`;
+  }).join('');
+  const cm = ctxMenu.getBoundingClientRect();
+  picker.style.left = cm.left + 'px';
+  picker.style.top  = (cm.bottom + 4) + 'px';
+  picker.classList.add('open');
+  setTimeout(() => {
+    document.addEventListener('click', function _cls(e) {
+      if (!picker.contains(e.target)) { picker.classList.remove('open'); document.removeEventListener('click', _cls); }
+    });
+  }, 0);
+}
+function applyCtxEntityColor(colorTag) {
+  if (!ctxTargetEntity) return;
+  ctxTargetEntity.colorTag = (colorTag === 'null' || colorTag === null) ? null : colorTag;
+  document.getElementById('ctxColorPicker')?.classList.remove('open');
+  render(); saveState();
 }
 
 // ── Confirm Dialog ───────────────────────────────────────────────
@@ -867,6 +1006,7 @@ function deleteSnapshot(id) {
 function openShortcutsModal() {
   document.getElementById('shortcutsOverlay').classList.add('active');
   scGoTo(0);
+  if (typeof scRefreshRows === 'function') scRefreshRows();
 }
 function closeShortcutsModal() {
   document.getElementById('shortcutsOverlay').classList.remove('active');

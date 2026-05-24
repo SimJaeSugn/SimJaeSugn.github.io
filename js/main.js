@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ev.key === 'Enter')  { ev.preventDefault(); confirmNewDiag(); }
     if (ev.key === 'Escape') { ev.preventDefault(); closeNewDiagModal(); }
   });
+  if (typeof updateStatusBar === 'function') updateStatusBar();
 });
 
 // ── 메인 키보드 단축키 ─────────────────────────────────────────────
@@ -45,9 +46,9 @@ document.addEventListener('keydown', e => {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
   const ctrl = e.ctrlKey || e.metaKey;
-  if (ctrl && e.key === 'f') { e.preventDefault(); openSearch(); return; }
-  if (ctrl && e.key === 'c') { e.preventDefault(); copyEntity(); }
-  if (ctrl && e.key === 'v') {
+  if (matchSC(e, 'search'))  { e.preventDefault(); openSearch(); return; }
+  if (matchSC(e, 'copy'))    { e.preventDefault(); copyEntity(); }
+  if (matchSC(e, 'paste'))   {
     e.preventDefault();
     // 아무것도 선택되지 않은 상태: 클립보드 텍스트가 콤마 구분 항목이면
     // 속성 논리명을 자동 입력한 채로 엔티티 추가 팝업 열기
@@ -59,12 +60,9 @@ document.addEventListener('keydown', e => {
           // 콤마가 하나 이상 포함된 텍스트 → CSV 속성 입력 모드
           if (raw.includes(',')) {
             const attrs = raw.split(',').map(s => s.trim()).filter(Boolean);
-            if (attrs.length > 0) {
-              openAddEntityModalWithAttrs(attrs);
-              return;
-            }
+            if (attrs.length > 0) { openAddEntityModalWithAttrs(attrs); return; }
           }
-          pasteEntity();   // 콤마 없으면 일반 붙여넣기
+          pasteEntity();
         })
         .catch(() => pasteEntity());
     } else {
@@ -72,16 +70,16 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (!ctrl && !e.altKey) {
-    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openAddEntityModal(); }
-    if (e.key === 'r' || e.key === 'R') { e.preventDefault(); openAddRelationModal(); }
-    if (e.key === 'Home')               { e.preventDefault(); fitAll(); return; }
+  if (matchSC(e, 'addEnt'))  { e.preventDefault(); openAddEntityModal(); }
+  if (matchSC(e, 'addRel'))  { e.preventDefault(); openAddRelationModal(); }
+  if (matchSC(e, 'fitAll'))  { e.preventDefault(); fitAll(); return; }
+  if (matchSC(e, 'undo'))    { e.preventDefault(); undo(); return; }
+  if (matchSC(e, 'redo') || (ctrl && e.shiftKey && e.key.toLowerCase() === 'z')) {
+    e.preventDefault(); redo(); return;
   }
-  if (ctrl && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
-  if (ctrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
-  if (ctrl && e.key === 's' && !e.shiftKey) { e.preventDefault(); exportData(); return; }
-  if (ctrl && e.shiftKey && e.key === 'S') { e.preventDefault(); exportFullBackup(); return; }
-  if (ctrl && e.key === 'd') {
+  if (matchSC(e, 'save'))    { e.preventDefault(); exportData(); return; }
+  if (matchSC(e, 'saveAll')) { e.preventDefault(); exportFullBackup(); return; }
+  if (matchSC(e, 'dup')) {
     e.preventDefault();
     const targets = selectedEntities.size > 0
       ? [...selectedEntities].map(id => ENTITIES.find(en => en.id === id)).filter(Boolean)
@@ -100,7 +98,7 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (ctrl && e.key === 'a') {
+  if (matchSC(e, 'selAll')) {
     e.preventDefault();
     selectedEntities.clear();
     ENTITIES.forEach(en => selectedEntities.add(en.id));
@@ -120,7 +118,7 @@ document.addEventListener('keydown', e => {
       render(); saveState(); return;
     }
   }
-  if (e.key === 'Delete' && !document.querySelector('.modal-overlay.active')) {
+  if (matchSC(e, 'del') && !document.querySelector('.modal-overlay.active')) {
     if (selectedEntities.size > 0) {
       const ids = [...selectedEntities];
       ids.forEach(id => { const ent = ENTITIES.find(en => en.id === id); if (ent) deleteEntity(ent, false); });
