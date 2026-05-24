@@ -1676,9 +1676,10 @@ canvas.addEventListener('mousedown', e => {
     render(); return;
   }
   selectedEntity = null;
-  if (!e.shiftKey) selectedEntities.clear();
-  if (e.shiftKey) {
+  if (!e.shiftKey && !e.ctrlKey) selectedEntities.clear();
+  if (e.shiftKey || e.ctrlKey) {
     selectionBox = { x: w.x, y: w.y, x2: w.x, y2: w.y };
+    canvas.style.cursor = 'crosshair';
   } else {
     panStart = { x: e.clientX - vx, y: e.clientY - vy };
   }
