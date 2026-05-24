@@ -120,7 +120,7 @@ const W = 295;
 const HEADER_H = 36;
 const ROW_H = 22;
 const RADIUS = 8;
-const PANEL_W = 240;
+let PANEL_W = 240;
 
 // ── 색상 팔레트 ───────────────────────────────────────────────
 const COLOR = {

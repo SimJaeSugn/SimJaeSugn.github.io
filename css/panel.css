@@ -4,9 +4,10 @@
   background: var(--bg-panel-overlay); border-left: 1px solid var(--bd);
   z-index: 90; display: flex; flex-direction: column;
   box-shadow: -4px 0 24px rgba(0,0,0,0.5);
-  transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+  transition: transform 0.22s cubic-bezier(0.4,0,0.2,1), box-shadow 0.22s;
 }
-#diagramPanel.collapsed { transform: translateX(240px); }
+#diagramPanel.collapsed { pointer-events: none; box-shadow: none; }
+#diagramPanel.collapsed * { visibility: hidden; }
 #panelReopenTab {
   position: fixed; top: 50%; right: 0;
   transform: translateY(-50%);
@@ -160,7 +161,48 @@
 
 /* ── Bottom-Left Panel ───────────────────────── */
 #bottomLeftPanel {
-  position: fixed; bottom: 16px; left: 16px;
+  position: fixed; bottom: 28px; left: 16px;
   display: flex; flex-direction: column; gap: 8px;
   z-index: 95; align-items: flex-start;
 }
+
+/* ── Status Bar ──────────────────────────────── */
+#statusbar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 22px;
+  background: var(--bg-overlay); border-top: 1px solid var(--bd);
+  z-index: 96; display: flex; align-items: center;
+  padding: 0 10px; gap: 6px;
+  font-size: 11px; color: var(--tx-sub);
+  user-select: none; pointer-events: none;
+}
+#statusbar .sb-sep { color: var(--bd2); }
+#statusbar .sb-right {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+}
+
+/* ── Panel Width Resize Handle ───────────────── */
+#panelWidthHandle {
+  position: absolute; left: -3px; top: 0; bottom: 0; width: 6px;
+  cursor: ew-resize; z-index: 5; border-radius: 3px;
+  transition: background 0.15s;
+}
+#panelWidthHandle:hover,
+#panelWidthHandle.dragging { background: var(--ac-dim, rgba(137,180,250,0.25)); }
+
+/* ── Context Entity Color Picker ─────────────── */
+#ctxColorPicker {
+  display: none; position: fixed;
+  background: var(--bg-base); border: 1px solid var(--bd2);
+  border-radius: 8px; padding: 8px;
+  z-index: 500; gap: 5px; flex-wrap: wrap; width: 130px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+}
+#ctxColorPicker.open { display: flex; }
+.ctx-color-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  cursor: pointer; border: 2px solid transparent;
+  transition: border-color 0.1s, transform 0.1s;
+  flex-shrink: 0;
+}
+.ctx-color-swatch:hover { transform: scale(1.18); }
+.ctx-color-swatch.active { border-color: #fff; }

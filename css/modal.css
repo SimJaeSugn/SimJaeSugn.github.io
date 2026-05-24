@@ -296,3 +296,45 @@
 .tmpl-apply-item:hover { background:var(--bg-surface); }
 .tmpl-apply-manage { color:var(--tx-sub); font-size:11px; padding:7px 14px; border-top:1px solid var(--bd); cursor:pointer; }
 .tmpl-apply-manage:hover { color:var(--ac); background:var(--bg-surface2); }
+
+/* ── 단축키 커스터마이징 ──────────────────────────────── */
+.sc-row[data-sc-id] { position: relative; padding-right: 52px; }
+.sc-edit-btn {
+  display: none;
+  position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--tx-muted); cursor: pointer;
+  font-size: 12px; padding: 2px 5px; border-radius: 4px;
+  transition: background 0.1s, color 0.1s;
+}
+.sc-reset-btn {
+  display: none;
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--tx-muted); cursor: pointer;
+  font-size: 13px; padding: 2px 4px; border-radius: 4px;
+  transition: background 0.1s, color 0.1s;
+}
+.sc-row[data-sc-id]:hover .sc-edit-btn { display: block; }
+.sc-row[data-sc-id] .sc-reset-btn      { display: block; }
+.sc-edit-btn:hover  { background: var(--bg-surface); color: var(--ac); }
+.sc-reset-btn:hover { background: var(--bg-surface); color: var(--ac-r); }
+.sc-key-custom { background: var(--ac-dim, rgba(137,180,250,0.18)); color: var(--ac); border-color: var(--ac); }
+.sc-recording-badge {
+  display: inline-block; padding: 2px 8px;
+  background: var(--ac-dim, rgba(137,180,250,0.2));
+  border: 1px dashed var(--ac); border-radius: 5px;
+  color: var(--ac); font-size: 11px; white-space: nowrap; animation: scBlink 0.9s infinite;
+}
+.sc-conflict-badge {
+  display: inline-block; padding: 2px 8px;
+  background: var(--pk-bg, rgba(243,139,168,0.15));
+  border: 1px solid var(--ac-r); border-radius: 5px;
+  color: var(--ac-r); font-size: 11px; white-space: nowrap;
+}
+.sc-row.sc-recording { background: var(--sel-bg); border-radius: 6px; }
+@keyframes scBlink { 0%,100%{opacity:1} 50%{opacity:0.45} }
+.sc-reset-all-btn {
+  background: none; border: 1px solid var(--bd2); color: var(--tx-muted);
+  border-radius: 5px; padding: 2px 8px; cursor: pointer; font-size: 11px;
+  margin-right: 6px; transition: background 0.1s, color 0.1s;
+}
+.sc-reset-all-btn:hover { background: var(--bg-surface); color: var(--ac-r); }

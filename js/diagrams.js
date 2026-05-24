@@ -1,5 +1,9 @@
 // ── 패널 열림 상태 ───────────────────────────────────────────────
 let panelOpen = false;
+
+// 마우스 위치 추적 (hover 강제 재평가용)
+let _pmx = 0, _pmy = 0;
+document.addEventListener('mousemove', e => { _pmx = e.clientX; _pmy = e.clientY; }, { passive: true, capture: true });
 let expandedEntities = new Set();
 
 // ── 다이어그램 패널 관리 ─────────────────────────────────────────
@@ -83,23 +87,114 @@ function deleteDiagram(id, e) {
   }, '삭제');
 }
 
+const DIAG_TAB_COLORS = [
+  { id: null,     bg: '#585b70', label: '기본' },
+  { id: 'blue',   bg: '#89b4fa', label: '파랑' },
+  { id: 'green',  bg: '#a6e3a1', label: '초록' },
+  { id: 'orange', bg: '#fab387', label: '주황' },
+  { id: 'red',    bg: '#f38ba8', label: '빨강' },
+  { id: 'purple', bg: '#cba6f7', label: '보라' },
+  { id: 'yellow', bg: '#f9e2af', label: '노랑' },
+  { id: 'teal',   bg: '#89dceb', label: '하늘' },
+];
+
 function renderDiagramPanel() {
   const list = document.getElementById('diagramList');
   list.innerHTML = '';
+  let _diagDragSrc = null;
+
   diagrams.forEach(d => {
     const item = document.createElement('div');
     item.className = 'diag-item' + (d.id === activeDiagramId ? ' active' : '');
     item.dataset.id = d.id;
+    item.draggable = true;
+
+    const tabColor = DIAG_TAB_COLORS.find(c => c.id === (d.tabColor || null)) || DIAG_TAB_COLORS[0];
+    item.style.borderLeftColor = tabColor.bg;
+
     item.innerHTML = `
+      <span class="diag-color-dot" title="탭 색상 변경" style="background:${tabColor.bg};"
+        onclick="openDiagColorPicker('${d.id}',event)"></span>
       <span class="diag-item-name">${escHtml(d.name)}</span>
       <div class="diag-item-btns">
         <button class="diag-btn" title="이름 변경" onclick="renameDiagram('${d.id}',event)">✏</button>
         <button class="diag-btn danger" title="삭제" onclick="deleteDiagram('${d.id}',event)">✕</button>
       </div>`;
-    item.addEventListener('click', () => switchDiagram(d.id));
+
+    item.addEventListener('click', e => {
+      if (e.target.closest('.diag-item-btns') || e.target.classList.contains('diag-color-dot')) return;
+      switchDiagram(d.id);
+    });
+
+    // 드래그로 탭 순서 변경
+    item.addEventListener('dragstart', e => {
+      _diagDragSrc = d.id;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => item.style.opacity = '0.4', 0);
+    });
+    item.addEventListener('dragend', () => { item.style.opacity = ''; });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.style.background = 'var(--sel-bg)';
+    });
+    item.addEventListener('dragleave', () => { item.style.background = ''; });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.style.background = '';
+      if (!_diagDragSrc || _diagDragSrc === d.id) return;
+      const fromIdx = diagrams.findIndex(x => x.id === _diagDragSrc);
+      const toIdx   = diagrams.findIndex(x => x.id === d.id);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = diagrams.splice(fromIdx, 1);
+      diagrams.splice(toIdx, 0, moved);
+      _diagDragSrc = null;
+      renderDiagramPanel();
+      saveState();
+    });
+
     list.appendChild(item);
   });
   renderEntityTree();
+}
+
+// ── 다이어그램 탭 색상 피커 ────────────────────────────────────────
+let _diagColorTargetId = null;
+
+function openDiagColorPicker(diagId, e) {
+  e.stopPropagation();
+  _diagColorTargetId = diagId;
+  let picker = document.getElementById('diagColorPicker');
+  if (!picker) {
+    picker = document.createElement('div');
+    picker.id = 'diagColorPicker';
+    document.body.appendChild(picker);
+  }
+  const d = diagrams.find(x => x.id === diagId);
+  picker.innerHTML = DIAG_TAB_COLORS.map(c => {
+    const active = (c.id === (d?.tabColor || null)) ? ' active' : '';
+    return `<div class="ctx-color-swatch${active}" title="${c.label}"
+      style="background:${c.bg};"
+      onclick="applyDiagTabColor(${c.id === null ? 'null' : `'${c.id}'`})"></div>`;
+  }).join('');
+  const rect = e.target.getBoundingClientRect();
+  picker.style.left = rect.left + 'px';
+  picker.style.top  = (rect.bottom + 4) + 'px';
+  picker.classList.add('open');
+  setTimeout(() => {
+    document.addEventListener('click', function _close(ev) {
+      if (!picker.contains(ev.target)) { picker.classList.remove('open'); document.removeEventListener('click', _close); }
+    });
+  }, 0);
+}
+
+function applyDiagTabColor(colorId) {
+  const d = diagrams.find(x => x.id === _diagColorTargetId);
+  if (!d) return;
+  d.tabColor = (colorId === 'null' || colorId === null) ? null : colorId;
+  document.getElementById('diagColorPicker')?.classList.remove('open');
+  renderDiagramPanel();
+  saveState();
 }
 
 // ── 엔티티 트리 렌더링 ──────────────────────────────────────────
@@ -160,14 +255,72 @@ function renderEntityTree() {
 // ── 패널 토글 ──────────────────────────────────────────────────
 function toggleDiagramPanel() {
   panelOpen = !panelOpen;
-  document.getElementById('diagramPanel').classList.toggle('collapsed', !panelOpen);
+  const panel = document.getElementById('diagramPanel');
+
+  if (panelOpen) {
+    panel.style.visibility = '';
+    panel.classList.remove('collapsed');
+    panel.style.transform = '';
+  } else {
+    panel.classList.add('collapsed');
+    panel.style.transform = `translateX(${PANEL_W}px)`;
+    panel.addEventListener('transitionend', function onEnd(e) {
+      if (e.propertyName !== 'transform') return;
+      panel.removeEventListener('transitionend', onEnd);
+      if (!panelOpen) panel.style.visibility = 'hidden';
+    });
+    // transform 적용 직후 현재 마우스 위치에서 hit-test 재실행 → stale :hover 소거
+    requestAnimationFrame(() => {
+      document.dispatchEvent(new MouseEvent('mousemove', {
+        bubbles: true, cancelable: true, view: window,
+        clientX: _pmx, clientY: _pmy
+      }));
+    });
+  }
+
   document.getElementById('panelReopenTab').classList.toggle('visible', !panelOpen);
   const rOff = panelOpen ? PANEL_W + 12 : 12;
   document.getElementById('zoomPanel').style.right = rOff + 'px';
   render();
 }
 
-// ── 패널 디바이더 드래그 ────────────────────────────────────────
+// ── 패널 폭 드래그 조절 ──────────────────────────────────────────
+(function initPanelWidthResize() {
+  let dragging = false, startX = 0, startW = 0;
+  window.addEventListener('DOMContentLoaded', () => {
+    const handle = document.getElementById('panelWidthHandle');
+    const panel  = document.getElementById('diagramPanel');
+    if (!handle || !panel) return;
+    const saved = parseInt(localStorage.getItem('_panelW') || '0');
+    if (saved >= 160 && saved !== 240) {
+      panel.style.width = saved + 'px';
+      PANEL_W = saved;
+    }
+    if (!panelOpen) { panel.style.transform = `translateX(${PANEL_W}px)`; panel.style.visibility = 'hidden'; }
+    handle.addEventListener('mousedown', e => {
+      dragging = true; startX = e.clientX; startW = panel.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'ew-resize';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const newW = Math.max(160, Math.min(480, startW - (e.clientX - startX)));
+      panel.style.width = newW + 'px';
+      PANEL_W = newW;
+      render();
+    });
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      try { localStorage.setItem('_panelW', PANEL_W); } catch {}
+    });
+  });
+})();
+
+// ── 패널 디바이더 드래그 ──────────────────────────────────────────
 (function initPanelDivider() {
   let dragging = false, startY = 0, startH = 0;
   window.addEventListener('DOMContentLoaded', () => {
