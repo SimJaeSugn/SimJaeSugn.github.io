@@ -78,11 +78,12 @@ function loadDiagramIntoWorkspace(d) {
 
 function saveState() {
   flushCurrentState();
+  const snapshot = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
+  // 직전 상태와 동일하면 undo 스택에 추가하지 않음
+  if (undoStack.length && undoStack[undoStack.length - 1] === snapshot) return;
   sessionModified = true;
   const badge = document.getElementById('sessionBadge');
   if (badge) badge.style.display = 'inline';
-  // undo 스택에 현재 상태 push
-  const snapshot = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
   undoStack.push(snapshot);
   if (undoStack.length > UNDO_MAX) undoStack.shift();
   redoStack = [];

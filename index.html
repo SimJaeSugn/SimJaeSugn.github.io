@@ -22,26 +22,25 @@
     <div class="mb-menu" onmouseenter="mbHover('file')">
       <span class="mb-lbl" onclick="mbToggle('file')">파일</span>
       <div class="mb-drop" id="mb-drop-file">
+        <div class="mb-item" onclick="mbClose();openAddEntityModal()"><span class="mb-ico">📋</span><span class="mb-text">엔티티 추가</span><span class="mb-kbd">N</span></div>
+        <div class="mb-item" onclick="mbClose();openAddRelationModal()"><span class="mb-ico">⟷</span><span class="mb-text">관계 추가</span><span class="mb-kbd">R</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">내보내기</div>
         <div class="mb-item" onclick="mbClose();exportData()"><span class="mb-ico">💾</span><span class="mb-text">JSON 내보내기</span><span class="mb-kbd">Ctrl+S</span></div>
-        <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico">📂</span><span class="mb-text">JSON 불러오기</span></div>
-        <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();exportFullBackup()"><span class="mb-ico">💾</span><span class="mb-text">전체 백업 내보내기</span><span class="mb-kbd">Ctrl+Shift+S</span></div>
-        <div class="mb-item" onclick="mbClose();importFullBackup()"><span class="mb-ico">📥</span><span class="mb-text">전체 백업 불러오기</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();openDDLImportModal()"><span class="mb-ico">⬆</span><span class="mb-text">DDL 가져오기</span></div>
         <div class="mb-item" onclick="mbClose();openDDLModal()"><span class="mb-ico">🗄</span><span class="mb-text">DDL 생성</span></div>
-        <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();downloadImage(true)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (섹션 포함)</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(false)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (섹션 제외)</span></div>
         <div class="mb-item" onclick="mbClose();downloadSVG()"><span class="mb-ico">⬡</span><span class="mb-text">SVG 내보내기</span></div>
-        <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();exportMarkdown()"><span class="mb-ico">📄</span><span class="mb-text">Markdown 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportHTML()"><span class="mb-ico">🌐</span><span class="mb-text">HTML 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportPDF()"><span class="mb-ico">🖨</span><span class="mb-text">인쇄 / PDF 저장</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();generateShareUrl()"><span class="mb-ico">🔗</span><span class="mb-text">공유 URL 생성</span></div>
-        <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();resetExportDir()"><span class="mb-ico">📁</span><span class="mb-text">내보내기 폴더 재설정</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">불러오기</div>
+        <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico">📂</span><span class="mb-text">JSON 불러오기</span></div>
+        <div class="mb-item" onclick="mbClose();importFullBackup()"><span class="mb-ico">📥</span><span class="mb-text">전체 백업 불러오기</span></div>
+        <div class="mb-item" onclick="mbClose();openDDLImportModal()"><span class="mb-ico">⬆</span><span class="mb-text">DDL 가져오기</span></div>
       </div>
     </div>
 
@@ -52,8 +51,8 @@
         <div class="mb-item" onclick="mbClose();undo()"><span class="mb-ico">↩</span><span class="mb-text">실행취소</span><span class="mb-kbd">Ctrl+Z</span></div>
         <div class="mb-item" onclick="mbClose();redo()"><span class="mb-ico">↪</span><span class="mb-text">다시실행</span><span class="mb-kbd">Ctrl+Y</span></div>
         <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();openAddEntityModal()"><span class="mb-ico">📋</span><span class="mb-text">엔티티 추가</span><span class="mb-kbd">N</span></div>
-        <div class="mb-item" onclick="mbClose();openAddRelationModal()"><span class="mb-ico">⟷</span><span class="mb-text">관계 추가</span><span class="mb-kbd">R</span></div>
+        <div class="mb-item" id="mbi-section" onclick="mbClose();toggleSectionMode()"><span class="mb-chk"></span><span class="mb-text">섹션 모드</span></div>
+        <div class="mb-item" id="mbi-snap" onclick="mbClose();toggleGridSnap()"><span class="mb-chk"></span><span class="mb-text">그리드 스냅</span></div>
         <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();openAISchemaModal()"><span class="mb-ico">🤖</span><span class="mb-text">AI 스키마 생성</span></div>
         <div class="mb-sep"></div>
@@ -65,16 +64,23 @@
     <div class="mb-menu" onmouseenter="mbHover('view')">
       <span class="mb-lbl" onclick="mbToggle('view')">보기</span>
       <div class="mb-drop" id="mb-drop-view">
-        <div class="mb-item" id="mbi-logical" onclick="mbClose();setViewMode('logical')"><span class="mb-chk"></span><span class="mb-text">논리 보기</span></div>
-        <div class="mb-item" id="mbi-physical" onclick="mbClose();setViewMode('physical')"><span class="mb-chk"></span><span class="mb-text">물리 보기</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" id="mbi-notation" onclick="mbClose();toggleNotation()"><span class="mb-chk"></span><span class="mb-text">크로우풋 표기</span></div>
-        <div class="mb-item" id="mbi-snap" onclick="mbClose();toggleGridSnap()"><span class="mb-chk"></span><span class="mb-text">그리드 스냅</span></div>
-        <div class="mb-item" id="mbi-section" onclick="mbClose();toggleSectionMode()"><span class="mb-chk"></span><span class="mb-text">섹션 모드</span></div>
+        <div class="mb-item" onclick="mbClose();openThemeModal()"><span class="mb-ico">🎨</span><span class="mb-text">테마 변경</span></div>
         <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();resetView()"><span class="mb-ico">↺</span><span class="mb-text">뷰 초기화</span></div>
         <div class="mb-item" onclick="mbClose();fitAll()"><span class="mb-ico">⊟</span><span class="mb-text">전체 맞춤</span><span class="mb-kbd">Home</span></div>
         <div class="mb-sep"></div>
+        <div class="mb-grp">배치</div>
+        <div class="mb-item" onclick="mbClose();autoLayout('hierarchical')"><span class="mb-ico">⋹</span><span class="mb-text">계층형 배치</span></div>
+        <div class="mb-item" onclick="mbClose();autoLayout('grid')"><span class="mb-ico">⊞</span><span class="mb-text">격자형 배치</span></div>
+        <div class="mb-item" onclick="mbClose();autoLayout('circular')"><span class="mb-ico">◯</span><span class="mb-text">원형 배치</span></div>
+        <div class="mb-item" onclick="mbClose();deOverlapLines('관계선 겹침 해소 중...')"><span class="mb-ico">⇌</span><span class="mb-text">선 겹침 해소</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">표기법</div>
+        <div class="mb-item" id="mbi-logical" onclick="mbClose();setViewMode('logical')"><span class="mb-chk"></span><span class="mb-text">논리 보기</span></div>
+        <div class="mb-item" id="mbi-physical" onclick="mbClose();setViewMode('physical')"><span class="mb-chk"></span><span class="mb-text">물리 보기</span></div>
+        <div class="mb-item" id="mbi-notation" onclick="mbClose();toggleNotation()"><span class="mb-chk"></span><span class="mb-text">크로우풋 표기</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">정렬</div>
         <div class="mb-item" onclick="mbClose();alignEntities('left')"><span class="mb-ico">◧</span><span class="mb-text">왼쪽 정렬</span></div>
         <div class="mb-item" onclick="mbClose();alignEntities('hcenter')"><span class="mb-ico">↔</span><span class="mb-text">수평 중앙 정렬</span></div>
         <div class="mb-item" onclick="mbClose();alignEntities('right')"><span class="mb-ico">◨</span><span class="mb-text">오른쪽 정렬</span></div>
@@ -86,56 +92,82 @@
       </div>
     </div>
 
-    <!-- 배치 -->
-    <div class="mb-menu" onmouseenter="mbHover('layout')">
-      <span class="mb-lbl" onclick="mbToggle('layout')">배치</span>
-      <div class="mb-drop" id="mb-drop-layout">
-        <div class="mb-item" onclick="mbClose();autoLayout('hierarchical')"><span class="mb-ico">⋹</span><span class="mb-text">계층형 배치</span></div>
-        <div class="mb-item" onclick="mbClose();autoLayout('grid')"><span class="mb-ico">⊞</span><span class="mb-text">격자형 배치</span></div>
-        <div class="mb-item" onclick="mbClose();autoLayout('circular')"><span class="mb-ico">◯</span><span class="mb-text">원형 배치</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();deOverlapLines('관계선 겹침 해소 중...')"><span class="mb-ico">⇌</span><span class="mb-text">선 겹침 해소</span></div>
-      </div>
-    </div>
-
     <!-- 도구 -->
     <div class="mb-menu" onmouseenter="mbHover('tools')">
       <span class="mb-lbl" onclick="mbToggle('tools')">도구</span>
       <div class="mb-drop" id="mb-drop-tools">
         <div class="mb-item" onclick="mbClose();openSearch()"><span class="mb-ico">🔍</span><span class="mb-text">검색</span><span class="mb-kbd">Ctrl+F</span></div>
-        <div class="mb-item" onclick="mbClose();openShortcutsModal()"><span class="mb-ico">⌨</span><span class="mb-text">단축키 목록</span></div>
         <div class="mb-sep"></div>
+        <div class="mb-grp">탬플릿</div>
+        <div class="mb-item" onclick="mbClose();openTemplateModal()"><span class="mb-ico">📎</span><span class="mb-text">컬럼 탬플릿 관리</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">SQL</div>
         <div class="mb-item" onclick="mbClose();openSqlRunner()"><span class="mb-ico">🗄</span><span class="mb-text">SQL 실행기</span></div>
         <div class="mb-item" onclick="mbClose();openJoinExplorer()"><span class="mb-ico">🔗</span><span class="mb-text">JOIN 경로 탐색기</span></div>
-        <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();runNormalizeDiagnosis()"><span class="mb-ico">⚠</span><span class="mb-text">정규화 진단</span></div>
         <div class="mb-item" onclick="mbClose();clearNormDiagnosis()"><span class="mb-ico">✓</span><span class="mb-text">진단 배지 제거</span></div>
         <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();openTemplateModal()"><span class="mb-ico">📎</span><span class="mb-text">컬럼 템플릿 관리</span></div>
-        <div class="mb-sep"></div>
+        <div class="mb-grp">스냅샷</div>
         <div class="mb-item" onclick="mbClose();saveSnapshot()"><span class="mb-ico">📷</span><span class="mb-text">스냅샷 저장</span></div>
         <div class="mb-item" onclick="mbClose();openSnapshotListModal()"><span class="mb-ico">📋</span><span class="mb-text">스냅샷 목록</span></div>
         <div class="mb-item" onclick="mbClose();openTimelineModal()"><span class="mb-ico">⏱</span><span class="mb-text">타임라인 슬라이더</span></div>
       </div>
     </div>
 
-    <!-- 설정 -->
-    <div class="mb-menu" onmouseenter="mbHover('settings')">
-      <span class="mb-lbl" onclick="mbToggle('settings')">설정</span>
-      <div class="mb-drop" id="mb-drop-settings">
-        <div class="mb-item" onclick="mbClose();openThemeModal()"><span class="mb-ico">🎨</span><span class="mb-text">테마 변경</span></div>
+    <!-- 공유 -->
+    <div class="mb-menu" onmouseenter="mbHover('share')">
+      <span class="mb-lbl" onclick="mbToggle('share')">공유</span>
+      <div class="mb-drop" id="mb-drop-share">
         <div class="mb-item" onclick="mbClose();openRtcModal()"><span class="mb-ico">🔗</span><span class="mb-text">P2P 실시간 협업</span></div>
         <div class="mb-item" id="ddItemBcSync" onclick="mbClose();toggleBcSync()"><span class="mb-chk"></span><span class="mb-text">탭 동기화</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-item" onclick="mbClose();generateShareUrl()"><span class="mb-ico">🔗</span><span class="mb-text">공유 URL 생성</span></div>
+      </div>
+    </div>
+
+    <!-- Help -->
+    <div class="mb-menu" onmouseenter="mbHover('help')">
+      <span class="mb-lbl" onclick="mbToggle('help')">Help</span>
+      <div class="mb-drop" id="mb-drop-help">
+        <div class="mb-item" onclick="mbClose();openShortcutsModal()"><span class="mb-ico">⌨</span><span class="mb-text">단축키 목록</span></div>
       </div>
     </div>
 
   </div><!-- /.mb-menus -->
 
   <div class="mb-right">
+    <button class="mb-zoom-btn" id="quickbarToggleBtn" onclick="toggleQuickbar()" title="빠른 실행 도구 모음 접기/펼치기">▼</button>
+    <div class="mb-vsep"></div>
     <button class="mb-zoom-btn" onclick="zoom(0.87)" title="축소 (Ctrl+-)">－</button>
     <span id="zoomLabel">100%</span>
     <button class="mb-zoom-btn" onclick="zoom(1.15)" title="확대 (Ctrl++)">＋</button>
   </div>
+</div>
+
+<!-- ── Quick Access Toolbar ─────────────────── -->
+<div id="quickbar">
+  <button class="qb-btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩</button>
+  <button class="qb-btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪</button>
+  <div class="qb-sep"></div>
+  <button class="qb-btn" onclick="openAddEntityModal()" title="엔티티 추가 (N)">＋</button>
+  <button class="qb-btn" onclick="openAddRelationModal()" title="관계 추가 (R)">↔</button>
+  <div class="qb-sep"></div>
+  <button class="qb-btn" onclick="exportData()" title="JSON 내보내기 (Ctrl+S)">💾</button>
+  <div class="qb-sep"></div>
+  <button class="qb-btn" onclick="fitAll()" title="전체 맞춤 (Home)">⊟</button>
+  <button class="qb-btn" onclick="resetView()" title="뷰 초기화">↺</button>
+  <div class="qb-sep"></div>
+  <button class="qb-btn qb-text" id="qb-logical" onclick="setViewMode('logical')" title="논리 보기">논리</button>
+  <button class="qb-btn qb-text" id="qb-physical" onclick="setViewMode('physical')" title="물리 보기">물리</button>
+  <div class="qb-sep"></div>
+  <button class="qb-btn" id="qb-snap" onclick="toggleGridSnap()" title="그리드 스냅">⊞</button>
+  <button class="qb-btn" id="qb-section" onclick="toggleSectionMode()" title="섹션 모드">▭</button>
+  <div class="qb-sep"></div>
+  <button class="qb-btn" onclick="openSearch()" title="검색 (Ctrl+F)">🔍</button>
+  <button class="qb-btn" onclick="saveSnapshot()" title="스냅샷 저장">📷</button>
+  <div id="qb-custom-sep" class="qb-sep" style="display:none"></div>
+  <div id="qb-custom-area" style="display:contents"></div>
+  <div id="qb-drop-hint" class="qb-drop-hint" style="display:none">메뉴 항목을 여기로 드래그</div>
 </div>
 
 <!-- ── Search Panel ──────────────────────────── -->

@@ -14,7 +14,7 @@ function handleFullBackupImport(e) {
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (data.backupVersion !== 1 || !data.main || !Array.isArray(data.main.diagrams)) {
+      if (!data.backupVersion || !data.main || !Array.isArray(data.main.diagrams)) {
         alert('전체 백업 파일 형식이 아닙니다.\n일반 JSON은 "JSON 불러오기"를 사용하세요.');
         e.target.value = '';
         return;
@@ -22,9 +22,11 @@ function handleFullBackupImport(e) {
       const diagCount = data.main.diagrams.length;
       const snapCount = (data.snapshots || []).length;
       const tmplCount = (data.templates || []).length;
+      const hasSettings = !!data.settings;
       const exportedAt = data.exportedAt ? new Date(data.exportedAt).toLocaleString('ko-KR') : '알 수 없음';
+      const settingsLine = hasSettings ? '\n테마 · 퀵바 설정 포함' : '';
       askConfirm(
-        `전체 백업을 복원합니다.\n\n내보낸 일시: ${exportedAt}\n다이어그램 ${diagCount}개 · 스냅샷 ${snapCount}개 · 템플릿 ${tmplCount}개\n\n현재의 모든 데이터와 설정이 교체됩니다.`,
+        `전체 백업을 복원합니다.\n\n내보낸 일시: ${exportedAt}\n다이어그램 ${diagCount}개 · 스냅샷 ${snapCount}개 · 템플릿 ${tmplCount}개${settingsLine}\n\n현재의 모든 데이터와 설정이 교체됩니다.`,
         () => {
           try {
             const m = data.main;
@@ -40,6 +42,31 @@ function handleFullBackupImport(e) {
             SNAPSHOTS = Array.isArray(data.snapshots) ? data.snapshots : [];
             persistSnapshots();
             if (Array.isArray(data.templates)) saveTemplates(data.templates);
+
+            // ── 설정 복원 (backupVersion 2+) ──────────────────────
+            if (hasSettings) {
+              const s = data.settings;
+              if (s.theme && typeof applyTheme === 'function') {
+                try { localStorage.setItem(THEME_STORAGE, s.theme); } catch {}
+                applyTheme(s.theme, false);
+              }
+              if (s.qbOpen !== undefined) {
+                try { localStorage.setItem('_qbOpen', s.qbOpen); } catch {}
+                _quickbarOpen = (s.qbOpen !== '0');
+                _applyQuickbarState();
+              }
+              if (s.qbCustom) {
+                try { localStorage.setItem('_qbCustom', s.qbCustom); } catch {}
+                try {
+                  _qbCustomItems = JSON.parse(s.qbCustom) || [];
+                  _renderCustomQbItems();
+                } catch {}
+              }
+              if (s.aiKey) {
+                try { localStorage.setItem(AI_KEY_STORAGE, s.aiKey); } catch {}
+              }
+            }
+
             const mainSnap = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
             try { localStorage.setItem(STORAGE_KEY, mainSnap); } catch {}
             undoStack = [mainSnap]; redoStack = [];

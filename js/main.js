@@ -2,6 +2,7 @@
 loadSnapshots();
 loadSavedTheme();
 loadToolboxState();
+loadQuickbarState();
 
 // 공유 URL(?erd=) 복원 — 성공하면 loadState를 건너뜀
 if (typeof tryRestoreFromUrl === 'function' && tryRestoreFromUrl()) {

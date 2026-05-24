@@ -42,6 +42,7 @@ let sectionDragOffset = { x: 0, y: 0 };
 let resizingSection = null;
 let resizeDir = null;
 let resizeStart = null;
+let _didMove = false; // 실제 이동이 발생했는지 추적 (단순 클릭 제외)
 let nextSectionColorIdx = 0;
 
 // ── 메모 상태 ────────────────────────────────────────────────────
@@ -1610,6 +1611,7 @@ canvas.addEventListener('mousedown', e => {
       selectedEntity = hitEnt;
       draggingEntity = hitEnt;
       dragOffset = { x: w.x - hitEnt.x, y: w.y - hitEnt.y };
+      _didMove = false;
       canvas.classList.add('dragging');
       const idx = ENTITIES.indexOf(hitEnt);
       ENTITIES.splice(idx, 1); ENTITIES.push(hitEnt);
@@ -1619,6 +1621,7 @@ canvas.addEventListener('mousedown', e => {
     selectedEntity = hitEnt;
     draggingEntity = hitEnt;
     dragOffset = { x: w.x - hitEnt.x, y: w.y - hitEnt.y };
+    _didMove = false;
     canvas.classList.add('dragging');
     const idx = ENTITIES.indexOf(hitEnt);
     ENTITIES.splice(idx, 1); ENTITIES.push(hitEnt);
@@ -1651,6 +1654,7 @@ canvas.addEventListener('mousedown', e => {
       } : {},
       startWorld: { x: w.x, y: w.y }
     };
+    _didMove = false;
     if (type === 'seg') {
       const path = getRelationPath(rel);
       if (path && path.waypoints[segIdx]) {
@@ -1668,6 +1672,7 @@ canvas.addEventListener('mousedown', e => {
     resizingSection = section;
     resizeDir = dir;
     resizeStart = { wx: w.x, wy: w.y, x: section.x, y: section.y, w: section.w, h: section.h };
+    _didMove = false;
     canvas.style.cursor = resizeCursor(dir);
     render(); return;
   }
@@ -1678,6 +1683,7 @@ canvas.addEventListener('mousedown', e => {
     selectedSection = hitSec;
     draggingSection = hitSec;
     sectionDragOffset = { x: w.x - hitSec.x, y: w.y - hitSec.y };
+    _didMove = false;
     canvas.classList.add('dragging');
     render(); return;
   }
@@ -1721,6 +1727,7 @@ canvas.addEventListener('mousemove', e => {
     if (resizeDir.includes('n')) { const nh = Math.max(MIN_H, rh - dy); ry = ry + rh - nh; rh = nh; }
     resizingSection.x = rx; resizingSection.y = ry;
     resizingSection.w = rw; resizingSection.h = rh;
+    _didMove = true;
     canvas.style.cursor = resizeCursor(resizeDir);
     render(); return;
   }
@@ -1734,6 +1741,7 @@ canvas.addEventListener('mousemove', e => {
       const ent = ENTITIES.find(en => en.id === id);
       if (ent) { ent.x += dx; ent.y += dy; }
     });
+    _didMove = true;
     render(); return;
   }
   if (draggingEntity) {
@@ -1750,6 +1758,7 @@ canvas.addEventListener('mousemove', e => {
       draggingEntity.x = newX;
       draggingEntity.y = newY;
     }
+    _didMove = true;
     render(); return;
   }
   if (draggingSegment) {
@@ -1789,6 +1798,7 @@ canvas.addEventListener('mousemove', e => {
         delete rel.bend.toOff;
       }
     }
+    _didMove = true;
     render(); return;
   }
   if (resizingNote) {
@@ -1923,7 +1933,7 @@ canvas.addEventListener('mouseup', e => {
   }
   if (resizingNote) { resizingNote = null; noteResizeStart = null; canvas.style.cursor = ''; canvas.classList.remove('dragging'); saveState(); return; }
   if (draggingNote) { draggingNote = null; canvas.classList.remove('dragging'); saveState(); return; }
-  const wasDragging = draggingEntity || draggingSegment || draggingSection || resizingSection || panStart || selectionBox;
+  const wasDragging = _didMove && (draggingEntity || draggingSegment || draggingSection || resizingSection);
   if (gridSnap && draggingEntity) {
     draggingEntity.x = Math.round(draggingEntity.x / GRID) * GRID;
     draggingEntity.y = Math.round(draggingEntity.y / GRID) * GRID;
