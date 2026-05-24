@@ -49,25 +49,158 @@ document.addEventListener('click', e => {
 });
 
 function syncToolDropdownLabels() {
-  // 논리/물리
+  // 메뉴바 체크 표시
   const logEl = document.getElementById('mbi-logical');
   const phyEl = document.getElementById('mbi-physical');
   if (logEl) logEl.querySelector('.mb-chk').textContent = viewMode === 'logical' ? '✓' : '';
   if (phyEl) phyEl.querySelector('.mb-chk').textContent = viewMode === 'physical' ? '✓' : '';
-  // 크로우풋
   const notEl = document.getElementById('mbi-notation');
   if (notEl) notEl.querySelector('.mb-chk').textContent = notationStyle === 'crowsfoot' ? '✓' : '';
-  // 그리드 스냅
   const snapEl = document.getElementById('mbi-snap');
   if (snapEl) snapEl.querySelector('.mb-chk').textContent = gridSnap ? '✓' : '';
-  // 섹션 모드
   const secEl = document.getElementById('mbi-section');
   if (secEl) secEl.querySelector('.mb-chk').textContent = sectionMode ? '✓' : '';
+  // 퀵바 토글 버튼 활성 상태
+  document.getElementById('qb-logical')?.classList.toggle('active', viewMode === 'logical');
+  document.getElementById('qb-physical')?.classList.toggle('active', viewMode === 'physical');
+  document.getElementById('qb-snap')?.classList.toggle('active', !!gridSnap);
+  document.getElementById('qb-section')?.classList.toggle('active', !!sectionMode);
 }
 
 // 툴박스 함수 (no-op — menubar로 대체)
 function loadToolboxState() {}
 function toggleToolbox() {}
+
+// ── 빠른 실행 도구 모음 ───────────────────────────────────────
+let _quickbarOpen = true;
+
+function _applyQuickbarState() {
+  const qb    = document.getElementById('quickbar');
+  const btn   = document.getElementById('quickbarToggleBtn');
+  const panel = document.getElementById('diagramPanel');
+  if (_quickbarOpen) {
+    if (qb)    qb.style.display = 'flex';
+    if (panel) panel.style.top  = '60px';
+    if (btn)   btn.textContent  = '▼';
+  } else {
+    if (qb)    qb.style.display = 'none';
+    if (panel) panel.style.top  = '32px';
+    if (btn)   btn.textContent  = '▶';
+  }
+}
+
+function toggleQuickbar() {
+  _quickbarOpen = !_quickbarOpen;
+  _applyQuickbarState();
+  try { localStorage.setItem('_qbOpen', _quickbarOpen ? '1' : '0'); } catch {}
+}
+
+function loadQuickbarState() {
+  const saved = localStorage.getItem('_qbOpen');
+  _quickbarOpen = (saved !== '0');
+  _applyQuickbarState();
+  _loadCustomQbItems();
+  _initQuickbarDnd();
+}
+
+// ── 퀵바 커스텀 버튼 (드래그 앤 드롭) ────────────────────────
+let _qbCustomItems = [];
+
+function _renderCustomQbItems() {
+  const area = document.getElementById('qb-custom-area');
+  const sep  = document.getElementById('qb-custom-sep');
+  if (!area) return;
+  area.innerHTML = '';
+  if (sep) sep.style.display = _qbCustomItems.length ? '' : 'none';
+  _qbCustomItems.forEach((item, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'qb-btn qb-cbtn';
+    btn.title = item.text;
+    const ico = document.createElement('span');
+    ico.textContent = item.icon;
+    // 한글 텍스트 아이콘이면 작게 표시
+    if (/[가-힣]/.test(item.icon)) ico.style.cssText = 'font-size:11px;font-weight:bold';
+    const del = document.createElement('span');
+    del.className = 'qb-cbtn-del';
+    del.textContent = '×';
+    del.title = '제거';
+    del.addEventListener('click', e => {
+      e.stopPropagation();
+      _qbCustomItems.splice(idx, 1);
+      _renderCustomQbItems();
+      _saveCustomQbItems();
+    });
+    btn.appendChild(ico);
+    btn.appendChild(del);
+    btn.addEventListener('click', e => {
+      if (e.target === del) return;
+      try { new Function(item.action)(); } catch {}
+    });
+    area.appendChild(btn);
+  });
+}
+
+function _saveCustomQbItems() {
+  try { localStorage.setItem('_qbCustom', JSON.stringify(_qbCustomItems)); } catch {}
+}
+
+function _loadCustomQbItems() {
+  try {
+    const raw = localStorage.getItem('_qbCustom');
+    if (raw) _qbCustomItems = JSON.parse(raw);
+  } catch {}
+  _renderCustomQbItems();
+}
+
+function _initQuickbarDnd() {
+  // 메뉴 아이템에 draggable 부여
+  document.querySelectorAll('.mb-item').forEach(item => {
+    const ico    = item.querySelector('.mb-ico')?.textContent?.trim() || '';
+    const txt    = item.querySelector('.mb-text')?.textContent?.trim() || '';
+    const action = (item.getAttribute('onclick') || '').replace(/^mbClose\(\);\s*/, '').trim();
+    if (!action || !txt) return;
+    item.draggable = true;
+    item.style.cursor = 'grab';
+    item.addEventListener('dragstart', e => {
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('application/qb-item', JSON.stringify({
+        icon: ico || txt.slice(0, 1),
+        text: txt,
+        action
+      }));
+    });
+  });
+
+  const qb = document.getElementById('quickbar');
+  if (!qb) return;
+
+  qb.addEventListener('dragover', e => {
+    if (!e.dataTransfer.types.includes('application/qb-item')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    qb.classList.add('qb-drag-over');
+  });
+  qb.addEventListener('dragleave', e => {
+    if (!qb.contains(e.relatedTarget)) qb.classList.remove('qb-drag-over');
+  });
+  qb.addEventListener('drop', e => {
+    e.preventDefault();
+    qb.classList.remove('qb-drag-over');
+    const raw = e.dataTransfer.getData('application/qb-item');
+    if (!raw) return;
+    try {
+      const newItem = JSON.parse(raw);
+      if (_qbCustomItems.some(i => i.action === newItem.action)) {
+        showToast('이미 등록된 항목입니다.');
+        return;
+      }
+      _qbCustomItems.push(newItem);
+      _renderCustomQbItems();
+      _saveCustomQbItems();
+      showToast(`"${newItem.text}" 추가됨`);
+    } catch {}
+  });
+}
 
 // ── 범례 / 미니맵 토글 ───────────────────────────────────────────
 function toggleLegend() {
@@ -89,6 +222,7 @@ function toggleMinimap() {
 // ── 검색 ─────────────────────────────────────────────────────────
 function openSearch() {
   const p = document.getElementById('searchPanel');
+  p.style.top = (_quickbarOpen ? '64px' : '36px');
   p.style.display = 'block';
   const inp = document.getElementById('searchInput');
   inp.value = '';

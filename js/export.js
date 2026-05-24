@@ -78,12 +78,18 @@ async function exportData() {
 async function exportFullBackup() {
   flushCurrentState();
   const data = {
-    backupVersion: 1,
+    backupVersion: 2,
     exportedAt: new Date().toISOString(),
     appVersion: 'bsss-erd',
     main: { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap },
     snapshots: JSON.parse(JSON.stringify(SNAPSHOTS)),
-    templates: loadTemplates()
+    templates: loadTemplates(),
+    settings: {
+      theme:     localStorage.getItem(THEME_STORAGE) || null,
+      qbOpen:    localStorage.getItem('_qbOpen') ?? '1',
+      qbCustom:  localStorage.getItem('_qbCustom') || '[]',
+      aiKey:     localStorage.getItem(AI_KEY_STORAGE) || ''
+    }
   };
   const text = JSON.stringify(data, null, 2);
   const filename = 'bsss_erd_backup_' + new Date().toISOString().slice(0, 10) + '.json';
