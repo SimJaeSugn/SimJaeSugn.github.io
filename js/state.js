@@ -119,6 +119,8 @@ function redo() {
 
 function restoreFromSnapshot(s) {
   if (!Array.isArray(s.diagrams) || !s.diagrams.length) return;
+  // 뷰포트는 undo/redo 대상에서 제외 — 현재 값을 그대로 유지
+  const curVx = vx, curVy = vy, curScale = scale;
   diagrams = s.diagrams.map(d => { d.entities = (d.entities || []).map(migrateEntity); return d; });
   if (s.viewMode) viewMode = s.viewMode;
   if (s.notationStyle) { notationStyle = s.notationStyle; }
@@ -127,6 +129,9 @@ function restoreFromSnapshot(s) {
   activeDiagramId = s.activeDiagramId && diagrams.find(d => d.id === s.activeDiagramId)
     ? s.activeDiagramId : diagrams[0].id;
   loadDiagramIntoWorkspace(getActiveDiagram());
+  vx = curVx; vy = curVy; scale = curScale;
+  const active = getActiveDiagram();
+  if (active) { active.vx = curVx; active.vy = curVy; active.scale = curScale; }
   renderDiagramPanel();
   updateZoomLabel();
   render();

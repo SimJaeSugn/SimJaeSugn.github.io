@@ -1544,9 +1544,9 @@ function zoom(factor) {
   const wx = (cx - vx) / scale, wy = (cy - vy) / scale;
   scale = Math.max(0.3, Math.min(3, scale * factor));
   vx = cx - wx * scale; vy = cy - wy * scale;
-  updateZoomLabel(); render(); saveState();
+  updateZoomLabel(); render();
 }
-function resetView() { scale = 1; vx = 40; vy = 40; updateZoomLabel(); render(); saveState(); }
+function resetView() { scale = 1; vx = 40; vy = 40; updateZoomLabel(); render(); }
 window.addEventListener('resize', render);
 
 // ── 캔버스 이벤트 리스너 ─────────────────────────────────────
