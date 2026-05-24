@@ -36,6 +36,7 @@ let sectionMode = false;
 let drawingSection = null;
 let hoveredSection = null;
 let selectedSection = null;
+let selectedSections = new Set();
 let draggingSection = null;
 let sectionDragOffset = { x: 0, y: 0 };
 let resizingSection = null;
@@ -1363,7 +1364,7 @@ function drawSectionShape(s, highlighted, isDrawing) {
 
 function drawSections() {
   SECTIONS.forEach(s => {
-    drawSectionShape(s, s === hoveredSection || s === selectedSection, false);
+    drawSectionShape(s, s === hoveredSection || selectedSections.has(s), false);
   });
   if (drawingSection) {
     const { x, y, x2, y2 } = drawingSection;
@@ -1560,6 +1561,8 @@ canvas.addEventListener('mousedown', e => {
   }
 
   selectedSection = null;
+  const _prevSec = new Set(selectedSections);
+  selectedSections.clear();
   // ① 메모 탭 바 클릭 → 탭 전환 (드래그/리사이즈보다 우선)
   const hitNtTab = !sectionMode ? hitTestNoteTab(w.x, w.y) : null;
   if (hitNtTab) {
@@ -1603,6 +1606,7 @@ canvas.addEventListener('mousedown', e => {
       render(); return;
     }
     if (selectedEntities.size > 1 && selectedEntities.has(hitEnt.id)) {
+      _prevSec.forEach(s => selectedSections.add(s));
       selectedEntity = hitEnt;
       draggingEntity = hitEnt;
       dragOffset = { x: w.x - hitEnt.x, y: w.y - hitEnt.y };
@@ -1660,7 +1664,7 @@ canvas.addEventListener('mousedown', e => {
   const hitSecResize = hitTestSectionResize(w.x, w.y);
   if (hitSecResize) {
     const { section, dir } = hitSecResize;
-    selectedSection = section;
+    selectedSection = section; selectedSections = new Set([section]);
     resizingSection = section;
     resizeDir = dir;
     resizeStart = { wx: w.x, wy: w.y, x: section.x, y: section.y, w: section.w, h: section.h };
@@ -1669,6 +1673,8 @@ canvas.addEventListener('mousedown', e => {
   }
   const hitSec = hitTestSectionLabel(w.x, w.y);
   if (hitSec) {
+    if (_prevSec.has(hitSec)) { _prevSec.forEach(s => selectedSections.add(s)); }
+    else { selectedSections.add(hitSec); }
     selectedSection = hitSec;
     draggingSection = hitSec;
     sectionDragOffset = { x: w.x - hitSec.x, y: w.y - hitSec.y };
@@ -1719,8 +1725,15 @@ canvas.addEventListener('mousemove', e => {
     render(); return;
   }
   if (draggingSection) {
-    draggingSection.x = w.x - sectionDragOffset.x;
-    draggingSection.y = w.y - sectionDragOffset.y;
+    const newX = w.x - sectionDragOffset.x;
+    const newY = w.y - sectionDragOffset.y;
+    const dx = newX - draggingSection.x, dy = newY - draggingSection.y;
+    selectedSections.forEach(s => { s.x += dx; s.y += dy; });
+    if (!selectedSections.has(draggingSection)) { draggingSection.x = newX; draggingSection.y = newY; }
+    selectedEntities.forEach(id => {
+      const ent = ENTITIES.find(en => en.id === id);
+      if (ent) { ent.x += dx; ent.y += dy; }
+    });
     render(); return;
   }
   if (draggingEntity) {
@@ -1732,6 +1745,7 @@ canvas.addEventListener('mousemove', e => {
         const ent = ENTITIES.find(en => en.id === id);
         if (ent) { ent.x += dx; ent.y += dy; }
       });
+      selectedSections.forEach(s => { s.x += dx; s.y += dy; });
     } else {
       draggingEntity.x = newX;
       draggingEntity.y = newY;
@@ -1928,10 +1942,16 @@ canvas.addEventListener('mouseup', e => {
     if (boxW > 10 && boxH > 10) {
       ENTITIES.forEach(ent => {
         const eh = entityHeight(ent);
-        if (ent.x < ex2 && ent.x + W > sx && ent.y < ey2 && ent.y + eh > sy) {
+        if (ent.x >= sx && ent.x + W <= ex2 && ent.y >= sy && ent.y + eh <= ey2) {
           selectedEntities.add(ent.id);
         }
       });
+      SECTIONS.forEach(s => {
+        if (s.x >= sx && s.x + s.w <= ex2 && s.y >= sy && s.y + s.h <= ey2) {
+          selectedSections.add(s);
+        }
+      });
+      selectedSection = selectedSections.size === 1 ? [...selectedSections][0] : null;
     }
     selectionBox = null;
   }
@@ -2004,7 +2024,7 @@ canvas.addEventListener('contextmenu', e => {
   ctxTargetSection = null; ctxTargetNote = null;
   if (hitEnt)      { ctxTargetEntity = hitEnt;  ctxTargetRelation = null; showCtxMenu(e.clientX, e.clientY, 'entity'); }
   else if (hitRel) { ctxTargetEntity = null; ctxTargetRelation = hitRel; showCtxMenu(e.clientX, e.clientY, 'relation'); }
-  else if (hitSec) { ctxTargetEntity = null; ctxTargetRelation = null; ctxTargetSection = hitSec; selectedSection = hitSec; render(); showCtxMenu(e.clientX, e.clientY, 'section'); }
+  else if (hitSec) { ctxTargetEntity = null; ctxTargetRelation = null; ctxTargetSection = hitSec; selectedSection = hitSec; selectedSections = new Set([hitSec]); render(); showCtxMenu(e.clientX, e.clientY, 'section'); }
   else if (hitNt)  { ctxTargetEntity = null; ctxTargetRelation = null; ctxTargetNote = hitNt; showCtxMenu(e.clientX, e.clientY, 'note'); }
   else             { ctxTargetEntity = null; ctxTargetRelation = null; showCtxMenu(e.clientX, e.clientY, 'canvas'); }
 });
