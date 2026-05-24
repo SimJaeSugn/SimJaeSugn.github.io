@@ -1,6 +1,6 @@
 /* ── Diagram Panel (right side) ──────────────── */
 #diagramPanel {
-  position: fixed; top: 0; right: 0; bottom: 0; width: 240px;
+  position: fixed; top: 32px; right: 0; bottom: 0; width: 240px;
   background: var(--bg-panel-overlay); border-left: 1px solid var(--bd);
   z-index: 90; display: flex; flex-direction: column;
   box-shadow: -4px 0 24px rgba(0,0,0,0.5);
