@@ -1,6 +1,6 @@
 {
   "backupVersion": 2,
-  "exportedAt": "2026-05-24T07:57:04.881Z",
+  "exportedAt": "2026-05-24T08:12:43.164Z",
   "appVersion": "bsss-erd",
   "main": {
     "diagrams": [
@@ -1395,9 +1395,9 @@
             }
           }
         ],
-        "vx": 428.3741355026971,
-        "vy": 211.3832998404887,
-        "scale": 0.41352632602140166,
+        "vx": 321.9980348175377,
+        "vy": 171.13643252049997,
+        "scale": 0.5530834394868246,
         "sections": [
           {
             "id": "sec_mpgf08v0a1",
@@ -2559,9 +2559,9 @@
     }
   ],
   "settings": {
-    "theme": "dark",
+    "theme": "frappe",
     "qbOpen": "1",
-    "qbCustom": "[{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"}]",
+    "qbCustom": "[{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"},{\"icon\":\"⌨\",\"text\":\"단축키 목록\",\"action\":\"openShortcutsModal()\"}]",
     "aiKey": ""
   }
 }
