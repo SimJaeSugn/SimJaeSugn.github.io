@@ -146,6 +146,7 @@
 
 <!-- ── Quick Access Toolbar ─────────────────── -->
 <div id="quickbar">
+  <div id="qb-dock-handle" class="qb-dock-handle" title="드래그하여 도킹 위치 변경 (상단 ↔ 좌측)">⣿</div>
   <button class="qb-btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩</button>
   <button class="qb-btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪</button>
   <div class="qb-sep"></div>
@@ -170,6 +171,9 @@
   <div id="qb-drop-hint" class="qb-drop-hint" style="display:none">메뉴 항목을 여기로 드래그</div>
   <button class="qb-btn" id="qb-size-btn" onclick="toggleQuickbarSize()" title="대형 크기로 전환">⊕</button>
 </div>
+
+<!-- ── Dock Ghost ──────────────────────────────── -->
+<div id="qb-dock-ghost"></div>
 
 <!-- ── Search Panel ──────────────────────────── -->
 <div id="searchPanel" style="display:none;position:fixed;top:36px;left:50%;transform:translateX(-50%);z-index:300;background:rgba(30,30,46,0.97);border:1px solid #45475a;border-radius:10px;box-shadow:0 6px 28px rgba(0,0,0,0.55);padding:10px 12px;min-width:300px;max-width:400px;">

@@ -90,49 +90,122 @@ function toggleToolbox() {}
 // ── 빠른 실행 도구 모음 ───────────────────────────────────────
 let _quickbarOpen = true;
 let _qbLarge = false;
+let _qbDock  = 'top'; // 'top' | 'left'
 
 function _qbBarH() { return _qbLarge ? 40 : 28; }
+function _qbBarW() { return _qbLarge ? 52 : 42; }
 
 function _applyQuickbarState() {
   const qb      = document.getElementById('quickbar');
   const btn     = document.getElementById('quickbarToggleBtn');
   const panel   = document.getElementById('diagramPanel');
   const sizeBtn = document.getElementById('qb-size-btn');
-  if (qb) qb.classList.toggle('qb-large', _qbLarge);
+  const isLeft  = _qbDock === 'left';
+
+  if (qb) {
+    qb.classList.toggle('qb-large', _qbLarge);
+    qb.classList.toggle('qb-left',  isLeft);
+  }
   if (sizeBtn) {
     sizeBtn.textContent = _qbLarge ? '⊖' : '⊕';
     sizeBtn.title = _qbLarge ? '기본 크기로 전환' : '대형 크기로 전환';
   }
   if (_quickbarOpen) {
-    if (qb)    qb.style.display = 'flex';
-    if (panel) panel.style.top  = (32 + _qbBarH()) + 'px';
-    if (btn)   btn.textContent  = '▼';
+    if (qb) qb.style.display = 'flex';
+    // 상단 도킹: 패널 top = 메뉴바 + 퀵바 높이
+    // 좌측 도킹: 패널 top = 메뉴바만 (퀵바가 왼쪽에 있으므로)
+    if (panel) panel.style.top = isLeft ? '32px' : (32 + _qbBarH()) + 'px';
+    if (btn)   btn.textContent = '▼';
   } else {
     if (qb)    qb.style.display = 'none';
     if (panel) panel.style.top  = '32px';
     if (btn)   btn.textContent  = '▶';
   }
+
+  // 좌측 도킹 시 하단 플로팅 패널·상태바가 퀵바에 덮이지 않도록 left 보정
+  const qbLeftPx = (_quickbarOpen && isLeft) ? _qbBarW() : 0;
+  const blp = document.getElementById('bottomLeftPanel');
+  const sb  = document.getElementById('statusbar');
+  if (blp) blp.style.left = (qbLeftPx + 16) + 'px';
+  if (sb)  sb.style.left  = qbLeftPx ? qbLeftPx + 'px' : '';
 }
 
 function toggleQuickbar() {
   _quickbarOpen = !_quickbarOpen;
   _applyQuickbarState();
   try { localStorage.setItem('_qbOpen', _quickbarOpen ? '1' : '0'); } catch {}
+  if (typeof render === 'function') render();
 }
 
 function toggleQuickbarSize() {
   _qbLarge = !_qbLarge;
   _applyQuickbarState();
   try { localStorage.setItem('_qbLarge', _qbLarge ? '1' : '0'); } catch {}
+  if (typeof render === 'function') render();
 }
 
 function loadQuickbarState() {
   const saved = localStorage.getItem('_qbOpen');
   _quickbarOpen = (saved !== '0');
   _qbLarge = localStorage.getItem('_qbLarge') === '1';
+  _qbDock  = localStorage.getItem('_qbDock') || 'top';
   _applyQuickbarState();
   _loadCustomQbItems();
   _initQuickbarDnd();
+  _initQbDockDrag();
+}
+
+// ── 퀵바 도킹 드래그 ─────────────────────────────────────────
+function _initQbDockDrag() {
+  const handle = document.getElementById('qb-dock-handle');
+  const ghost  = document.getElementById('qb-dock-ghost');
+  if (!handle || !ghost) return;
+
+  handle.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    let pending = null;
+
+    function onMove(ev) {
+      const x = ev.clientX, y = ev.clientY;
+      // 왼쪽 가장자리(x<70) → 좌측 도킹, 상단(y<70, x>=70) → 상단 도킹
+      if (x < 70) {
+        pending = 'left';
+        const w = _qbBarW();
+        ghost.style.cssText =
+          `display:block;left:0;top:32px;width:${w}px;height:calc(100vh - 32px);` +
+          `position:fixed;pointer-events:none;z-index:9999;` +
+          `background:rgba(137,180,250,0.08);border:2px dashed var(--ac);border-radius:3px;`;
+      } else if (y < 70) {
+        pending = 'top';
+        const h = _qbBarH();
+        ghost.style.cssText =
+          `display:block;left:0;top:32px;width:100vw;height:${h}px;` +
+          `position:fixed;pointer-events:none;z-index:9999;` +
+          `background:rgba(137,180,250,0.08);border:2px dashed var(--ac);border-radius:3px;`;
+      } else {
+        pending = null;
+        ghost.style.display = 'none';
+      }
+    }
+
+    function onUp() {
+      ghost.style.display = 'none';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      if (pending && pending !== _qbDock) {
+        _qbDock = pending;
+        try { localStorage.setItem('_qbDock', _qbDock); } catch {}
+        _applyQuickbarState();
+        if (typeof render === 'function') render();
+      }
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
 }
 
 // ── 퀵바 커스텀 버튼 (드래그 앤 드롭) ────────────────────────
@@ -320,7 +393,17 @@ function toggleMinimap() {
 // ── 검색 ─────────────────────────────────────────────────────────
 function openSearch() {
   const p = document.getElementById('searchPanel');
-  p.style.top = (_quickbarOpen ? (32 + _qbBarH() + 4) + 'px' : '36px');
+  const isLeft = _quickbarOpen && _qbDock === 'left';
+  // 좌측 도킹 시: 퀵바 오른쪽에서 시작 / 상단 도킹 시: 중앙 정렬
+  if (isLeft) {
+    p.style.top       = '36px';
+    p.style.left      = (_qbBarW() + 4) + 'px';
+    p.style.transform = 'none';
+  } else {
+    p.style.top       = (_quickbarOpen ? (32 + _qbBarH() + 4) + 'px' : '36px');
+    p.style.left      = '50%';
+    p.style.transform = 'translateX(-50%)';
+  }
   p.style.display = 'block';
   const inp = document.getElementById('searchInput');
   inp.value = '';
@@ -555,7 +638,8 @@ function showRelLabelInlineEdit(rel) {
   const lpos = getRelLabelPositions(rel);
   if (!lpos) return;
   const [wx, wy] = lpos.label;
-  const sx = wx * scale + vx, sy = wy * scale + vy;
+  const _qlo2 = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
+  const sx = wx * scale + vx + _qlo2, sy = wy * scale + vy;
   const inp = document.createElement('input');
   inp.className = 'form-input';
   inp.value = rel.label || '';
@@ -625,8 +709,10 @@ function showNoteEdit(note) {
   const mode  = note.mode  || 'text';
 
   // 캔버스 노트의 뷰포트 좌표 (border 2px 를 -1px 보정해 딱 맞게)
+  // 좌측 도킹 시 canvas marginLeft 만큼 보정
   const BORDER = 2;
-  const sx = Math.round(note.x * scale + vx) - BORDER;
+  const _qlo   = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
+  const sx = Math.round(note.x * scale + vx) + _qlo - BORDER;
   const sy = Math.round(note.y * scale + vy) - BORDER;
   const pw = Math.round(nw * scale) + BORDER * 2;
   const ph = Math.round(nh * scale) + BORDER * 2;

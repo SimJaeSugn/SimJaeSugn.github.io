@@ -1399,7 +1399,7 @@ function syncMarkdownOverlays() {
     activeIds.add(n.id);
 
     const nw = n.w || NOTE_W, nh = n.h || NOTE_H;
-    const sx  = Math.round(n.x  * scale + vx);
+    const sx  = Math.round(n.x  * scale + vx) + _qbLeftOff(); // 좌측 도킹 뷰포트 보정
     const sy  = Math.round(n.y  * scale + vy);
     const pw  = Math.round(nw   * scale);
     const ph  = Math.round(nh   * scale);
@@ -1455,7 +1455,9 @@ function render() {
 }
 
 function renderNow() {
-  canvas.width  = window.innerWidth - (panelOpen ? PANEL_W : 0);
+  const _qlOff = _qbLeftOff();
+  canvas.style.marginLeft = _qlOff > 0 ? _qlOff + 'px' : '';
+  canvas.width  = window.innerWidth - _qlOff - (panelOpen ? PANEL_W : 0);
   canvas.height = window.innerHeight;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1526,9 +1528,16 @@ function renderNow() {
   if (typeof updateStatusBar === 'function') updateStatusBar();
 }
 
+// ── 퀵바 좌측 도킹 시 캔버스 left 오프셋 ─────────────────────
+function _qbLeftOff() {
+  if (typeof _quickbarOpen === 'undefined' || !_quickbarOpen) return 0;
+  if (typeof _qbDock === 'undefined' || _qbDock !== 'left')  return 0;
+  return typeof _qbBarW === 'function' ? _qbBarW() : 42;
+}
+
 // ── 좌표 변환 / 거리 계산 ──────────────────────────────────────
 function toWorld(cx, cy) {
-  return { x: (cx - vx) / scale, y: (cy - vy) / scale };
+  return { x: (cx - _qbLeftOff() - vx) / scale, y: (cy - vy) / scale };
 }
 function pointToSegDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
@@ -1697,7 +1706,7 @@ canvas.addEventListener('mousedown', e => {
     drawingSection = { x: w.x, y: w.y, x2: w.x, y2: w.y };
     canvas.style.cursor = 'crosshair';
   } else {
-    panStart = { x: e.clientX - vx, y: e.clientY - vy };
+    panStart = { x: e.clientX - _qbLeftOff() - vx, y: e.clientY - vy };
   }
   canvas.classList.add('dragging');
 });
@@ -1838,7 +1847,7 @@ canvas.addEventListener('mousemove', e => {
     render(); return;
   }
   if (panStart) {
-    vx = e.clientX - panStart.x;
+    vx = e.clientX - _qbLeftOff() - panStart.x;
     vy = e.clientY - panStart.y;
     render(); return;
   }
@@ -2056,10 +2065,11 @@ canvas.addEventListener('contextmenu', e => {
 
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  const wx = (e.clientX - vx) / scale, wy = (e.clientY - vy) / scale;
+  const delta  = e.deltaY > 0 ? 0.9 : 1.1;
+  const qbOff  = _qbLeftOff();
+  const wx = (e.clientX - qbOff - vx) / scale, wy = (e.clientY - vy) / scale;
   scale = Math.max(0.3, Math.min(3, scale * delta));
-  vx = e.clientX - wx * scale; vy = e.clientY - wy * scale;
+  vx = (e.clientX - qbOff) - wx * scale; vy = e.clientY - wy * scale;
   updateZoomLabel();
   render();
 }, { passive: false });
@@ -2071,7 +2081,7 @@ canvas.addEventListener('touchstart', e => {
     const w = toWorld(t.clientX, t.clientY);
     const hit = hitTest(w.x, w.y);
     if (hit) { draggingEntity = hit; dragOffset = { x: w.x - hit.x, y: w.y - hit.y }; }
-    else     { panStart = { x: t.clientX - vx, y: t.clientY - vy }; }
+    else     { const qo = _qbLeftOff(); panStart = { x: t.clientX - qo - vx, y: t.clientY - vy }; }
   }
   e.preventDefault();
 }, { passive: false });
@@ -2081,7 +2091,7 @@ canvas.addEventListener('touchmove', e => {
     const t = e.touches[0];
     const w = toWorld(t.clientX, t.clientY);
     if (draggingEntity) { draggingEntity.x = w.x - dragOffset.x; draggingEntity.y = w.y - dragOffset.y; }
-    else if (panStart)  { vx = t.clientX - panStart.x; vy = t.clientY - panStart.y; }
+    else if (panStart)  { vx = (t.clientX - _qbLeftOff()) - panStart.x; vy = t.clientY - panStart.y; }
     render();
   }
   e.preventDefault();
