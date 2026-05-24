@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ev.key === 'Escape') { ev.preventDefault(); closeNewDiagModal(); }
   });
   if (typeof updateStatusBar === 'function') updateStatusBar();
+  if (typeof _initPropDividerDrag === 'function') _initPropDividerDrag();
+  if (typeof _renderEmptyPropPanel === 'function') _renderEmptyPropPanel();
 });
 
 // ── 메인 키보드 단축키 ─────────────────────────────────────────────
@@ -38,6 +40,7 @@ document.addEventListener('keydown', e => {
     selectedEntities.clear();
     hideCtxMenu(); closeEntModal(); closeRelModal(); closeConfirm();
     closeDDLModal(); closeCopyDiagModal();
+    if (typeof hidePropPanel === 'function') hidePropPanel();
     render();
     return;
   }

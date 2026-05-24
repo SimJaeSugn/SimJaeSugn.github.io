@@ -131,12 +131,14 @@
 /* ── Quick Access Toolbar ──────────────────────────────────── */
 #quickbar {
   position: fixed; top: 32px; left: 0; right: 0;
-  height: 28px;
+  min-height: 28px;
   display: flex; align-items: center;
+  flex-wrap: wrap;
+  align-content: flex-start;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--bd);
   z-index: 190;
-  padding: 0 8px;
+  padding: 3px 8px;
   gap: 1px;
   user-select: none;
 }
@@ -164,7 +166,7 @@
 }
 
 /* ── 퀵바 대형 모드 ────────────────────────────────────────── */
-#quickbar.qb-large { height: 40px; }
+#quickbar.qb-large { min-height: 40px; padding: 4px 8px; }
 #quickbar.qb-large .qb-btn {
   min-width: 34px; height: 32px;
   font-size: 20px; border-radius: 5px; padding: 0 6px;
@@ -184,7 +186,9 @@
   top: 32px; left: 0; right: auto; bottom: 0;
   width: 42px; height: auto;
   flex-direction: column;
+  flex-wrap: nowrap;
   align-items: center;
+  align-content: flex-start;
   border-right: 1px solid var(--bd);
   border-bottom: none;
   padding: 4px 0;
