@@ -1,10 +1,4 @@
-/* ── Left Toolbar ────────────────────────────── */
-#toolbar {
-  position: fixed; top: 12px; left: 12px;
-  display: flex; gap: 8px; z-index: 100; align-items: center;
-  background: var(--bg-overlay); padding: 8px 14px; border-radius: 10px;
-  border: 1px solid var(--bd); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
+/* ── Button utilities (used in modals too) ─────────────────── */
 .btn {
   background: var(--bg-surface); color: var(--tx-main); border: none; padding: 6px 14px;
   border-radius: 6px; cursor: pointer; font-size: 13px; transition: background 0.15s;
@@ -20,147 +14,96 @@
   border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.15s;
 }
 .btn-success:hover { background: var(--ac-g-hover); }
-.tb-div { width: 1px; background: var(--bd2); height: 22px; flex-shrink: 0; }
-.tb-dropdown { position: relative; display: inline-flex; }
-.tb-dropdown-menu {
-  position: fixed; display: none;
-  background: var(--bg-base); border: 1px solid var(--bd2);
-  border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.55);
-  z-index: 300; overflow: hidden; min-width: 160px;
-}
-.tb-dropdown-menu.open { display: block; }
-.tb-dd-item {
-  padding: 9px 14px; color: var(--tx-main); cursor: pointer;
-  font-size: 13px; display: flex; align-items: center; gap: 8px;
-  white-space: nowrap; transition: background 0.1s;
-}
-.tb-dd-item:hover { background: var(--bg-surface); }
-.tb-dd-item.danger { color: var(--ac-r); }
-.tb-dd-item.danger:hover { background: var(--danger-bg); }
-.tb-dd-sep { height: 1px; background: var(--bd); margin: 2px 0; }
-
-/* ── 2-depth 아코디언 그룹 ──────────────────── */
-.tb-dd-group-hdr {
-  padding: 8px 12px 8px 14px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  cursor: pointer; user-select: none;
-  color: var(--tx-sub); font-size: 11px; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  transition: background 0.1s, color 0.1s;
-  border-top: 1px solid var(--bd);
-}
-.tb-dd-group:first-child .tb-dd-group-hdr { border-top: none; }
-.tb-dd-group-hdr:hover { background: var(--bg-surface); color: var(--tx-main); }
-.tb-dd-group-hdr.open  { color: var(--ac); }
-.tb-dd-group-hdr .tb-dd-group-lbl { display: flex; align-items: center; gap: 6px; }
-.tb-dd-group-arrow {
-  font-size: 9px; color: var(--tx-muted); flex-shrink: 0;
-  transition: transform 0.18s, color 0.15s;
-}
-.tb-dd-group-hdr.open .tb-dd-group-arrow { transform: rotate(90deg); color: var(--ac); }
-.tb-dd-sub {
-  max-height: 0; overflow: hidden;
-  transition: max-height 0.22s ease;
-  background: var(--bg-surface2);
-}
-.tb-dd-sub.open { max-height: 400px; }
-.tb-dd-sub .tb-dd-item {
-  padding-left: 26px; font-size: 12.5px; color: var(--tx-attr);
-}
-.tb-dd-sub .tb-dd-item:hover { color: var(--tx-main); }
-#toolbarButtons {
-  display: flex; gap: 8px; align-items: center;
-}
-
-/* ── Zoom Panel (top-right) ──────────────────── */
-#zoomPanel {
-  position: fixed; top: 12px; right: 12px;
-  display: flex; gap: 6px; z-index: 100; align-items: center;
-  background: var(--bg-overlay); padding: 6px 10px; border-radius: 10px;
-  border: 1px solid var(--bd); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
-#zoomLabel {
-  color: var(--tx-main); font-size: 12px; min-width: 44px; text-align: center;
-}
-.btn-zoom {
-  background: var(--bg-surface); color: var(--tx-main); border: none;
-  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
-  font-size: 16px; font-weight: bold; transition: background 0.15s;
-  display: flex; align-items: center; justify-content: center;
-}
-.btn-zoom:hover { background: var(--bd2); }
-
-/* View Mode Toggle */
-.view-toggle {
-  display: flex; border: 1px solid var(--bd2); border-radius: 6px; overflow: hidden;
-}
-.vt-btn {
-  background: var(--bg-surface); color: var(--tx-sub); border: none;
-  padding: 5px 13px; cursor: pointer; font-size: 12px; font-weight: bold;
-  transition: background 0.15s, color 0.15s;
-}
-.vt-btn.active { background: var(--ac); color: var(--bg-base); }
-.vt-btn:hover:not(.active) { background: var(--bd2); color: var(--tx-main); }
 .btn.active { background: var(--ac-p) !important; color: var(--bg-base) !important; font-weight: bold; }
 
-/* ── 아이콘 전용 버튼 ────────────────────────────── */
-.btn-icon {
-  background: var(--bg-surface); color: var(--tx-main); border: none;
-  padding: 5px 8px; border-radius: 6px; cursor: pointer;
-  font-size: 14px; line-height: 1; transition: background 0.15s;
-}
-.btn-icon:hover  { background: var(--bd2); }
-.btn-icon.active { background: var(--ac-p) !important; box-shadow: 0 0 0 2px var(--ac); }
-
-/* ── 툴박스 그룹 (가로 접기) ─────────────────── */
-.toolbox {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-.toolbox-hdr {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 3px;
-  padding: 5px 7px;
-  cursor: pointer;
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--tx-sub);
+/* ── Menu Bar ──────────────────────────────────────────────── */
+#menubar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 32px;
+  display: flex; align-items: center;
+  background: var(--bg-overlay);
+  border-bottom: 1px solid var(--bd);
+  z-index: 200;
+  padding: 0 4px;
   user-select: none;
+}
+.mb-brand {
+  padding: 0 12px 0 6px;
+  font-size: 12px; font-weight: 700;
+  color: var(--ac);
   white-space: nowrap;
+  letter-spacing: 0.04em;
   flex-shrink: 0;
-  transition: background 0.12s, color 0.12s;
 }
-.toolbox-hdr:hover { background: var(--bg-surface); color: var(--tx-main); }
-.toolbox-caret {
-  font-size: 9px;
-  line-height: 1;
-  transform: rotate(180deg); /* 기본(펼침): ◀ */
-  transition: transform 0.18s ease;
+#sessionBadge {
+  font-size: 10px; color: var(--ac-r);
+  margin-right: 6px; flex-shrink: 0;
 }
-.toolbox.tb-collapsed .toolbox-caret {
-  transform: rotate(0deg); /* 접힘: ▶ */
+.mb-menus {
+  display: flex; align-items: stretch;
+  height: 100%;
 }
-.toolbox-body {
-  display: flex;
-  flex-wrap: nowrap;       /* 항상 한 줄 유지 — 접힐 때 줄바꿈으로 높이 증가 방지 */
-  align-items: center;
-  gap: 6px;
-  max-width: 800px;
-  opacity: 1;
-  overflow: hidden;        /* 상시 숨김 — 너비 0 시 내용이 아래로 흘러내리지 않음 */
-  padding-left: 4px;
-  white-space: nowrap;
+.mb-menu {
+  position: relative; height: 100%;
+  display: flex; align-items: center;
+}
+.mb-lbl {
+  padding: 0 9px; height: 100%;
+  display: flex; align-items: center;
+  font-size: 13px; color: var(--tx-main);
+  cursor: pointer; white-space: nowrap;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+.mb-lbl:hover, .mb-lbl.open {
+  background: var(--bg-surface);
+}
+.mb-drop {
+  display: none;
+  position: fixed;
+  background: var(--bg-base);
+  border: 1px solid var(--bd2);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+  z-index: 400;
+  min-width: 240px;
+  padding: 3px 0;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+.mb-drop.open { display: block; }
+.mb-item {
+  padding: 5px 12px 5px 8px;
+  display: flex; align-items: center; gap: 6px;
+  color: var(--tx-main); cursor: pointer;
+  font-size: 13px; white-space: nowrap;
+  transition: background 0.1s;
+}
+.mb-item:hover { background: var(--bg-surface); }
+.mb-item.danger { color: var(--ac-r); }
+.mb-item.danger:hover { background: var(--danger-bg); }
+.mb-ico  { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
+.mb-chk  { width: 16px; text-align: center; font-size: 12px; flex-shrink: 0; color: var(--ac); font-weight: bold; }
+.mb-text { flex: 1; }
+.mb-kbd  { color: var(--tx-muted); font-size: 11px; margin-left: auto; padding-left: 16px; }
+.mb-sep  { height: 1px; background: var(--bd); margin: 3px 0; }
+
+/* ── Right side: zoom ───────────────────────────────────────── */
+.mb-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 8px;
   flex-shrink: 0;
-  transition: max-width 0.25s ease, opacity 0.18s ease, padding-left 0.25s ease;
 }
-.toolbox.tb-collapsed .toolbox-body {
-  max-width: 0;
-  opacity: 0;
-  padding-left: 0;
-  pointer-events: none;
+.mb-zoom-btn {
+  background: var(--bg-surface); color: var(--tx-main); border: none;
+  width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
+  font-size: 15px; font-weight: bold; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.mb-zoom-btn:hover { background: var(--bd2); }
+#zoomLabel {
+  color: var(--tx-main); font-size: 12px;
+  min-width: 42px; text-align: center;
 }
