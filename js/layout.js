@@ -54,6 +54,7 @@ function deleteSection(section) {
   const idx = SECTIONS.indexOf(section);
   if (idx >= 0) SECTIONS.splice(idx, 1);
   if (selectedSection === section) selectedSection = null;
+  selectedSections.delete(section);
   render(); saveState();
 }
 
