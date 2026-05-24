@@ -536,125 +536,228 @@
 
 <!-- ── Shortcuts Modal ───────────────────────── -->
 <div class="modal-overlay" id="shortcutsOverlay" onmousedown="overlayCloseExtra(event,'shortcutsOverlay')">
-  <div class="modal" style="width:min(880px,92vw)" onmousedown.stop>
-    <h3>⌨ 단축키 목록</h3>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
-      <colgroup>
-        <col style="width:22%">
-        <col style="width:38%">
-        <col style="width:40%">
-      </colgroup>
-      <thead>
-        <tr style="border-bottom:2px solid #313244;">
-          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">단축키</th>
-          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">기능</th>
-          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">부가기능</th>
-        </tr>
-      </thead>
-      <tbody id="shortcutsTableBody">
-        <!-- ── 엔티티 / 관계 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">N</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 추가</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">입력 필드 미포커스 상태</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">R</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">관계 추가</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">입력 필드 미포커스 상태</td>
-        </tr>
-        <!-- ── 저장 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+S</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">JSON 저장</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">현재 다이어그램 단일 저장</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Shift+S</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">전체 백업 내보내기</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">전체 다이어그램 + 스냅샷 포함</td>
-        </tr>
-        <!-- ── 실행취소 / 다시실행 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Z</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">실행취소</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">히스토리 범위 내 무제한</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Y&nbsp;/&nbsp;Ctrl+Shift+Z</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">다시실행</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">두 단축키 모두 동일 동작</td>
-        </tr>
-        <!-- ── 검색 / 복사 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+F</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 검색</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">논리명 · 물리명 · ID 대상</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+C</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">선택 엔티티 복사</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 선택 상태에서 동작</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+V</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">붙여넣기</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">미선택 시: 클립보드의 콤마 구분 텍스트를 속성 논리명으로 자동 입력 후 엔티티 추가 팝업<br><span style="color:#a6adc8;font-family:Consolas,monospace;font-size:11px;">예) 식별자, 이름, 비밀번호, 등록일자</span></td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+D</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">선택 엔티티 복제</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">다중 선택 시 일괄 복제</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+A</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">전체 엔티티 선택</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;"></td>
-        </tr>
-        <!-- ── 뷰 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Home</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">전체 맞춤</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">모든 엔티티 · 메모 · 섹션이 화면에 맞게 축소/이동</td>
-        </tr>
-        <!-- ── 삭제 / 취소 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Delete</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">선택 항목 삭제</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 · 관계 · 섹션 대상</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Escape</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">선택 해제 / 모드 취소</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">모달 · 검색창 닫기도 포함</td>
-        </tr>
-        <!-- ── 마우스 ── -->
-        <tr style="border-top:1px solid #1e1e2e;">
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">마우스 휠</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">확대 / 축소</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">커서 위치 기준 줌</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">우클릭</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">컨텍스트 메뉴</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 · 관계 · 캔버스 대상별 메뉴 상이</td>
-        </tr>
-        <!-- ── 더블클릭 ── -->
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">더블클릭 (엔티티)</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 편집 / 접기·펼치기</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">헤더 클릭 시 접기, 본문 클릭 시 편집</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">더블클릭 (메모)</td>
-          <td style="padding:6px 10px;color:#cdd6f4;">메모 인라인 편집</td>
-          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">Text / MD 탭 전환 후 편집 가능</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeShortcutsModal()">닫기</button></div>
-  </div>
-</div>
+  <div class="sc-modal">
+
+    <!-- Header -->
+    <div class="sc-hdr">
+      <span class="sc-hdr-title">⌨ 단축키</span>
+      <button class="sc-hdr-close" onclick="closeShortcutsModal()" title="닫기">×</button>
+    </div>
+
+    <!-- Environment Tabs -->
+    <div class="sc-envtabs">
+      <button class="sc-envtab active" onclick="scGoTo(0)">🖥 캔버스 <span class="sc-env-count">22</span></button>
+      <button class="sc-envtab"        onclick="scGoTo(1)">🗃 SQL 패널 <span class="sc-env-count">1</span></button>
+      <button class="sc-envtab"        onclick="scGoTo(2)">⏱ 타임라인 <span class="sc-env-count">3</span></button>
+    </div>
+
+    <!-- Slides -->
+    <div class="sc-slides-wrap">
+      <div class="sc-slides" id="scSlides">
+
+        <!-- ── Slide 0: 캔버스 (기본) ── -->
+        <div class="sc-slide">
+          <div class="sc-grid">
+
+            <!-- 왼쪽 열 -->
+            <div class="sc-col">
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac-g);">➕ 생성</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">N</span></div>
+                  <div class="sc-desc">엔티티 추가<span class="sc-desc-note">입력 필드 미포커스 상태</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">R</span></div>
+                  <div class="sc-desc">관계 추가<span class="sc-desc-note">입력 필드 미포커스 상태</span></div>
+                </div>
+              </div>
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac);">💾 저장</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
+                  <div class="sc-desc">JSON 저장<span class="sc-desc-note">현재 다이어그램만</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
+                  <div class="sc-desc">전체 백업 내보내기<span class="sc-desc-note">스냅샷 포함 전체</span></div>
+                </div>
+              </div>
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac-y);">↩ 실행취소</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Z</span></div>
+                  <div class="sc-desc">실행취소<span class="sc-desc-note">히스토리 범위 내 무제한</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys" style="flex-wrap:wrap;row-gap:3px;">
+                    <span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Y</span>
+                    &thinsp;<span class="sc-key-sep">/</span>&thinsp;
+                    <span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">Z</span>
+                  </div>
+                  <div class="sc-desc">다시실행<span class="sc-desc-note">두 단축키 동일 동작</span></div>
+                </div>
+              </div>
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--tx-attr);">🔍 검색 · 기타</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">F</span></div>
+                  <div class="sc-desc">엔티티 검색<span class="sc-desc-note">논리명 · 물리명 · ID</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key sc-key-mouse">우클릭</span></div>
+                  <div class="sc-desc">컨텍스트 메뉴<span class="sc-desc-note">대상(엔티티·관계·캔버스)별 상이</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Esc</span></div>
+                  <div class="sc-desc">선택 해제 / 모드 취소<span class="sc-desc-note">모달 · 검색창 닫기 포함</span></div>
+                </div>
+              </div>
+
+            </div><!-- /왼쪽 열 -->
+
+            <!-- 오른쪽 열 -->
+            <div class="sc-col">
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac-o);">✂ 편집</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">C</span></div>
+                  <div class="sc-desc">복사<span class="sc-desc-note">선택된 엔티티 클립보드 저장</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">V</span></div>
+                  <div class="sc-desc">붙여넣기<span class="sc-desc-note">미선택 시: 텍스트 → 속성 자동 입력 후 엔티티 생성 팝업</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">D</span></div>
+                  <div class="sc-desc">복제<span class="sc-desc-note">다중 선택 시 일괄 복제</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Delete</span></div>
+                  <div class="sc-desc">삭제<span class="sc-desc-note">엔티티 · 관계 · 섹션</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(엔티티)</span></div>
+                  <div class="sc-desc">편집 / 접기·펼치기<span class="sc-desc-note">헤더: 접기, 본문: 편집 팝업</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(메모)</span></div>
+                  <div class="sc-desc">메모 인라인 편집<span class="sc-desc-note">Text / MD 탭 전환 후 편집</span></div>
+                </div>
+              </div>
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac-p);">⬜ 선택</div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">A</span></div>
+                  <div class="sc-desc">전체 선택</div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key sc-key-mouse">클릭</span></div>
+                  <div class="sc-desc">다중 선택 토글<span class="sc-desc-note">선택 추가 / 해제 전환</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key sc-key-mouse">드래그</span></div>
+                  <div class="sc-desc">범위 선택<span class="sc-desc-note">빈 캔버스에서 박스로 일괄 선택</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key sc-key-mouse">드래그</span></div>
+                  <div class="sc-desc">범위 선택<span class="sc-desc-note">Shift+드래그와 동일</span></div>
+                </div>
+              </div>
+
+              <div class="sc-card">
+                <div class="sc-card-hdr" style="color:var(--ac-g);">🧭 이동 · 뷰</div>
+                <div class="sc-row">
+                  <div class="sc-keys">
+                    <span class="sc-key sc-key-arrow">←</span>
+                    <span class="sc-key sc-key-arrow">↑</span>
+                    <span class="sc-key sc-key-arrow">→</span>
+                    <span class="sc-key sc-key-arrow">↓</span>
+                  </div>
+                  <div class="sc-desc">선택 엔티티 이동<span class="sc-desc-note">1px · Shift: 10px · 그리드 스냅 시: 그리드 단위</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key">Home</span></div>
+                  <div class="sc-desc">전체 맞춤<span class="sc-desc-note">모든 객체를 화면에 맞게 축소/이동</span></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-keys"><span class="sc-key sc-key-mouse">휠</span></div>
+                  <div class="sc-desc">확대 / 축소<span class="sc-desc-note">커서 위치 기준</span></div>
+                </div>
+              </div>
+
+            </div><!-- /오른쪽 열 -->
+          </div>
+        </div><!-- /slide 0 -->
+
+        <!-- ── Slide 1: SQL 패널 ── -->
+        <div class="sc-slide">
+          <div class="sc-grid-single">
+            <div class="sc-card">
+              <div class="sc-card-hdr" style="color:var(--ac-g);">▶ 실행</div>
+              <div class="sc-row">
+                <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Enter</span></div>
+                <div class="sc-desc">SQL 실행<span class="sc-desc-note">SQL 편집기에 포커스된 상태에서 동작</span></div>
+              </div>
+            </div>
+            <div class="sc-hint">💡 SQL 패널은 좌측 툴바 → <strong>SQL Runner</strong> 에서 열 수 있습니다.</div>
+          </div>
+        </div><!-- /slide 1 -->
+
+        <!-- ── Slide 2: 타임라인 ── -->
+        <div class="sc-slide">
+          <div class="sc-grid-single">
+            <div class="sc-card">
+              <div class="sc-card-hdr" style="color:var(--ac);">◀▶ 스냅샷 탐색</div>
+              <div class="sc-row">
+                <div class="sc-keys">
+                  <span class="sc-key sc-key-arrow">←</span><span class="sc-key-sep">/</span><span class="sc-key sc-key-arrow">→</span>
+                  &thinsp;<span style="color:var(--tx-muted);font-size:10px;">또는</span>&thinsp;
+                  <span class="sc-key sc-key-arrow">↓</span><span class="sc-key-sep">/</span><span class="sc-key sc-key-arrow">↑</span>
+                </div>
+                <div class="sc-desc">이전 / 다음 스냅샷<span class="sc-desc-note">타임라인 패널이 열린 상태에서 동작</span></div>
+              </div>
+            </div>
+            <div class="sc-card">
+              <div class="sc-card-hdr" style="color:var(--ac-g);">🔄 복원</div>
+              <div class="sc-row">
+                <div class="sc-keys"><span class="sc-key">Enter</span></div>
+                <div class="sc-desc">스냅샷 복원<span class="sc-desc-note">현재 선택된 스냅샷으로 다이어그램 복원</span></div>
+              </div>
+            </div>
+            <div class="sc-card">
+              <div class="sc-card-hdr" style="color:var(--ac-r);">✖ 닫기</div>
+              <div class="sc-row">
+                <div class="sc-keys"><span class="sc-key">Esc</span></div>
+                <div class="sc-desc">타임라인 닫기<span class="sc-desc-note">패널 닫기 및 모드 종료</span></div>
+              </div>
+            </div>
+            <div class="sc-hint">💡 타임라인 패널이 열려 있을 때만 이 단축키들이 동작합니다.</div>
+          </div>
+        </div><!-- /slide 2 -->
+
+      </div><!-- /sc-slides -->
+    </div><!-- /sc-slides-wrap -->
+
+    <!-- Footer Nav -->
+    <div class="sc-footer">
+      <button class="sc-nav-btn" id="scPrevBtn" onclick="scPrev()" disabled title="이전">‹</button>
+      <div class="sc-dots" id="scDots">
+        <span class="sc-dot active" onclick="scGoTo(0)" title="캔버스"></span>
+        <span class="sc-dot"        onclick="scGoTo(1)" title="SQL 패널"></span>
+        <span class="sc-dot"        onclick="scGoTo(2)" title="타임라인"></span>
+      </div>
+      <button class="sc-nav-btn" id="scNextBtn" onclick="scNext()" title="다음">›</button>
+    </div>
+
+  </div><!-- /sc-modal -->
+</div><!-- /shortcutsOverlay -->
 
 <!-- ── Focus Mode Badge ───────────────────────── -->
 <div id="focusBadge" style="display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);background:#313244;border:1px solid #89b4fa;color:#89b4fa;font-size:12px;padding:5px 16px;border-radius:20px;z-index:200;pointer-events:none;">
