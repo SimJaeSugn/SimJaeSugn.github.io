@@ -135,7 +135,8 @@ function _updateBcUI() {
   // 도구 메뉴 토글 버튼 텍스트 업데이트
   const toggleItem = document.getElementById('ddItemBcSync');
   if (toggleItem) {
-    toggleItem.textContent = _bcEnabled ? '📡 탭 동기화 끄기' : '📡 탭 동기화 켜기';
+    const chk = toggleItem.querySelector('.mb-chk');
+    if (chk) chk.textContent = _bcEnabled ? '✓' : '';
   }
 }
 

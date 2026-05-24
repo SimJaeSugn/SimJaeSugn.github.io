@@ -209,10 +209,9 @@ function attrDisplayName(a) {
 
 function setViewMode(mode) {
   viewMode = mode;
-  document.getElementById('btn-logical').classList.toggle('active', mode === 'logical');
-  document.getElementById('btn-physical').classList.toggle('active', mode === 'physical');
   renderEntityTree();
   render();
+  syncToolDropdownLabels();
 }
 
 function resetToDefault() {

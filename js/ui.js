@@ -13,89 +13,61 @@ function showToast(msg) {
   setTimeout(() => el.remove(), 1700);
 }
 
-// ── 툴바 드롭다운 ────────────────────────────────────────────────
-const TB_MENUS = ['ddAdd', 'ddExport', 'ddTools'];
+// ── 메뉴바 ───────────────────────────────────────────────────────
+let _mbOpen = null;
 
-function tbToggle(e, id) {
-  e.stopPropagation();
-  const btn = e.currentTarget;
-  const menu = document.getElementById(id);
-  const isOpen = menu.classList.contains('open');
-  TB_MENUS.forEach(m => document.getElementById(m).classList.remove('open'));
-  if (!isOpen) {
-    const rect = btn.getBoundingClientRect();
-    menu.style.left = rect.left + 'px';
-    menu.style.top  = (rect.bottom + 4) + 'px';
-    menu.classList.add('open');
+function mbToggle(id) {
+  if (_mbOpen === id) { mbClose(); return; }
+  mbClose();
+  _mbOpen = id;
+  const drop = document.getElementById('mb-drop-' + id);
+  const lbl  = drop?.previousElementSibling;
+  if (!drop || !lbl) return;
+  const rect = lbl.getBoundingClientRect();
+  drop.style.left = rect.left + 'px';
+  drop.style.top  = rect.bottom + 'px';
+  drop.classList.add('open');
+  lbl.classList.add('open');
+}
+
+function mbHover(id) {
+  if (_mbOpen && _mbOpen !== id) mbToggle(id);
+}
+
+function mbClose() {
+  if (!_mbOpen) return;
+  const drop = document.getElementById('mb-drop-' + _mbOpen);
+  if (drop) {
+    drop.classList.remove('open');
+    drop.previousElementSibling?.classList.remove('open');
   }
+  _mbOpen = null;
 }
 
-function tbClose(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-function tbToggleSub(e, subId) {
-  e.stopPropagation();
-  const sub = document.getElementById(subId);
-  const hdr = sub.previousElementSibling;
-  const isOpen = sub.classList.contains('open');
-  sub.closest('.tb-dropdown-menu').querySelectorAll('.tb-dd-sub').forEach(s => {
-    s.classList.remove('open');
-    if (s.previousElementSibling) s.previousElementSibling.classList.remove('open');
-  });
-  if (!isOpen) {
-    sub.classList.add('open');
-    hdr.classList.add('open');
-  }
-}
-
-function syncToolDropdownLabels() {
-  const snapEl = document.getElementById('ddItemSnap');
-  const notEl  = document.getElementById('ddItemNotation');
-  const secEl  = document.getElementById('ddItemSection');
-  if (snapEl) { snapEl.classList.toggle('active', gridSnap); snapEl.title = gridSnap ? '스냅 끄기' : '스냅 켜기'; }
-  if (notEl) {
-    notEl.classList.toggle('active', notationStyle === 'crowsfoot');
-    notEl.title = notationStyle === 'crowsfoot' ? '크로우풋 끄기' : '크로우풋 켜기';
-  }
-  if (secEl) { secEl.classList.toggle('active', sectionMode); secEl.title = sectionMode ? '섹션 모드 끄기' : '섹션 모드 켜기'; }
-}
-
-document.addEventListener('click', () => {
-  TB_MENUS.forEach(m => document.getElementById(m).classList.remove('open'));
+document.addEventListener('click', e => {
+  if (!e.target.closest('#menubar')) mbClose();
 });
 
-// ── 툴박스 접기 / 펼치기 ──────────────────────────────────────
-const TB_BOX_IDS = ['tb1', 'tb2', 'tb3'];
-const TB_BOX_STORAGE = 'erd_toolbox_state';
-
-function toggleToolbox(id) {
-  const box = document.getElementById(id);
-  if (!box) return;
-  box.classList.toggle('tb-collapsed');
-  _saveToolboxState();
+function syncToolDropdownLabels() {
+  // 논리/물리
+  const logEl = document.getElementById('mbi-logical');
+  const phyEl = document.getElementById('mbi-physical');
+  if (logEl) logEl.querySelector('.mb-chk').textContent = viewMode === 'logical' ? '✓' : '';
+  if (phyEl) phyEl.querySelector('.mb-chk').textContent = viewMode === 'physical' ? '✓' : '';
+  // 크로우풋
+  const notEl = document.getElementById('mbi-notation');
+  if (notEl) notEl.querySelector('.mb-chk').textContent = notationStyle === 'crowsfoot' ? '✓' : '';
+  // 그리드 스냅
+  const snapEl = document.getElementById('mbi-snap');
+  if (snapEl) snapEl.querySelector('.mb-chk').textContent = gridSnap ? '✓' : '';
+  // 섹션 모드
+  const secEl = document.getElementById('mbi-section');
+  if (secEl) secEl.querySelector('.mb-chk').textContent = sectionMode ? '✓' : '';
 }
 
-function _saveToolboxState() {
-  try {
-    const state = {};
-    TB_BOX_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) state[id] = el.classList.contains('tb-collapsed');
-    });
-    localStorage.setItem(TB_BOX_STORAGE, JSON.stringify(state));
-  } catch {}
-}
-
-function loadToolboxState() {
-  try {
-    const state = JSON.parse(localStorage.getItem(TB_BOX_STORAGE) || '{}');
-    TB_BOX_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && state[id]) el.classList.add('tb-collapsed');
-    });
-  } catch {}
-}
+// 툴박스 함수 (no-op — menubar로 대체)
+function loadToolboxState() {}
+function toggleToolbox() {}
 
 // ── 범례 / 미니맵 토글 ───────────────────────────────────────────
 function toggleLegend() {
