@@ -155,6 +155,122 @@
 .shortcuts-table tr:nth-child(odd) td { background:var(--surface-dim); }
 .shortcuts-table tr td { border-bottom:1px solid var(--bg-surface2); }
 
+/* ── Shortcut Slider Modal ────────────────────── */
+.sc-modal {
+  background: var(--bg-base); border: 1px solid var(--bd2); border-radius: 14px;
+  width: min(800px, 94vw); height: min(88vh, 860px); min-height: 360px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.75); overflow: hidden;
+}
+.sc-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 0; flex-shrink: 0;
+}
+.sc-hdr-title { color: var(--ac); font-size: 15px; font-weight: bold; }
+.sc-hdr-close {
+  background: none; border: none; color: var(--tx-sub); font-size: 22px;
+  cursor: pointer; line-height: 1; padding: 2px 7px; border-radius: 5px;
+}
+.sc-hdr-close:hover { color: var(--tx-main); background: var(--bg-surface); }
+
+/* Env tabs */
+.sc-envtabs {
+  display: flex; padding: 14px 22px 0;
+  border-bottom: 1px solid var(--bd); flex-shrink: 0; gap: 2px;
+}
+.sc-envtab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px 9px; border: none; background: none;
+  color: var(--tx-sub); font-size: 13px; cursor: pointer;
+  border-radius: 8px 8px 0 0; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: color 0.15s, background 0.15s; white-space: nowrap;
+}
+.sc-envtab:hover { color: var(--tx-main); background: var(--bg-surface2); }
+.sc-envtab.active { color: var(--ac); border-bottom-color: var(--ac); font-weight: 600; }
+.sc-env-count {
+  background: var(--bg-surface2); color: var(--tx-muted);
+  font-size: 10px; padding: 1px 6px; border-radius: 9px; font-weight: normal;
+}
+.sc-envtab.active .sc-env-count { background: var(--ac-dim); color: var(--ac); }
+
+/* Slides */
+.sc-slides-wrap { flex: 1; overflow: hidden; position: relative; min-height: 0; }
+.sc-slides {
+  display: flex; height: 100%;
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+}
+.sc-slide { min-width: 100%; overflow-y: auto; padding: 16px 22px 20px; }
+.sc-slide::-webkit-scrollbar { width: 5px; }
+.sc-slide::-webkit-scrollbar-track { background: transparent; }
+.sc-slide::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+
+/* Card columns */
+.sc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.sc-col { display: flex; flex-direction: column; gap: 10px; }
+.sc-grid-single { display: flex; flex-direction: column; gap: 10px; max-width: 420px; margin: 0 auto; }
+
+/* Card */
+.sc-card { background: var(--bg-surface); border: 1px solid var(--bd); border-radius: 9px; overflow: hidden; }
+.sc-card-hdr {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 12px 6px; background: var(--bg-surface2);
+  border-bottom: 1px solid var(--bd);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.sc-row {
+  display: flex; align-items: flex-start; gap: 10px; padding: 7px 12px;
+  border-bottom: 1px solid var(--bd);
+}
+.sc-row:last-child { border-bottom: none; }
+.sc-row:hover { background: rgba(137,180,250,0.04); }
+
+/* Keys */
+.sc-keys {
+  display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+  flex-wrap: wrap; row-gap: 3px; min-width: 118px; padding-top: 1px;
+}
+.sc-key {
+  display: inline-block; background: var(--bg-base);
+  border: 1px solid var(--bd2); border-bottom: 2px solid var(--bd2);
+  border-radius: 5px; color: var(--ac-p);
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px; padding: 2px 7px; line-height: 1.5; white-space: nowrap;
+}
+.sc-key-sep { color: var(--tx-muted); font-size: 11px; }
+.sc-key-mouse { color: var(--ac-o); border-color: var(--ac-o); }
+.sc-key-arrow { color: var(--ac-g); border-color: var(--ac-g); padding: 2px 5px; }
+.sc-ctx { color: var(--tx-sub); font-size: 10.5px; white-space: nowrap; padding-top: 3px; }
+
+/* Desc */
+.sc-desc { flex: 1; color: var(--tx-main); font-size: 12.5px; line-height: 1.4; padding-top: 2px; }
+.sc-desc-note { display: block; color: var(--tx-sub); font-size: 10.5px; margin-top: 2px; }
+
+/* Hint */
+.sc-hint {
+  display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px;
+  background: var(--bg-surface2); border: 1px solid var(--bd);
+  border-radius: 8px; color: var(--tx-sub); font-size: 12px; line-height: 1.5;
+}
+
+/* Footer nav */
+.sc-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 22px; border-top: 1px solid var(--bd); flex-shrink: 0;
+}
+.sc-nav-btn {
+  width: 32px; height: 32px; background: var(--bg-surface); border: 1px solid var(--bd2);
+  color: var(--tx-main); border-radius: 8px; cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: background 0.1s;
+}
+.sc-nav-btn:hover:not(:disabled) { background: var(--bd2); }
+.sc-nav-btn:disabled { opacity: 0.25; cursor: default; }
+.sc-dots { display: flex; align-items: center; gap: 8px; }
+.sc-dot {
+  height: 6px; width: 6px; background: var(--bd2); border-radius: 3px;
+  cursor: pointer; transition: all 0.22s;
+}
+.sc-dot.active { background: var(--ac); width: 22px; }
+
 /* ── 이미지 저장 드롭다운 ─────────────────────── */
 #imgMenu {
   position: fixed; display: none;
