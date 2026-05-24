@@ -19,7 +19,15 @@
       "Bash(gh pr create --title 'Add pre-collaboration auto-snapshot and restore for WebRTC P2P' --body ' *)",
       "Bash(where gh *)",
       "Bash(winget list *)",
-      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)",
+      "Bash(git switch *)",
+      "PowerShell(\\(Get-Command gh -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\Programs\\\\GitHub CLI\\\\gh.exe\" -ErrorAction SilentlyContinue; where.exe gh 2>$null)",
+      "PowerShell(winget install --id GitHub.cli -e --accept-package-agreements --accept-source-agreements 2>&1)",
+      "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\('Path','Machine'\\) + ';' + [System.Environment]::GetEnvironmentVariable\\('Path','User'\\); gh --version)",
+      "Bash(git credential *)",
+      "Bash(gh auth *)",
+      "Bash(git pull *)"
     ]
   }
 }

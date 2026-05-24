@@ -1940,7 +1940,8 @@ canvas.addEventListener('mouseup', e => {
   resizingSection = null; resizeDir = null; resizeStart = null;
   panStart = null;
   canvas.classList.remove('dragging');
-  if (wasDragging) saveState();
+  render();
+  if (wasDragging) setTimeout(saveState, 0);
 });
 
 canvas.addEventListener('mouseleave', () => {
