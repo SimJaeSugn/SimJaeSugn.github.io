@@ -1,3 +1,136 @@
+/* ── Command Palette ─────────────────────────── */
+#cmdPalette {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 72px;
+}
+#cmdPaletteBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.48);
+}
+#cmdPaletteBox {
+  position: relative;
+  width: 580px;
+  max-width: 92vw;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.72);
+  overflow: hidden;
+}
+#cmdPaletteHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #313244;
+}
+.cmd-palette-icon {
+  color: #89b4fa;
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+#cmdInput {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: #181825;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  color: #cdd6f4;
+  outline: none;
+}
+#cmdInput:focus { border-color: #89b4fa; }
+.cmd-close-btn {
+  background: none;
+  border: none;
+  color: #6c7086;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.cmd-close-btn:hover { color: #cdd6f4; background: #313244; }
+#cmdResults {
+  max-height: 360px;
+  overflow-y: auto;
+}
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #cdd6f4;
+  transition: background 0.08s;
+  user-select: none;
+}
+.cmd-item:hover, .cmd-item.cmd-active {
+  background: #313244;
+}
+.cmd-item-icon {
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+.cmd-item-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmd-item-label mark {
+  background: transparent;
+  color: #89b4fa;
+  font-weight: 600;
+}
+.cmd-item-cat {
+  font-size: 10px;
+  color: #585b70;
+  background: #181825;
+  border: 1px solid #45475a;
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+.cmd-item-keys {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.cmd-key {
+  background: #181825;
+  border: 1px solid #585b70;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  color: #a6adc8;
+  font-family: Consolas, monospace;
+  line-height: 1.6;
+}
+.cmd-key-sep {
+  color: #585b70;
+  font-size: 11px;
+}
+.cmd-empty {
+  text-align: center;
+  padding: 28px 0;
+  color: #585b70;
+  font-size: 13px;
+}
+
 /* ── Markdown Note Overlay (DOM 렌더링) ──────── */
 .note-md-overlay {
   position: fixed;
