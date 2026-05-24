@@ -1,6 +1,6 @@
 {
   "backupVersion": 2,
-  "exportedAt": "2026-05-24T08:12:43.164Z",
+  "exportedAt": "2026-05-24T09:55:38.652Z",
   "appVersion": "bsss-erd",
   "main": {
     "diagrams": [
@@ -13,8 +13,8 @@
             "logicalName": "하이퍼파라미터",
             "physicalName": "TB_HYPR_PRMTR",
             "description": "LLM 파라미터 설정",
-            "x": 392.7345139084875,
-            "y": 496.80347911961843,
+            "x": 389.3441207258208,
+            "y": 520.1593637201033,
             "attrs": [
               {
                 "logicalName": "파라미터일련번호",
@@ -148,8 +148,8 @@
             "logicalName": "사용자별활성모델",
             "physicalName": "TB_ACTV_MDL",
             "description": "사용자가 선택한 활성 모델",
-            "x": 393.7395282719058,
-            "y": 307.98117438881553,
+            "x": 390.3491350892391,
+            "y": 331.3370589893008,
             "attrs": [
               {
                 "logicalName": "활성모델일련번호",
@@ -238,8 +238,8 @@
             "logicalName": "공통모델",
             "physicalName": "TB_CMM_MDL",
             "description": "AI 모델 정보",
-            "x": -96.28267438135126,
-            "y": 305.30878047831675,
+            "x": -99.67306756401794,
+            "y": 328.66466507880205,
             "attrs": [
               {
                 "logicalName": "모델일련번호",
@@ -397,8 +397,8 @@
             "logicalName": "공통프롬프트",
             "physicalName": "TB_CMM_PRMPT",
             "description": "서비스가 공통으로 제공하는 프롬프트",
-            "x": -94.79509619419244,
-            "y": 692.2536805166098,
+            "x": -98.18548937685912,
+            "y": 715.6095651170949,
             "attrs": [
               {
                 "logicalName": "프롬프트일련번호",
@@ -477,127 +477,12 @@
             "indexes": []
           },
           {
-            "id": "apikey",
-            "logicalName": "API키정보",
-            "physicalName": "TB_API_KEY",
-            "description": "API 키 관리",
-            "x": 396.1012710921889,
-            "y": 53.15886965801275,
-            "attrs": [
-              {
-                "logicalName": "API키일련번호",
-                "physicalName": "APIKEY_SN",
-                "type": "INTEGER",
-                "kind": "pk",
-                "description": "API키일련번호",
-                "ref": null,
-                "notNull": true,
-                "unique": true,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "밴더일련번호",
-                "physicalName": "VNDR_SN",
-                "type": "INTEGER",
-                "kind": "fk",
-                "description": "",
-                "ref": {
-                  "entity": "vendor",
-                  "attr": "VNDR_SN"
-                },
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "사용자ID",
-                "physicalName": "USER_ID",
-                "type": "VARCHAR(50)",
-                "kind": "fk",
-                "description": "",
-                "ref": {
-                  "entity": "user",
-                  "attr": "USER_ID"
-                },
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "키유형코드",
-                "physicalName": "KEY_TYPE_CD",
-                "type": "VARCHAR(10)",
-                "kind": "normal",
-                "description": "KEY,ORG,ETC",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "API키값",
-                "physicalName": "API_KEY_VAL",
-                "type": "VARCHAR(255)",
-                "kind": "normal",
-                "description": "암호화 저장",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "활성여부",
-                "physicalName": "ACTVTN_YN",
-                "type": "CHAR(1)",
-                "kind": "normal",
-                "description": "Y,N ( USER_ID , VNDR_ID 별로 하나만 활성화 가능 )",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": "N"
-              },
-              {
-                "logicalName": "등록일시",
-                "physicalName": "REG_DT",
-                "type": "TIMESTAMP",
-                "kind": "normal",
-                "description": "",
-                "ref": null,
-                "notNull": false,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "수정일시",
-                "physicalName": "MDF_DT",
-                "type": "TIMESTAMP",
-                "kind": "normal",
-                "description": "",
-                "ref": null,
-                "notNull": false,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              }
-            ],
-            "colorTag": "purple",
-            "indexes": [],
-            "rowCount": 2
-          },
-          {
             "id": "vectordbcfg_copy",
             "logicalName": "공통벡터DB설정",
             "physicalName": "TB_CMM_VCTR_CFG",
             "description": "유시스 공통 벡터DB설정",
-            "x": -95.70327929556336,
-            "y": 947.198580554903,
+            "x": -103.19313048548148,
+            "y": 960.3058201372598,
             "attrs": [
               {
                 "logicalName": "백터설정일련번호",
@@ -680,8 +565,8 @@
             "logicalName": "벡터DB설정",
             "physicalName": "TB_VCTR_CFG",
             "description": "사용자별 벡터DB설정",
-            "x": 399.08519475710966,
-            "y": 795.6257838504214,
+            "x": 395.694801574443,
+            "y": 818.9816684509065,
             "attrs": [
               {
                 "logicalName": "백터설정일련번호",
@@ -775,12 +660,96 @@
             "indexes": []
           },
           {
+            "id": "vendor",
+            "logicalName": "공통밴더",
+            "physicalName": "TB_CNN_VNDR",
+            "description": "밴더 정보",
+            "x": -98.02337831969876,
+            "y": 73.71976504050886,
+            "attrs": [
+              {
+                "logicalName": "밴더일련번호",
+                "physicalName": "VNDR_SN",
+                "type": "INTEGER",
+                "kind": "pk",
+                "description": "밴더 고유 식별자",
+                "ref": null,
+                "notNull": true,
+                "unique": true,
+                "autoIncrement": true,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "밴더명",
+                "physicalName": "VNDR_NM",
+                "type": "VARCHAR(100)",
+                "kind": "normal",
+                "description": "AI 모델 제공자 명칭",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "설명",
+                "physicalName": "EXPLN",
+                "type": "TEXT",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "사용여부",
+                "physicalName": "USE_YN",
+                "type": "CHAR(1)",
+                "kind": "normal",
+                "description": "Y/N",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": "Y"
+              },
+              {
+                "logicalName": "등록일시",
+                "physicalName": "REG_DT",
+                "type": "TIMESTAMP",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "수정일시",
+                "physicalName": "MDF_DT",
+                "type": "TIMESTAMP",
+                "kind": "normal",
+                "description": "",
+                "ref": null,
+                "notNull": false,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              }
+            ],
+            "colorTag": "teal",
+            "indexes": []
+          },
+          {
             "id": "agentconfig",
             "logicalName": "에이전트설정",
             "physicalName": "TB_AIAGT_CFG",
             "description": "RAG 에이전트 검색 설정",
-            "x": 1259.3656054830367,
-            "y": 321.2425730510583,
+            "x": 1255.97521230037,
+            "y": 344.5984576515435,
             "attrs": [
               {
                 "logicalName": "에이전트설정순번",
@@ -902,8 +871,8 @@
             "logicalName": "프롬프트",
             "physicalName": "TB_PRMPT",
             "description": "사용자 정의 프롬프트",
-            "x": 1261.172575681665,
-            "y": 105.63246198866456,
+            "x": 1257.7821824989983,
+            "y": 128.98834658914976,
             "attrs": [
               {
                 "logicalName": "사용자프롬프트일련번호",
@@ -988,60 +957,90 @@
             "indexes": []
           },
           {
-            "id": "vendor",
-            "logicalName": "공통밴더",
-            "physicalName": "TB_CNN_VNDR",
-            "description": "밴더 정보",
-            "x": -94.63298513703208,
-            "y": 50.363880440023664,
+            "id": "apikey",
+            "logicalName": "API키정보",
+            "physicalName": "TB_API_KEY",
+            "description": "API 키 관리",
+            "x": 392.7108779095222,
+            "y": 76.51475425849794,
             "attrs": [
+              {
+                "logicalName": "API키일련번호",
+                "physicalName": "APIKEY_SN",
+                "type": "INTEGER",
+                "kind": "pk",
+                "description": "API키일련번호",
+                "ref": null,
+                "notNull": true,
+                "unique": true,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
               {
                 "logicalName": "밴더일련번호",
                 "physicalName": "VNDR_SN",
                 "type": "INTEGER",
-                "kind": "pk",
-                "description": "밴더 고유 식별자",
-                "ref": null,
-                "notNull": true,
-                "unique": true,
-                "autoIncrement": true,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "밴더명",
-                "physicalName": "VNDR_NM",
-                "type": "VARCHAR(100)",
-                "kind": "normal",
-                "description": "AI 모델 제공자 명칭",
-                "ref": null,
-                "notNull": true,
-                "unique": false,
-                "autoIncrement": false,
-                "defaultValue": ""
-              },
-              {
-                "logicalName": "설명",
-                "physicalName": "EXPLN",
-                "type": "TEXT",
-                "kind": "normal",
+                "kind": "fk",
                 "description": "",
-                "ref": null,
-                "notNull": false,
+                "ref": {
+                  "entity": "vendor",
+                  "attr": "VNDR_SN"
+                },
+                "notNull": true,
                 "unique": false,
                 "autoIncrement": false,
                 "defaultValue": ""
               },
               {
-                "logicalName": "사용여부",
-                "physicalName": "USE_YN",
+                "logicalName": "사용자ID",
+                "physicalName": "USER_ID",
+                "type": "VARCHAR(50)",
+                "kind": "fk",
+                "description": "",
+                "ref": {
+                  "entity": "user",
+                  "attr": "USER_ID"
+                },
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "키유형코드",
+                "physicalName": "KEY_TYPE_CD",
+                "type": "VARCHAR(10)",
+                "kind": "normal",
+                "description": "KEY,ORG,ETC",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "API키값",
+                "physicalName": "API_KEY_VAL",
+                "type": "VARCHAR(255)",
+                "kind": "normal",
+                "description": "암호화 저장",
+                "ref": null,
+                "notNull": true,
+                "unique": false,
+                "autoIncrement": false,
+                "defaultValue": ""
+              },
+              {
+                "logicalName": "활성여부",
+                "physicalName": "ACTVTN_YN",
                 "type": "CHAR(1)",
                 "kind": "normal",
-                "description": "Y/N",
+                "description": "Y,N ( USER_ID , VNDR_ID 별로 하나만 활성화 가능 )",
                 "ref": null,
                 "notNull": true,
                 "unique": false,
                 "autoIncrement": false,
-                "defaultValue": "Y"
+                "defaultValue": "N"
               },
               {
                 "logicalName": "등록일시",
@@ -1068,16 +1067,17 @@
                 "defaultValue": ""
               }
             ],
-            "colorTag": "teal",
-            "indexes": []
+            "colorTag": "purple",
+            "indexes": [],
+            "rowCount": 2
           },
           {
             "id": "user",
             "logicalName": "사용자",
             "physicalName": "TB_USER",
             "description": "시스템 사용자 계정",
-            "x": 799.0062208894896,
-            "y": 87.23636590207771,
+            "x": 797.5033294612575,
+            "y": 110.5922505025629,
             "attrs": [
               {
                 "logicalName": "사용자ID",
@@ -1271,13 +1271,7 @@
             "from": "user",
             "to": "prompt",
             "card": "1:N",
-            "bend": {
-              "toFace": "left",
-              "toPct": 0.3526327470233093,
-              "fromFace": "right",
-              "fromPct": 0.4706333871925481,
-              "wpts": []
-            },
+            "bend": null,
             "lineStyle": "dashed"
           },
           {
@@ -1395,9 +1389,9 @@
             }
           }
         ],
-        "vx": 321.9980348175377,
-        "vy": 171.13643252049997,
-        "scale": 0.5530834394868246,
+        "vx": 418.92507654961855,
+        "vy": 139.71617732378206,
+        "scale": 0.5089245653642962,
         "sections": [
           {
             "id": "sec_mpgf08v0a1",
@@ -1440,7 +1434,7 @@
             "name": "섹션",
             "x": 1123.6647207938443,
             "y": 656.8670661315637,
-            "w": 415.5423975476349,
+            "w": 417.6548690678835,
             "h": 336.2404132828191,
             "colorIdx": 0
           }
@@ -1458,7 +1452,8 @@
             "mode": "markdown"
           }
         ],
-        "collapsed": []
+        "collapsed": [],
+        "tabColor": "orange"
       },
       {
         "id": "diag_mph5g8u8mk7",
@@ -2414,7 +2409,8 @@
         "scale": 0.31652806652806653,
         "sections": [],
         "notes": [],
-        "collapsed": []
+        "collapsed": [],
+        "tabColor": "teal"
       }
     ],
     "activeDiagramId": "diag_mpgahd5rnby",
@@ -2561,7 +2557,7 @@
   "settings": {
     "theme": "frappe",
     "qbOpen": "1",
-    "qbCustom": "[{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"},{\"icon\":\"⌨\",\"text\":\"단축키 목록\",\"action\":\"openShortcutsModal()\"}]",
+    "qbCustom": "[{\"icon\":\"⌨\",\"text\":\"단축키 목록\",\"action\":\"openShortcutsModal()\"},{\"type\":\"sep\"},{\"icon\":\"🗄\",\"text\":\"DDL 생성\",\"action\":\"openDDLModal()\"},{\"type\":\"sep\"},{\"icon\":\"🔗\",\"text\":\"공유 URL 생성\",\"action\":\"generateShareUrl()\"},{\"icon\":\"탭\",\"text\":\"탭 동기화\",\"action\":\"toggleBcSync()\"},{\"type\":\"sep\"}]",
     "aiKey": ""
   }
 }
