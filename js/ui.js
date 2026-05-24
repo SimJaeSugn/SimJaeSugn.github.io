@@ -663,6 +663,7 @@ function showNoteEdit(note) {
 let ctxTargetEntity = null;
 let ctxTargetRelation = null;
 let ctxTargetSection = null;
+let _ctxScreenX = 0, _ctxScreenY = 0;
 const ctxMenu = document.getElementById('ctxMenu');
 
 const CTX_VISIBILITY = {
@@ -675,6 +676,7 @@ const CTX_VISIBILITY = {
 };
 
 function showCtxMenu(x, y, mode) {
+  _ctxScreenX = x; _ctxScreenY = y;
   const modeKey = (mode === 'relation' && ctxTargetRelation?.bend) ? 'relation_bent' : mode;
   const visible = CTX_VISIBILITY[modeKey] || {};
   ['ctx-add-ent','ctx-edit-ent','ctx-dup-ent','ctx-copy-diag','ctx-color-ent','ctx-sel-related',
@@ -747,10 +749,15 @@ function showCtxEntityColorPicker() {
       style="background:${c.bg};"
       onclick="applyCtxEntityColor(${c.id === null ? 'null' : `'${c.id}'`})"></div>`;
   }).join('');
-  const cm = ctxMenu.getBoundingClientRect();
-  picker.style.left = cm.left + 'px';
-  picker.style.top  = (cm.bottom + 4) + 'px';
+  picker.style.left = _ctxScreenX + 'px';
+  picker.style.top  = _ctxScreenY + 'px';
   picker.classList.add('open');
+  // open 후 실제 크기 기준으로 화면 밖 보정
+  const pr = picker.getBoundingClientRect();
+  if (pr.right > window.innerWidth - (panelOpen ? PANEL_W : 0))
+    picker.style.left = (_ctxScreenX - pr.width) + 'px';
+  if (pr.bottom > window.innerHeight)
+    picker.style.top  = (_ctxScreenY - pr.height) + 'px';
   setTimeout(() => {
     document.addEventListener('click', function _cls(e) {
       if (!picker.contains(e.target)) { picker.classList.remove('open'); document.removeEventListener('click', _cls); }
