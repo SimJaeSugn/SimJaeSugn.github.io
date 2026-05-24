@@ -17,6 +17,8 @@ updateZoomLabel();
 setViewMode(viewMode);
 syncToolDropdownLabels();
 render();
+// 실행취소 기준 상태 — 로드 직후 빈 스택이면 현재 상태를 baseline으로 확보
+if (!undoStack.length) undoStack.push(JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap }));
 
 // ── DOMContentLoaded ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -120,12 +122,19 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Delete' && !document.querySelector('.modal-overlay.active')) {
     if (selectedEntities.size > 0) {
       const ids = [...selectedEntities];
-      ids.forEach(id => { const ent = ENTITIES.find(en => en.id === id); if (ent) deleteEntity(ent); });
-      selectedEntities.clear(); render(); saveState(); return;
+      ids.forEach(id => { const ent = ENTITIES.find(en => en.id === id); if (ent) deleteEntity(ent, false); });
+      selectedEntities.clear(); render(); saveState(); renderEntityTree(); return;
     }
     if (selectedEntity) {
       const ent = selectedEntity; selectedEntity = null;
-      deleteEntity(ent); render(); saveState(); return;
+      deleteEntity(ent); return;
+    }
+    if (selectedSections.size > 0) {
+      [...selectedSections].forEach(s => {
+        const i = SECTIONS.indexOf(s); if (i >= 0) SECTIONS.splice(i, 1);
+      });
+      selectedSections.clear(); selectedSection = null;
+      render(); saveState(); return;
     }
     if (selectedSections.size > 0) {
       [...selectedSections].forEach(s => deleteSection(s));

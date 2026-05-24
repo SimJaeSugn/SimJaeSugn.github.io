@@ -325,14 +325,14 @@ function saveEntity() {
   closeEntModal(); render(); saveState(); renderEntityTree();
 }
 
-function deleteEntity(entity) {
+function deleteEntity(entity, save = true) {
   const idx = ENTITIES.indexOf(entity);
   if (idx >= 0) ENTITIES.splice(idx, 1);
   expandedEntities.delete(entity.id);
   for (let i = RELATIONS.length - 1; i >= 0; i--) {
     if (RELATIONS[i].from === entity.id || RELATIONS[i].to === entity.id) RELATIONS.splice(i, 1);
   }
-  render(); saveState(); renderEntityTree();
+  if (save) { render(); saveState(); renderEntityTree(); }
 }
 
 function deleteCurrentEntity() {
