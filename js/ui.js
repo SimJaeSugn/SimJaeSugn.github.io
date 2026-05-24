@@ -89,14 +89,23 @@ function toggleToolbox() {}
 
 // ── 빠른 실행 도구 모음 ───────────────────────────────────────
 let _quickbarOpen = true;
+let _qbLarge = false;
+
+function _qbBarH() { return _qbLarge ? 40 : 28; }
 
 function _applyQuickbarState() {
-  const qb    = document.getElementById('quickbar');
-  const btn   = document.getElementById('quickbarToggleBtn');
-  const panel = document.getElementById('diagramPanel');
+  const qb      = document.getElementById('quickbar');
+  const btn     = document.getElementById('quickbarToggleBtn');
+  const panel   = document.getElementById('diagramPanel');
+  const sizeBtn = document.getElementById('qb-size-btn');
+  if (qb) qb.classList.toggle('qb-large', _qbLarge);
+  if (sizeBtn) {
+    sizeBtn.textContent = _qbLarge ? '⊖' : '⊕';
+    sizeBtn.title = _qbLarge ? '기본 크기로 전환' : '대형 크기로 전환';
+  }
   if (_quickbarOpen) {
     if (qb)    qb.style.display = 'flex';
-    if (panel) panel.style.top  = '60px';
+    if (panel) panel.style.top  = (32 + _qbBarH()) + 'px';
     if (btn)   btn.textContent  = '▼';
   } else {
     if (qb)    qb.style.display = 'none';
@@ -111,9 +120,16 @@ function toggleQuickbar() {
   try { localStorage.setItem('_qbOpen', _quickbarOpen ? '1' : '0'); } catch {}
 }
 
+function toggleQuickbarSize() {
+  _qbLarge = !_qbLarge;
+  _applyQuickbarState();
+  try { localStorage.setItem('_qbLarge', _qbLarge ? '1' : '0'); } catch {}
+}
+
 function loadQuickbarState() {
   const saved = localStorage.getItem('_qbOpen');
   _quickbarOpen = (saved !== '0');
+  _qbLarge = localStorage.getItem('_qbLarge') === '1';
   _applyQuickbarState();
   _loadCustomQbItems();
   _initQuickbarDnd();
@@ -304,7 +320,7 @@ function toggleMinimap() {
 // ── 검색 ─────────────────────────────────────────────────────────
 function openSearch() {
   const p = document.getElementById('searchPanel');
-  p.style.top = (_quickbarOpen ? '64px' : '36px');
+  p.style.top = (_quickbarOpen ? (32 + _qbBarH() + 4) + 'px' : '36px');
   p.style.display = 'block';
   const inp = document.getElementById('searchInput');
   inp.value = '';

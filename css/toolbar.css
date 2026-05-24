@@ -163,6 +163,22 @@
   margin: 0 3px; flex-shrink: 0;
 }
 
+/* ── 퀵바 대형 모드 ────────────────────────────────────────── */
+#quickbar.qb-large { height: 40px; }
+#quickbar.qb-large .qb-btn {
+  min-width: 34px; height: 32px;
+  font-size: 20px; border-radius: 5px; padding: 0 6px;
+}
+#quickbar.qb-large .qb-btn.qb-text { font-size: 14px; padding: 0 8px; }
+#quickbar.qb-large .qb-sep { height: 22px; }
+
+/* ── 퀵바 사이즈 토글 버튼 ─────────────────────────────────── */
+#qb-size-btn {
+  margin-left: auto; font-size: 13px !important;
+  color: var(--tx-sub); opacity: 0.6; flex-shrink: 0;
+}
+#qb-size-btn:hover { opacity: 1; }
+
 /* drag-over 강조 */
 #quickbar.qb-drag-over {
   background: var(--bg-overlay);
