@@ -23,6 +23,7 @@ let draggingLabel   = null; // { rel, type:'card'|'label', startWorld, origOffse
 let hoveredLabel    = null; // { rel, type:'card'|'label' }
 let draggingRelPort = null; // { entity, x, y, curX, curY, targetEntity }
 let hoveredPort     = null; // { entity, side, x, y }
+let selectedRelation = null; // 클릭으로 고정된 관계선
 
 // ── 다중 선택 ────────────────────────────────────────────────────
 let selectedEntities = new Set();
@@ -419,6 +420,50 @@ function collapseCollinearWpts(rel) {
   }
 
   return anyChanged;
+}
+
+// Feature 5: 평행선 간격 균등 정렬 — 같은 면에 붙은 선들을 균등 배분
+function autoSpaceParallelRelations() {
+  ENTITIES.forEach(ent => {
+    const groups = {}; // face → [{rel, isFrom}]
+    RELATIONS.forEach(rel => {
+      const path = getRelationPath(rel);
+      if (!path) return;
+      const wp = path.waypoints;
+      const eh = entityHeight(ent);
+      if (rel.from === ent.id) {
+        if (!rel.bend) rel.bend = {};
+        if (!rel.bend.fromFace) {
+          rel.bend.fromFace = detFace(ent, wp[0], eh);
+          rel.bend.fromPct = Math.max(0.05, Math.min(0.95, facePct(ent, rel.bend.fromFace, wp[0], eh)));
+        }
+        const k = rel.bend.fromFace;
+        if (!groups[k]) groups[k] = [];
+        groups[k].push({ rel, isFrom: true });
+      }
+      if (rel.to === ent.id) {
+        if (!rel.bend) rel.bend = {};
+        if (!rel.bend.toFace) {
+          const last = wp[wp.length - 1];
+          rel.bend.toFace = detFace(ent, last, eh);
+          rel.bend.toPct = Math.max(0.05, Math.min(0.95, facePct(ent, rel.bend.toFace, last, eh)));
+        }
+        const k = rel.bend.toFace;
+        if (!groups[k]) groups[k] = [];
+        groups[k].push({ rel, isFrom: false });
+      }
+    });
+    Object.values(groups).forEach(group => {
+      if (group.length < 2) return;
+      const n = group.length;
+      group.forEach(({ rel, isFrom }, i) => {
+        const pct = (i + 1) / (n + 1);
+        if (isFrom) { rel.bend.fromPct = pct; rel.bend.wpts = null; }
+        else        { rel.bend.toPct   = pct; rel.bend.wpts = null; }
+      });
+    });
+  });
+  render(); saveState();
 }
 
 function getRelationPath(rel) {
@@ -923,26 +968,73 @@ function drawCrowsFoot(x, y, angle, isMany, isMandatory) {
   ctx.restore();
 }
 
+// 곡선 경로: 각 꺾임에 둥근 코너 적용
+function _drawRelPath(wp, curved) {
+  const n = wp.length;
+  if (n < 2) return;
+  const R = 14;
+  ctx.beginPath();
+  ctx.moveTo(wp[0][0], wp[0][1]);
+  if (!curved || n < 3) {
+    for (let j = 1; j < n; j++) ctx.lineTo(wp[j][0], wp[j][1]);
+  } else {
+    for (let j = 1; j < n - 1; j++) {
+      const [px, py] = wp[j - 1], [cx, cy] = wp[j], [nx, ny] = wp[j + 1];
+      const d1 = Math.hypot(cx - px, cy - py) || 1;
+      const d2 = Math.hypot(nx - cx, ny - cy) || 1;
+      const r = Math.min(R, d1 / 2, d2 / 2);
+      ctx.lineTo(cx - (cx - px) / d1 * r, cy - (cy - py) / d1 * r);
+      ctx.quadraticCurveTo(cx, cy, cx + (nx - cx) / d2 * r, cy + (ny - cy) / d2 * r);
+    }
+    ctx.lineTo(wp[n - 1][0], wp[n - 1][1]);
+  }
+  ctx.stroke();
+}
+
 function drawRelations() {
+  const hasSel = !!selectedEntity;
   RELATIONS.forEach(rel => {
     const path = getRelationPath(rel);
     if (!path) return;
     const { waypoints: wp, angleA, angleB } = path;
     const n = wp.length;
     const [fromCard, toCard] = rel.card.split(':');
-    const isActive = hoveredRelSeg?.rel === rel || draggingSegment?.rel === rel;
-    const lineColor = isActive ? COLOR.lineHover : COLOR.line;
+    const isActive   = hoveredRelSeg?.rel === rel || draggingSegment?.rel === rel || selectedRelation === rel;
+    const isConnected = hasSel && !isActive && (rel.from === selectedEntity.id || rel.to === selectedEntity.id);
+    const baseColor  = rel.color || COLOR.line;
+    const lineColor  = isActive   ? COLOR.lineHover
+                     : isConnected ? (rel.color || COLOR.lineHover)
+                     : hasSel      ? hexAlpha(baseColor, 0.3)
+                     : baseColor;
     const labelColor = COLOR.lineCard;
+    const curved = rel.pathStyle === 'curved' || rel.lineStyle === 'curved'; // 레거시 하위호환
     const dash = rel.lineStyle === 'dashed' ? [7, 4] : [];
     ctx.setLineDash(dash);
 
-    for (let j = 0; j < n - 1; j++) {
-      const isHov = isActive && hoveredRelSeg?.type === 'seg' && hoveredRelSeg?.segIdx === j;
-      ctx.strokeStyle = isHov ? COLOR.lineCard : lineColor;
-      ctx.lineWidth = isHov ? 2.5 : (isActive ? 2 : 1.5);
-      ctx.beginPath(); ctx.moveTo(wp[j][0], wp[j][1]); ctx.lineTo(wp[j+1][0], wp[j+1][1]); ctx.stroke();
+    if (curved) {
+      // 곡선 모드: 전체 경로를 한번에 그림
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = isActive ? 2 : 1.5;
+      _drawRelPath(wp, true);
+    } else {
+      for (let j = 0; j < n - 1; j++) {
+        const isHov = isActive && hoveredRelSeg?.type === 'seg' && hoveredRelSeg?.segIdx === j;
+        ctx.strokeStyle = isHov ? COLOR.lineCard : lineColor;
+        ctx.lineWidth = isHov ? 2.5 : (isActive ? 2 : isConnected ? 2 : 1.5);
+        ctx.beginPath(); ctx.moveTo(wp[j][0], wp[j][1]); ctx.lineTo(wp[j+1][0], wp[j+1][1]); ctx.stroke();
+      }
     }
     ctx.setLineDash([]);
+
+    // 연결된 엔티티의 관계선 하이라이트 글로우
+    if (isConnected) {
+      ctx.save();
+      ctx.strokeStyle = hexAlpha(rel.color || COLOR.lineHover, 0.25);
+      ctx.lineWidth = 6;
+      ctx.setLineDash([]);
+      _drawRelPath(wp, curved);
+      ctx.restore();
+    }
 
     if (isActive) {
       const hovType = hoveredRelSeg?.rel === rel ? hoveredRelSeg.type : null;
@@ -972,6 +1064,16 @@ function drawRelations() {
       };
       drawEp(wp[0][0], wp[0][1], hovType==='from' || drgType==='from');
       drawEp(wp[n-1][0], wp[n-1][1], hovType==='to' || drgType==='to');
+
+      // 엔드포인트 재연결 대상 엔티티 하이라이트
+      const reconnEnt = draggingSegment?._reconnectTarget;
+      if (reconnEnt) {
+        ctx.save();
+        ctx.strokeStyle = COLOR.normalText; ctx.lineWidth = 2.5;
+        ctx.globalAlpha = 0.7; ctx.setLineDash([5, 3]);
+        ctx.strokeRect(reconnEnt.x - 4, reconnEnt.y - 4, W + 8, entityHeight(reconnEnt) + 8);
+        ctx.restore();
+      }
     }
 
     ctx.strokeStyle = lineColor;
@@ -1659,6 +1761,7 @@ canvas.addEventListener('mousedown', e => {
       render(); return;
     }
     selectedEntities.clear();
+    selectedRelation = null;
     selectedEntity = hitEnt;
     draggingEntity = hitEnt;
     dragOffset = { x: w.x - hitEnt.x, y: w.y - hitEnt.y };
@@ -1729,6 +1832,7 @@ canvas.addEventListener('mousedown', e => {
     render(); return;
   }
   selectedEntity = null;
+  selectedRelation = null;
   if (!e.shiftKey && !e.ctrlKey) selectedEntities.clear();
   if (e.shiftKey) {
     selectionBox = { x: w.x, y: w.y, x2: w.x, y2: w.y };
@@ -1810,6 +1914,23 @@ canvas.addEventListener('mousemove', e => {
     } else {
       draggingEntity.x = newX;
       draggingEntity.y = newY;
+      // Feature 6: 연결된 관계선의 인접 wpt 실시간 갱신 (직교성 유지)
+      RELATIONS.forEach(rel => {
+        if (!rel.bend?.wpts?.length) return;
+        if (rel.from === draggingEntity.id && rel.bend.fromFace) {
+          const fp = faceAnchor(draggingEntity, rel.bend.fromFace, rel.bend.fromPct);
+          const fH = rel.bend.fromFace === 'left' || rel.bend.fromFace === 'right';
+          if (fH) rel.bend.wpts[0][1] = fp[1];
+          else    rel.bend.wpts[0][0] = fp[0];
+        }
+        if (rel.to === draggingEntity.id && rel.bend.toFace) {
+          const tp = faceAnchor(draggingEntity, rel.bend.toFace, rel.bend.toPct);
+          const tH = rel.bend.toFace === 'left' || rel.bend.toFace === 'right';
+          const last = rel.bend.wpts.length - 1;
+          if (tH) rel.bend.wpts[last][1] = tp[1];
+          else    rel.bend.wpts[last][0] = tp[0];
+        }
+      });
     }
     _didMove = true;
     render(); return;
@@ -1825,17 +1946,24 @@ canvas.addEventListener('mousemove', e => {
     } else if (type === 'from') {
       const em = entityMap();
       const entA = em[rel.from], entB = em[rel.to];
-      if (entA) {
-        const snap = snapToEntityFace(entA, w.x, w.y);
+      // Feature 1: 다른 엔티티 위에 있으면 재연결 대상으로 지정
+      const hoverEntF = hitTest(w.x, w.y);
+      const reconnF = (hoverEntF && hoverEntF !== entA) ? hoverEntF : null;
+      draggingSegment._reconnectTarget = reconnF;
+      const snapEntF = reconnF || entA;
+      if (snapEntF) {
+        const snap = snapToEntityFace(snapEntF, w.x, w.y);
         if (!rel.bend) rel.bend = {};
         rel.bend.fromFace = snap.face; rel.bend.fromPct = snap.pct;
         if (!rel.bend.toFace && entB) {
-          const base = computeOrthogonalPath(entA, entB);
+          const base = computeOrthogonalPath(snapEntF, entB);
           const bh = entityHeight(entB); const wp3 = base.waypoints[3];
           rel.bend.toFace = detFace(entB, wp3, bh); rel.bend.toPct = facePct(entB, rel.bend.toFace, wp3, bh);
         }
-        if (rel.bend.wpts?.length) {
-          const newFromPt = faceAnchor(entA, snap.face, snap.pct);
+        if (reconnF) {
+          rel.bend.wpts = null;
+        } else if (rel.bend.wpts?.length) {
+          const newFromPt = faceAnchor(snapEntF, snap.face, snap.pct);
           const fromH = snap.face === 'left' || snap.face === 'right';
           if (fromH) rel.bend.wpts[0][1] = newFromPt[1];
           else       rel.bend.wpts[0][0] = newFromPt[0];
@@ -1845,17 +1973,24 @@ canvas.addEventListener('mousemove', e => {
     } else if (type === 'to') {
       const em = entityMap();
       const entA = em[rel.from], entB = em[rel.to];
-      if (entB) {
-        const snap = snapToEntityFace(entB, w.x, w.y);
+      // Feature 1: 다른 엔티티 위에 있으면 재연결 대상으로 지정
+      const hoverEntT = hitTest(w.x, w.y);
+      const reconnT = (hoverEntT && hoverEntT !== entB) ? hoverEntT : null;
+      draggingSegment._reconnectTarget = reconnT;
+      const snapEntT = reconnT || entB;
+      if (snapEntT) {
+        const snap = snapToEntityFace(snapEntT, w.x, w.y);
         if (!rel.bend) rel.bend = {};
         rel.bend.toFace = snap.face; rel.bend.toPct = snap.pct;
         if (!rel.bend.fromFace && entA) {
-          const base = computeOrthogonalPath(entA, entB);
+          const base = computeOrthogonalPath(entA, snapEntT);
           const ah = entityHeight(entA); const wp0 = base.waypoints[0];
           rel.bend.fromFace = detFace(entA, wp0, ah); rel.bend.fromPct = facePct(entA, rel.bend.fromFace, wp0, ah);
         }
-        if (rel.bend.wpts?.length) {
-          const newToPt = faceAnchor(entB, snap.face, snap.pct);
+        if (reconnT) {
+          rel.bend.wpts = null;
+        } else if (rel.bend.wpts?.length) {
+          const newToPt = faceAnchor(snapEntT, snap.face, snap.pct);
           const toH = snap.face === 'left' || snap.face === 'right';
           if (toH) rel.bend.wpts[rel.bend.wpts.length - 1][1] = newToPt[1];
           else     rel.bend.wpts[rel.bend.wpts.length - 1][0] = newToPt[0];
@@ -2036,6 +2171,27 @@ canvas.addEventListener('mouseup', e => {
     straightenWpts(draggingSegment.rel);
     collapseCollinearWpts(draggingSegment.rel);
   }
+  // Feature 1: 엔드포인트 재연결 적용
+  if (draggingSegment && _didMove) {
+    const { rel, type } = draggingSegment;
+    const reconnEnt = draggingSegment._reconnectTarget;
+    if (reconnEnt && (type === 'from' || type === 'to')) {
+      const newFrom = type === 'from' ? reconnEnt.id : rel.from;
+      const newTo   = type === 'to'   ? reconnEnt.id : rel.to;
+      if (newFrom !== newTo && !RELATIONS.find(r => r !== rel && r.from === newFrom && r.to === newTo)) {
+        rel.from = newFrom; rel.to = newTo;
+        rel.bend = null;
+      } else {
+        // 재연결 불가: 원래 bend 복원
+        const ob = draggingSegment.origBend;
+        rel.bend = ob ? { ...ob, wpts: ob.wpts?.map(p => [...p]) || null } : null;
+      }
+    }
+  }
+  // Feature 2: 클릭(드래그 없음)이면 selectedRelation 고정, 드래그했으면 해제
+  if (draggingSegment && !_didMove) {
+    selectedRelation = draggingSegment.rel;
+  }
   // ── 속성 패널 연동: 패널 열기가 canvas 크기를 바꾸므로
   //    draggingEntity = null 이후에 호출해야 drag 오작동을 막는다
   const _ppEnt   = (!wasDragging && !_didMove && draggingEntity && selectedEntities.size <= 1)
@@ -2089,11 +2245,14 @@ canvas.addEventListener('dblclick', e => {
     }
   }
   if (hitSeg) {
-    if (hitSeg.rel.bend) { hitSeg.rel.bend = null; render(); saveState(); return; }
-    openEditRelationModal(hitSeg.rel); return;
+    if (typeof showRelPropPanel === 'function') showRelPropPanel(hitSeg.rel);
+    return;
   }
   const hitRel = hitTestRelation(w.x, w.y);
-  if (hitRel) { openEditRelationModal(hitRel); return; }
+  if (hitRel) {
+    if (typeof showRelPropPanel === 'function') showRelPropPanel(hitRel);
+    return;
+  }
   const hitSec = hitTestSectionLabel(w.x, w.y);
   if (hitSec) { showSectionNameInput(hitSec); return; }
   if (!sectionMode) openAddEntityModal();

@@ -27,7 +27,9 @@
       "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\('Path','Machine'\\) + ';' + [System.Environment]::GetEnvironmentVariable\\('Path','User'\\); gh --version)",
       "Bash(git credential *)",
       "Bash(gh auth *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\canvas.js\")",
+      "Bash(Measure-Object -Line)"
     ]
   }
 }
