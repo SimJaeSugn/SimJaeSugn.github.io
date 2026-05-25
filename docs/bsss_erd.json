@@ -3,7 +3,7 @@
   "diagrams": [
     {
       "id": "diag_mpgahd5rnby",
-      "name": "BSSS",
+      "name": "BSSS1111",
       "entities": [
         {
           "id": "hyperparam",
@@ -1658,8 +1658,8 @@
               "autoIncrement": false
             }
           ],
-          "x": 40,
-          "y": 1014,
+          "x": 880,
+          "y": 460,
           "indexes": []
         },
         {
@@ -1741,8 +1741,8 @@
               "autoIncrement": false
             }
           ],
-          "x": 40,
-          "y": 1282,
+          "x": 1700,
+          "y": 120,
           "indexes": []
         },
         {
@@ -1839,8 +1839,8 @@
               "defaultValue": ""
             }
           ],
-          "x": 415,
-          "y": 669,
+          "x": 1240,
+          "y": 120,
           "indexes": []
         },
         {
@@ -1994,162 +1994,8 @@
               "defaultValue": ""
             }
           ],
-          "x": 40,
-          "y": 614,
-          "indexes": []
-        },
-        {
-          "id": "tb_cnn_vndr",
-          "logicalName": "TB_CNN_VNDR",
-          "physicalName": "TB_CNN_VNDR",
-          "description": "",
-          "attrs": [
-            {
-              "logicalName": "VNDR_SN",
-              "physicalName": "VNDR_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "VNDR_NM",
-              "physicalName": "VNDR_NM",
-              "type": "VARCHAR(100)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "EXPLN",
-              "physicalName": "EXPLN",
-              "type": "TEXT",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "USE_YN",
-              "physicalName": "USE_YN",
-              "type": "CHAR(1)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "REG_DT",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MDF_DT",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            }
-          ],
-          "x": 40,
-          "y": 1550,
-          "indexes": []
-        },
-        {
-          "id": "tb_cmm_vctr_cfg",
-          "logicalName": "TB_CMM_VCTR_CFG",
-          "physicalName": "TB_CMM_VCTR_CFG",
-          "description": "",
-          "attrs": [
-            {
-              "logicalName": "VCTR_CFG_SN",
-              "physicalName": "VCTR_CFG_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "HST_IP_ADDR",
-              "physicalName": "HST_IP_ADDR",
-              "type": "VARCHAR(20)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "SRVR_PORT_NO",
-              "physicalName": "SRVR_PORT_NO",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "REG_DT",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MDF_DT",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            }
-          ],
-          "x": 40,
-          "y": 1818,
+          "x": 880,
+          "y": 60,
           "indexes": []
         },
         {
@@ -2371,6 +2217,160 @@
           "x": 415,
           "y": 280,
           "indexes": []
+        },
+        {
+          "id": "tb_cnn_vndr",
+          "logicalName": "TB_CNN_VNDR",
+          "physicalName": "TB_CNN_VNDR",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "VNDR_SN",
+              "physicalName": "VNDR_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "VNDR_NM",
+              "physicalName": "VNDR_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "EXPLN",
+              "physicalName": "EXPLN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "USE_YN",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "REG_DT",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MDF_DT",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            }
+          ],
+          "x": 1700,
+          "y": 380,
+          "indexes": []
+        },
+        {
+          "id": "tb_cmm_vctr_cfg",
+          "logicalName": "TB_CMM_VCTR_CFG",
+          "physicalName": "TB_CMM_VCTR_CFG",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "VCTR_CFG_SN",
+              "physicalName": "VCTR_CFG_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "HST_IP_ADDR",
+              "physicalName": "HST_IP_ADDR",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "SRVR_PORT_NO",
+              "physicalName": "SRVR_PORT_NO",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "REG_DT",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MDF_DT",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            }
+          ],
+          "x": 1700,
+          "y": 660,
+          "indexes": []
         }
       ],
       "relations": [
@@ -2393,13 +2393,13 @@
           "bend": null
         }
       ],
-      "vx": 107.33887733887734,
-      "vy": 107.33887733887734,
-      "scale": 0.31652806652806653,
+      "vx": 88.79795396419438,
+      "vy": 88.79795396419438,
+      "scale": 0.7800511508951407,
       "sections": [],
       "notes": [],
       "collapsed": []
     }
   ],
-  "activeDiagramId": "diag_mpgahd5rnby"
+  "activeDiagramId": "diag_mph5g8u8mk7"
 }
