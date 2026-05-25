@@ -19,8 +19,10 @@ function openAddRelationModal(fromId, toId) {
   document.getElementById('relErr').classList.remove('show');
   populateEntitySelects(fromId || ENTITIES[0].id, toId || ENTITIES[1].id);
   document.getElementById('relCard').value = '1:N';
+  document.getElementById('relPathStyle').value = 'straight';
   document.getElementById('relLineStyle').value = 'solid';
   document.getElementById('relLabel').value = '';
+  document.getElementById('relColor').value = '#89b4fa';
   document.getElementById('relFkAutoGroup').style.display = '';
   document.getElementById('relFkAuto').checked = false;
   document.getElementById('relOverlay').classList.add('active');
@@ -34,8 +36,12 @@ function openEditRelationModal(rel) {
   document.getElementById('relErr').classList.remove('show');
   populateEntitySelects(rel.from, rel.to);
   document.getElementById('relCard').value = rel.card;
-  document.getElementById('relLineStyle').value = rel.lineStyle || 'solid';
+  // 레거시: lineStyle='curved' 였던 데이터 하위호환
+  const _legacyCurved = rel.lineStyle === 'curved';
+  document.getElementById('relPathStyle').value = (rel.pathStyle === 'curved' || _legacyCurved) ? 'curved' : 'straight';
+  document.getElementById('relLineStyle').value = (!_legacyCurved && rel.lineStyle === 'dashed') ? 'dashed' : 'solid';
   document.getElementById('relLabel').value = rel.label || '';
+  document.getElementById('relColor').value = rel.color || '#89b4fa';
   document.getElementById('relFkAutoGroup').style.display = 'none';
   document.getElementById('relOverlay').classList.add('active');
 }
@@ -47,7 +53,9 @@ function saveRelation() {
   const to        = document.getElementById('relTo').value;
   const card      = document.getElementById('relCard').value;
   const lineStyle = document.getElementById('relLineStyle').value;
+  const pathStyle = document.getElementById('relPathStyle').value;
   const label     = document.getElementById('relLabel').value.trim();
+  const color     = document.getElementById('relColor').value;
   const errEl = document.getElementById('relErr');
   errEl.classList.remove('show');
 
@@ -58,12 +66,18 @@ function saveRelation() {
     if (dup) { errEl.textContent = '이미 동일한 관계가 존재합니다.'; errEl.classList.add('show'); return; }
   }
 
+  const colorVal = (color && color !== '#89b4fa') ? color : undefined;
   if (editingRelation) {
     editingRelation.from = from; editingRelation.to = to; editingRelation.card = card;
-    editingRelation.lineStyle = lineStyle === 'solid' ? undefined : lineStyle;
+    editingRelation.lineStyle  = lineStyle  === 'dashed'  ? 'dashed'  : undefined;
+    editingRelation.pathStyle  = pathStyle  === 'curved'  ? 'curved'  : undefined;
     editingRelation.label = label || undefined;
+    editingRelation.color = colorVal;
   } else {
-    RELATIONS.push({ from, to, card, ...(lineStyle !== 'solid' && { lineStyle }), ...(label && { label }) });
+    RELATIONS.push({ from, to, card,
+      ...(lineStyle === 'dashed'  && { lineStyle: 'dashed' }),
+      ...(pathStyle === 'curved'  && { pathStyle: 'curved' }),
+      ...(label && { label }), ...(colorVal && { color: colorVal }) });
     if (document.getElementById('relFkAuto')?.checked) autoAddFkColumn(from, to, card);
   }
   closeRelModal(); render(); saveState();
