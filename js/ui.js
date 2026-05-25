@@ -1940,6 +1940,7 @@ const CMD_LIST = [
   { label: '격자형 배치',    category: '보기', icon: '⊞', action: () => autoLayout('grid') },
   { label: '원형 배치',      category: '보기', icon: '◯', action: () => autoLayout('circular') },
   { label: '자동 관계선 최적화', category: '보기', icon: '⫸', action: () => autoOptimizeRelations() },
+  { label: '관계선최적화V2',    category: '보기', icon: '⫷', action: () => autoOptimizeRelationsV2() },
   { label: '논리 보기',      category: '보기', icon: '𝐋',  action: () => setViewMode('logical') },
   { label: '물리 보기',      category: '보기', icon: '𝐏',  action: () => setViewMode('physical') },
   { label: '크로우풋 표기',  category: '보기', icon: '⋈', action: () => toggleNotation() },
