@@ -201,9 +201,9 @@ function routeFacePath(fromPt, fromFace, toPt, toFace, bend) {
   }
   // L-shape (혼합: 수평 출구 + 수직 출구)
   if (fromH) {
-    return { wps: [fromPt, [toPt[0], fromPt[1]], toPt, toPt], lshape: true };
+    return { wps: [fromPt, [toPt[0], fromPt[1]], toPt], lshape: true };
   } else {
-    return { wps: [fromPt, [fromPt[0], toPt[1]], toPt, toPt], lshape: true };
+    return { wps: [fromPt, [fromPt[0], toPt[1]], toPt], lshape: true };
   }
 }
 
@@ -241,8 +241,8 @@ function initWpts(rel) {
   const wp = path.waypoints;
   if (!rel.bend) rel.bend = {};
   const ah = entityHeight(a), bh = entityHeight(b);
-  if (!rel.bend.fromFace) { rel.bend.fromFace = detFace(a, wp[0], ah); rel.bend.fromPct = facePct(a, rel.bend.fromFace, wp[0], ah); }
-  if (!rel.bend.toFace)   { rel.bend.toFace   = detFace(b, wp[wp.length-1], bh); rel.bend.toPct = facePct(b, rel.bend.toFace, wp[wp.length-1], bh); }
+  if (!rel.bend.fromFace) { rel.bend.fromFace = detFace(a, wp[0], ah); rel.bend.fromPct = Math.max(0.05, Math.min(0.95, facePct(a, rel.bend.fromFace, wp[0], ah))); }
+  if (!rel.bend.toFace)   { rel.bend.toFace   = detFace(b, wp[wp.length-1], bh); rel.bend.toPct  = Math.max(0.05, Math.min(0.95, facePct(b, rel.bend.toFace, wp[wp.length-1], bh))); }
   rel.bend.wpts = wp.slice(1, wp.length - 1).map(p => [...p]);
   delete rel.bend.midX; delete rel.bend.midY; delete rel.bend.fromOff; delete rel.bend.toOff;
 }
@@ -274,6 +274,7 @@ function applyRelSegDrag(rel, segIdx, origBend, dx, dy) {
   if (!bfw) return;
   const { full } = bfw;
   const n = full.length;
+  if (segIdx < 0 || segIdx >= n - 1) return;
   const p1 = full[segIdx];
   const dir = segDir(full[segIdx], full[segIdx + 1]);
   const ah = entityHeight(a), bh = entityHeight(b);
@@ -379,25 +380,45 @@ function straightenWpts(rel) {
 
 function collapseCollinearWpts(rel) {
   if (!rel.bend?.wpts) return false;
-  const bfw = buildFullWpts(rel);
-  if (!bfw) return false;
-  const { full } = bfw;
-  const n = full.length;
-  if (n < 4) return false;
+  let anyChanged = false;
 
-  const newWpts = [];
-  let changed = false;
-  for (let i = 1; i <= n - 2; i++) {
-    const leftDir  = segDir(full[i - 1], full[i]);
-    const rightDir = segDir(full[i], full[i + 1]);
-    if (leftDir === rightDir) {
-      changed = true;
-    } else {
-      newWpts.push([...full[i]]);
+  // 1단계: 길이 0인 중복 포인트 제거
+  // segDir이 중복 포인트를 항상 'H'로 분류해 수직 선의 collapse를 막는 문제 해결
+  {
+    const bfw = buildFullWpts(rel);
+    if (!bfw) return false;
+    const { full } = bfw;
+    const n = full.length;
+    const p1Wpts = [];
+    let p1Changed = false;
+    for (let i = 1; i <= n - 2; i++) {
+      const toLeft  = Math.hypot(full[i][0] - full[i-1][0], full[i][1] - full[i-1][1]);
+      const toRight = Math.hypot(full[i][0] - full[i+1][0], full[i][1] - full[i+1][1]);
+      if (toLeft < 0.5 || toRight < 0.5) { p1Changed = true; }
+      else { p1Wpts.push([...full[i]]); }
     }
+    if (p1Changed) { rel.bend.wpts = p1Wpts; anyChanged = true; }
   }
-  if (changed) rel.bend.wpts = newWpts;
-  return changed;
+
+  // 2단계: 동일 방향 연속 세그먼트 collapse (수평·수직 모두)
+  {
+    const bfw = buildFullWpts(rel);
+    if (!bfw) return anyChanged;
+    const { full } = bfw;
+    const n = full.length;
+    if (n < 4) return anyChanged;
+    const newWpts = [];
+    let changed = false;
+    for (let i = 1; i <= n - 2; i++) {
+      const leftDir  = segDir(full[i - 1], full[i]);
+      const rightDir = segDir(full[i], full[i + 1]);
+      if (leftDir === rightDir) { changed = true; }
+      else { newWpts.push([...full[i]]); }
+    }
+    if (changed) { rel.bend.wpts = newWpts; anyChanged = true; }
+  }
+
+  return anyChanged;
 }
 
 function getRelationPath(rel) {
@@ -483,7 +504,7 @@ function getRelLabelPositions(rel) {
 // ── hit test 함수들 ───────────────────────────────────────────
 function hitTestRelHandle(wx, wy) {
   const threshold = 8 / scale;
-  const epRadius  = 8 / scale;
+  const epRadius  = 20 / scale;
   const addRadius = 6 / scale;
   const wptRadius = 7 / scale;
   for (let i = RELATIONS.length - 1; i >= 0; i--) {
@@ -1497,11 +1518,21 @@ function renderNow() {
   drawRelations();
   ENTITIES.forEach(drawEntity);
   if (draggingRelPort) {
-    const { x, y, curX, curY, targetEntity } = draggingRelPort;
+    const { entity, x, y, curX, curY, targetEntity } = draggingRelPort;
     ctx.save();
     ctx.strokeStyle = COLOR.line; ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]); ctx.globalAlpha = 0.85;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(curX, curY); ctx.stroke();
+    if (targetEntity) {
+      const previewPath = computeOrthogonalPath(entity, targetEntity);
+      if (previewPath) {
+        const pwp = previewPath.waypoints;
+        ctx.beginPath(); ctx.moveTo(pwp[0][0], pwp[0][1]);
+        for (let k = 1; k < pwp.length; k++) ctx.lineTo(pwp[k][0], pwp[k][1]);
+        ctx.stroke();
+      }
+    } else {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(curX, curY); ctx.stroke();
+    }
     ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(curX, curY, 4, 0, Math.PI * 2);
     ctx.fillStyle = COLOR.line; ctx.globalAlpha = 0.7; ctx.fill();
@@ -1654,7 +1685,7 @@ canvas.addEventListener('mousedown', e => {
     if (type === 'add') {
       insertBump(rel, segIdx); render(); saveState(); return;
     }
-    if (type === 'seg' || type === 'wpt') initWpts(rel);
+    if (type !== 'add') initWpts(rel);
     draggingSegment = {
       rel, type, segIdx, wptFullIdx,
       origBend: rel.bend ? {
@@ -1672,7 +1703,7 @@ canvas.addEventListener('mousedown', e => {
         canvas.style.cursor = d === 'H' ? 'ns-resize' : 'ew-resize';
       }
     } else if (type === 'wpt') { canvas.style.cursor = 'move'; }
-    else { canvas.style.cursor = 'crosshair'; }
+    else { canvas.style.cursor = 'grabbing'; }
     return;
   }
   const hitSecResize = hitTestSectionResize(w.x, w.y);
@@ -1803,6 +1834,12 @@ canvas.addEventListener('mousemove', e => {
           const bh = entityHeight(entB); const wp3 = base.waypoints[3];
           rel.bend.toFace = detFace(entB, wp3, bh); rel.bend.toPct = facePct(entB, rel.bend.toFace, wp3, bh);
         }
+        if (rel.bend.wpts?.length) {
+          const newFromPt = faceAnchor(entA, snap.face, snap.pct);
+          const fromH = snap.face === 'left' || snap.face === 'right';
+          if (fromH) rel.bend.wpts[0][1] = newFromPt[1];
+          else       rel.bend.wpts[0][0] = newFromPt[0];
+        }
         delete rel.bend.fromOff;
       }
     } else if (type === 'to') {
@@ -1816,6 +1853,12 @@ canvas.addEventListener('mousemove', e => {
           const base = computeOrthogonalPath(entA, entB);
           const ah = entityHeight(entA); const wp0 = base.waypoints[0];
           rel.bend.fromFace = detFace(entA, wp0, ah); rel.bend.fromPct = facePct(entA, rel.bend.fromFace, wp0, ah);
+        }
+        if (rel.bend.wpts?.length) {
+          const newToPt = faceAnchor(entB, snap.face, snap.pct);
+          const toH = snap.face === 'left' || snap.face === 'right';
+          if (toH) rel.bend.wpts[rel.bend.wpts.length - 1][1] = newToPt[1];
+          else     rel.bend.wpts[rel.bend.wpts.length - 1][0] = newToPt[0];
         }
         delete rel.bend.toOff;
       }
@@ -1873,7 +1916,7 @@ canvas.addEventListener('mousemove', e => {
         canvas.style.cursor = segDir(path.waypoints[hitSeg.segIdx], path.waypoints[hitSeg.segIdx+1]) === 'H' ? 'ns-resize' : 'ew-resize';
       } else canvas.style.cursor = 'default';
     } else if (hitSeg.type === 'wpt') canvas.style.cursor = 'move';
-    else canvas.style.cursor = 'crosshair';
+    else canvas.style.cursor = 'grab';
   }
   else if (hitNtResize)                             canvas.style.cursor = 'nwse-resize';
   else if (hitTestNoteTab(w.x, w.y))                canvas.style.cursor = 'pointer';
