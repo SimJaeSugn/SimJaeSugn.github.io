@@ -499,6 +499,33 @@
 <input type="file" id="fullBackupImportInput" accept=".json" style="display:none" onchange="handleFullBackupImport(event)">
 <div id="erdTooltip"></div>
 
+<!-- ── JSON Export Diagram Select Modal ──────── -->
+<div class="modal-overlay" id="exportDiagSelectOverlay" onmousedown="overlayClose(event,'exportDiagSelectOverlay')">
+  <div class="modal" style="width:360px" onmousedown.stop>
+    <h3>📤 JSON 내보내기</h3>
+    <p style="color:#a6adc8;font-size:13px;margin-bottom:14px;">내보낼 다이어그램을 선택하세요.</p>
+    <div id="exportDiagList" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeExportDiagSelectModal()">취소</button>
+      <button class="btn-save-m"   onclick="doExportSelectedDiag()">내보내기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── JSON Import Diagram Select Modal ──────── -->
+<div class="modal-overlay" id="importDiagSelectOverlay" onmousedown="overlayClose(event,'importDiagSelectOverlay')">
+  <div class="modal" style="width:380px" onmousedown.stop>
+    <h3>📥 다이어그램 불러오기</h3>
+    <p style="color:#a6adc8;font-size:13px;margin-bottom:14px;">불러올 다이어그램을 선택하고 적용 방식을 선택하세요.</p>
+    <div id="importDiagList" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeImportDiagSelectModal()">취소</button>
+      <button class="btn-cancel-m" style="color:#f38ba8;border-color:rgba(243,139,168,0.5)" onclick="doImportSelectedDiag('overwrite')">덮어쓰기</button>
+      <button class="btn-save-m"   onclick="doImportSelectedDiag('add')">새 탭 추가</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── DDL Import Modal ───────────────────────── -->
 <div class="modal-overlay" id="ddlImportOverlay" onmousedown="overlayCloseExtra(event,'ddlImportOverlay')">
   <div class="modal" style="width:680px;max-height:84vh" onmousedown.stop>
