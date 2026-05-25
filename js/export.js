@@ -57,15 +57,60 @@ function _fallbackDownload(filename, text) {
 }
 
 // ── JSON 내보내기 ─────────────────────────────────────────────
-async function exportData() {
+let _exportDiagIds = new Set();
+
+function exportData() {
   flushCurrentState();
+  openExportDiagSelectModal();
+}
+
+function openExportDiagSelectModal() {
+  const list = document.getElementById('exportDiagList');
+  if (!list) return;
+  list.innerHTML = '';
+  _exportDiagIds = new Set([activeDiagramId]);
+  diagrams.forEach(d => {
+    const isActive = d.id === activeDiagramId;
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;background:#313244;user-select:none;';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox'; chk.value = d.id; chk.checked = isActive;
+    chk.style.cssText = 'width:14px;height:14px;cursor:pointer;accent-color:var(--ac,#89b4fa);flex-shrink:0;';
+    chk.addEventListener('change', () => {
+      if (chk.checked) _exportDiagIds.add(d.id); else _exportDiagIds.delete(d.id);
+    });
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = d.name || '(이름 없음)';
+    nameSpan.style.cssText = 'color:#cdd6f4;font-size:13px;flex:1;';
+    label.appendChild(chk); label.appendChild(nameSpan);
+    if (isActive) {
+      const badge = document.createElement('span');
+      badge.textContent = '현재';
+      badge.style.cssText = 'font-size:10px;color:#89b4fa;padding:1px 5px;border:1px solid #89b4fa;border-radius:3px;';
+      label.appendChild(badge);
+    }
+    list.appendChild(label);
+  });
+  document.getElementById('exportDiagSelectOverlay').classList.add('active');
+}
+
+function closeExportDiagSelectModal() {
+  document.getElementById('exportDiagSelectOverlay').classList.remove('active');
+}
+
+async function doExportSelectedDiag() {
+  if (_exportDiagIds.size === 0) { showToast('내보낼 다이어그램을 선택하세요.'); return; }
+  closeExportDiagSelectModal();
   sessionModified = false;
   const badge = document.getElementById('sessionBadge');
   if (badge) badge.style.display = 'none';
-  const data = { version: 2, diagrams, activeDiagramId };
+  const selected = diagrams.filter(d => _exportDiagIds.has(d.id));
+  const exportActiveId = _exportDiagIds.has(activeDiagramId) ? activeDiagramId : selected[0].id;
+  const data = { version: 2, diagrams: selected, activeDiagramId: exportActiveId };
   const text = JSON.stringify(data, null, 2);
-  const filename = 'bsss_erd.json';
-
+  const filename = selected.length === 1
+    ? (selected[0].name || 'diagram').replace(/[<>:"/\\|?*]/g, '_') + '.json'
+    : 'bsss_erd.json';
   const saved = await _writeExportFile(filename, text);
   if (saved) {
     showToast(`💾 ${filename} 저장 완료`);
