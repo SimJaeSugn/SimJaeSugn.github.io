@@ -3,15 +3,15 @@
   "diagrams": [
     {
       "id": "diag_mpgahd5rnby",
-      "name": "BSSS1111",
+      "name": "샘플ERD",
       "entities": [
         {
           "id": "hyperparam",
           "logicalName": "하이퍼파라미터",
           "physicalName": "TB_HYPR_PRMTR",
           "description": "LLM 파라미터 설정",
-          "x": 394.61821898742204,
-          "y": 491.1523638828148,
+          "x": 392.7345139084875,
+          "y": 496.80347911961843,
           "attrs": [
             {
               "logicalName": "파라미터일련번호",
@@ -145,8 +145,8 @@
           "logicalName": "사용자별활성모델",
           "physicalName": "TB_ACTV_MDL",
           "description": "사용자가 선택한 활성 모델",
-          "x": 395.62323335084034,
-          "y": 302.330059152012,
+          "x": 393.7395282719058,
+          "y": 307.98117438881553,
           "attrs": [
             {
               "logicalName": "활성모델일련번호",
@@ -478,8 +478,8 @@
           "logicalName": "API키정보",
           "physicalName": "TB_API_KEY",
           "description": "API 키 관리",
-          "x": 397.98497617112344,
-          "y": 47.50775442120917,
+          "x": 396.1012710921889,
+          "y": 53.15886965801275,
           "attrs": [
             {
               "logicalName": "API키일련번호",
@@ -589,90 +589,6 @@
           "rowCount": 2
         },
         {
-          "id": "vendor",
-          "logicalName": "공통밴더",
-          "physicalName": "TB_CNN_VNDR",
-          "description": "밴더 정보",
-          "x": -94.63298513703208,
-          "y": 50.363880440023664,
-          "attrs": [
-            {
-              "logicalName": "밴더일련번호",
-              "physicalName": "VNDR_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "밴더 고유 식별자",
-              "ref": null,
-              "notNull": true,
-              "unique": true,
-              "autoIncrement": true,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "밴더명",
-              "physicalName": "VNDR_NM",
-              "type": "VARCHAR(100)",
-              "kind": "normal",
-              "description": "AI 모델 제공자 명칭",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "설명",
-              "physicalName": "EXPLN",
-              "type": "TEXT",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "사용여부",
-              "physicalName": "USE_YN",
-              "type": "CHAR(1)",
-              "kind": "normal",
-              "description": "Y/N",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": "Y"
-            },
-            {
-              "logicalName": "등록일시",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "수정일시",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            }
-          ],
-          "colorTag": "teal",
-          "indexes": []
-        },
-        {
           "id": "vectordbcfg_copy",
           "logicalName": "공통벡터DB설정",
           "physicalName": "TB_CMM_VCTR_CFG",
@@ -757,12 +673,378 @@
           "indexes": []
         },
         {
+          "id": "vectordbcfg",
+          "logicalName": "벡터DB설정",
+          "physicalName": "TB_VCTR_CFG",
+          "description": "사용자별 벡터DB설정",
+          "x": 399.08519475710966,
+          "y": 795.6257838504214,
+          "attrs": [
+            {
+              "logicalName": "백터설정일련번호",
+              "physicalName": "VCTR_CFG_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "호스트IP주소",
+              "physicalName": "HST_IP_ADDR",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "0.0.0.1",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "서버포트번호",
+              "physicalName": "SRVR_PORT_NO",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "컬렉션명",
+              "physicalName": "",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            }
+          ],
+          "colorTag": "purple",
+          "indexes": []
+        },
+        {
+          "id": "prompt",
+          "logicalName": "프롬프트",
+          "physicalName": "TB_PRMPT",
+          "description": "사용자 정의 프롬프트",
+          "x": 1261.172575681665,
+          "y": 105.63246198866456,
+          "attrs": [
+            {
+              "logicalName": "사용자프롬프트일련번호",
+              "physicalName": "USER_PRMPT_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트일련번호",
+              "physicalName": "PRMPT_SN",
+              "type": "INTEGER",
+              "kind": "fk",
+              "description": "프롬프트중 사용자가 재정의한 프롬프트의 일련번호",
+              "ref": {
+                "entity": "prompt_copy",
+                "attr": "PRMPT_SN"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트내용",
+              "physicalName": "PRMPT_CN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "프롬프트내용",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "orange",
+          "indexes": []
+        },
+        {
+          "id": "vendor",
+          "logicalName": "공통밴더",
+          "physicalName": "TB_CNN_VNDR",
+          "description": "밴더 정보",
+          "x": -94.63298513703208,
+          "y": 50.363880440023664,
+          "attrs": [
+            {
+              "logicalName": "밴더일련번호",
+              "physicalName": "VNDR_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "밴더 고유 식별자",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더명",
+              "physicalName": "VNDR_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "AI 모델 제공자 명칭",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "설명",
+              "physicalName": "EXPLN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "Y/N",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "Y"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "teal",
+          "indexes": []
+        },
+        {
+          "id": "user",
+          "logicalName": "사용자",
+          "physicalName": "TB_USER",
+          "description": "시스템 사용자 계정",
+          "x": 799.0062208894896,
+          "y": 87.23636590207771,
+          "attrs": [
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자명",
+              "physicalName": "USER_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "USER"
+            },
+            {
+              "logicalName": "비밀번호",
+              "physicalName": "PSWD",
+              "type": "VARCHAR(255)",
+              "kind": "normal",
+              "description": "해시 저장",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "Y"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "green",
+          "indexes": [
+            {
+              "name": "TB_USER_INDEX",
+              "columns": [
+                "USER_ID"
+              ],
+              "unique": false
+            }
+          ],
+          "rowCount": 1
+        },
+        {
           "id": "agentconfig",
           "logicalName": "에이전트설정",
           "physicalName": "TB_AIAGT_CFG",
           "description": "RAG 에이전트 검색 설정",
-          "x": 1264.0446753324436,
-          "y": 279.7821219072757,
+          "x": 1259.3656054830367,
+          "y": 321.2425730510583,
           "attrs": [
             {
               "logicalName": "에이전트설정순번",
@@ -878,288 +1160,6 @@
           ],
           "colorTag": "orange",
           "indexes": []
-        },
-        {
-          "id": "vectordbcfg",
-          "logicalName": "벡터DB설정",
-          "physicalName": "TB_VCTR_CFG",
-          "description": "사용자별 벡터DB설정",
-          "x": 400.9688998360442,
-          "y": 789.9746686136177,
-          "attrs": [
-            {
-              "logicalName": "백터설정일련번호",
-              "physicalName": "VCTR_CFG_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": true,
-              "defaultValue": "",
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "사용자ID",
-              "physicalName": "USER_ID",
-              "type": "VARCHAR(50)",
-              "kind": "fk",
-              "description": "",
-              "ref": {
-                "entity": "user",
-                "attr": "USER_ID"
-              },
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "호스트IP주소",
-              "physicalName": "HST_IP_ADDR",
-              "type": "VARCHAR(20)",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "0.0.0.1",
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "서버포트번호",
-              "physicalName": "SRVR_PORT_NO",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "컬렉션명",
-              "physicalName": "",
-              "type": "VARCHAR(100)",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "등록일시",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "수정일시",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "autoIncrement": false
-            }
-          ],
-          "colorTag": "purple",
-          "indexes": []
-        },
-        {
-          "id": "prompt",
-          "logicalName": "프롬프트",
-          "physicalName": "TB_PRMPT",
-          "description": "사용자 정의 프롬프트",
-          "x": 1268.0433304249702,
-          "y": 50.249168882276635,
-          "attrs": [
-            {
-              "logicalName": "사용자프롬프트일련번호",
-              "physicalName": "USER_PRMPT_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": true,
-              "autoIncrement": true,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "사용자ID",
-              "physicalName": "USER_ID",
-              "type": "VARCHAR(50)",
-              "kind": "fk",
-              "description": "",
-              "ref": {
-                "entity": "user",
-                "attr": "USER_ID"
-              },
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "프롬프트일련번호",
-              "physicalName": "PRMPT_SN",
-              "type": "INTEGER",
-              "kind": "fk",
-              "description": "프롬프트중 사용자가 재정의한 프롬프트의 일련번호",
-              "ref": {
-                "entity": "prompt_copy",
-                "attr": "PRMPT_SN"
-              },
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "프롬프트내용",
-              "physicalName": "PRMPT_CN",
-              "type": "TEXT",
-              "kind": "normal",
-              "description": "프롬프트내용",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "등록일시",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "수정일시",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            }
-          ],
-          "colorTag": "orange",
-          "indexes": []
-        },
-        {
-          "id": "user",
-          "logicalName": "사용자",
-          "physicalName": "TB_USER",
-          "description": "시스템 사용자 계정",
-          "x": 812.984288428853,
-          "y": 49.001102362332674,
-          "attrs": [
-            {
-              "logicalName": "사용자ID",
-              "physicalName": "USER_ID",
-              "type": "VARCHAR(50)",
-              "kind": "pk",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": true,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "사용자명",
-              "physicalName": "USER_NM",
-              "type": "VARCHAR(100)",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": "USER"
-            },
-            {
-              "logicalName": "비밀번호",
-              "physicalName": "PSWD",
-              "type": "VARCHAR(255)",
-              "kind": "normal",
-              "description": "해시 저장",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "사용여부",
-              "physicalName": "USE_YN",
-              "type": "CHAR(1)",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": true,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": "Y"
-            },
-            {
-              "logicalName": "등록일시",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            },
-            {
-              "logicalName": "수정일시",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "ref": null,
-              "notNull": false,
-              "unique": false,
-              "autoIncrement": false,
-              "defaultValue": ""
-            }
-          ],
-          "colorTag": "green",
-          "indexes": [
-            {
-              "name": "TB_USER_INDEX",
-              "columns": [
-                "USER_ID"
-              ],
-              "unique": false
-            }
-          ],
-          "rowCount": 1
         }
       ],
       "relations": [
@@ -1204,13 +1204,17 @@
           "card": "1:1",
           "bend": {
             "fromFace": "bottom",
-            "fromPct": 0.38764240649922527,
+            "fromPct": 0.6,
             "toFace": "right",
             "toPct": 0.056931969471844646,
             "wpts": [
               [
-                927.3387983461245,
-                505.72694806760705
+                971.4189835548585,
+                511.37806330441066
+              ],
+              [
+                687.7345139084875,
+                511.37806330441066
               ]
             ]
           },
@@ -1222,13 +1226,13 @@
           "card": "1:1",
           "bend": {
             "fromFace": "bottom",
-            "fromPct": 0.5942846068198578,
+            "fromPct": 0.43638280150044395,
             "toFace": "left",
-            "toPct": 0.440977703036232,
+            "toPct": 0.5066660795177786,
             "wpts": [
               [
-                988.2982474407111,
-                382.970904417754
+                927.7391473321205,
+                439.1692748927762
               ]
             ]
           },
@@ -1266,9 +1270,9 @@
           "card": "1:N",
           "bend": {
             "toFace": "left",
-            "toPct": 0.13805324277807424,
+            "toPct": 0.3526327470233093,
             "fromFace": "right",
-            "fromPct": 0.151659845592692,
+            "fromPct": 0.4706333871925481,
             "wpts": []
           },
           "lineStyle": "dashed"
@@ -1281,7 +1285,7 @@
             "fromFace": "left",
             "fromPct": 0.554490966054051,
             "toFace": "top",
-            "toPct": 0.47820131322808695,
+            "toPct": 0.49050663925602717,
             "wpts": [
               [
                 -185.9054455223628,
@@ -1292,7 +1296,7 @@
                 -30.254249412085223
               ],
               [
-                1407.2290127483213,
+                1405.872034262193,
                 -30.254249412085223
               ]
             ]
@@ -1306,7 +1310,8 @@
           "cardOffset": {
             "dx": 652.6701690980327,
             "dy": -30.686120066091952
-          }
+          },
+          "pathStyle": "curved"
         },
         {
           "from": "user",
@@ -1320,12 +1325,12 @@
             "toPct": 0.10723126142844422,
             "wpts": [
               [
-                1048.984288428853,
-                810.3486082850221
+                1030.4189835548586,
+                815.9997235218258
               ],
               [
-                695.9688998360442,
-                810.3486082850221
+                694.0851947571097,
+                815.9997235218258
               ]
             ]
           },
@@ -1377,20 +1382,20 @@
             "toPct": 0.5,
             "wpts": [
               [
-                871.984288428853,
-                386.330059152012
+                853.4189835548585,
+                391.98117438881553
               ],
               [
-                690.6232333508403,
-                386.330059152012
+                688.7395282719058,
+                391.98117438881553
               ]
             ]
           }
         }
       ],
-      "vx": 269.56282118810645,
-      "vy": 108.8372546894962,
-      "scale": 0.5898540719227607,
+      "vx": 515.4332611977629,
+      "vy": 139.05419259431096,
+      "scale": 0.47353825530000027,
       "sections": [
         {
           "id": "sec_mpgf08v0a1",
@@ -1404,17 +1409,17 @@
         {
           "id": "sec_mpgf89u4q0",
           "name": "에이전트",
-          "x": 1154.794135262223,
-          "y": 7.657038235914836,
+          "x": 1174.072241405752,
+          "y": 64.16000860310153,
           "w": 466.37813420693215,
-          "h": 561.964822220699,
+          "h": 538.8099900955822,
           "colorIdx": 0
         },
         {
           "id": "sec_mpgfbwn8sg",
           "name": "사용자벌 모델설정",
-          "x": 354.96136455844237,
-          "y": 2.874087888056806,
+          "x": 351.19395440057326,
+          "y": -4.660732427681266,
           "w": 379.0769152389005,
           "h": 1170.0872996252556,
           "colorIdx": 0
@@ -1422,8 +1427,8 @@
         {
           "id": "sec_mphomcx9da",
           "name": "사용자",
-          "x": 756.1742449782859,
-          "y": 5.419211133808972,
+          "x": 772.2367532343123,
+          "y": 34.34716349817112,
           "w": 380.28068091715454,
           "h": 294.10870396055793,
           "colorIdx": 0
@@ -1442,309 +1447,13 @@
           "mode": "markdown"
         }
       ],
-      "collapsed": []
+      "collapsed": [],
+      "tabColor": "orange"
     },
     {
       "id": "diag_mph5g8u8mk7",
       "name": "새 다이어그램",
       "entities": [
-        {
-          "id": "tb_hypr_prmtr",
-          "logicalName": "TB_HYPR_PRMTR",
-          "physicalName": "TB_HYPR_PRMTR",
-          "description": "",
-          "attrs": [
-            {
-              "logicalName": "PRMTR_SN",
-              "physicalName": "PRMTR_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "USER_ID",
-              "physicalName": "USER_ID",
-              "type": "VARCHAR(50)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "TEMP",
-              "physicalName": "TEMP",
-              "type": "NUMERIC",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "TOP_P",
-              "physicalName": "TOP_P",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "TOP_K",
-              "physicalName": "TOP_K",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MAX_TKN",
-              "physicalName": "MAX_TKN",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "LMT_CTX_CNT",
-              "physicalName": "LMT_CTX_CNT",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "TMOUT_MI",
-              "physicalName": "TMOUT_MI",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "REG_DT",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MDF_DT",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            }
-          ],
-          "x": 40,
-          "y": 149,
-          "indexes": []
-        },
-        {
-          "id": "tb_user",
-          "logicalName": "TB_USER",
-          "physicalName": "TB_USER",
-          "description": "",
-          "attrs": [
-            {
-              "logicalName": "USER_ID",
-              "physicalName": "USER_ID",
-              "type": "VARCHAR(50)",
-              "kind": "pk",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "USER_NM",
-              "physicalName": "USER_NM",
-              "type": "VARCHAR(100)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "PSWD",
-              "physicalName": "PSWD",
-              "type": "VARCHAR(255)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "USE_YN",
-              "physicalName": "USE_YN",
-              "type": "CHAR(1)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "REG_DT",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MDF_DT",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            }
-          ],
-          "x": 880,
-          "y": 460,
-          "indexes": []
-        },
-        {
-          "id": "tb_cmm_prmpt",
-          "logicalName": "TB_CMM_PRMPT",
-          "physicalName": "TB_CMM_PRMPT",
-          "description": "",
-          "attrs": [
-            {
-              "logicalName": "PRMPT_SN",
-              "physicalName": "PRMPT_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "PRMPT_NM",
-              "physicalName": "PRMPT_NM",
-              "type": "VARCHAR(100)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "PRMPT_CN",
-              "physicalName": "PRMPT_CN",
-              "type": "TEXT",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "USE_YN",
-              "physicalName": "USE_YN",
-              "type": "CHAR(1)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "REG_DT",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MDF_DT",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            }
-          ],
-          "x": 1700,
-          "y": 120,
-          "indexes": []
-        },
         {
           "id": "tb_prmpt",
           "logicalName": "TB_PRMPT",
@@ -1839,8 +1548,8 @@
               "defaultValue": ""
             }
           ],
-          "x": 1240,
-          "y": 120,
+          "x": 1486,
+          "y": 588,
           "indexes": []
         },
         {
@@ -1994,8 +1703,376 @@
               "defaultValue": ""
             }
           ],
-          "x": 880,
-          "y": 60,
+          "x": 1486,
+          "y": 13,
+          "indexes": []
+        },
+        {
+          "id": "tb_cmm_prmpt",
+          "logicalName": "TB_CMM_PRMPT",
+          "physicalName": "TB_CMM_PRMPT",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "PRMPT_SN",
+              "physicalName": "PRMPT_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "PRMPT_NM",
+              "physicalName": "PRMPT_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "PRMPT_CN",
+              "physicalName": "PRMPT_CN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "USE_YN",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "REG_DT",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MDF_DT",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            }
+          ],
+          "x": 264,
+          "y": 803,
+          "indexes": []
+        },
+        {
+          "id": "tb_cmm_vctr_cfg",
+          "logicalName": "TB_CMM_VCTR_CFG",
+          "physicalName": "TB_CMM_VCTR_CFG",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "VCTR_CFG_SN",
+              "physicalName": "VCTR_CFG_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "HST_IP_ADDR",
+              "physicalName": "HST_IP_ADDR",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "SRVR_PORT_NO",
+              "physicalName": "SRVR_PORT_NO",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "REG_DT",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MDF_DT",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            }
+          ],
+          "x": 923.26982492276,
+          "y": 41.64366632337794,
+          "indexes": []
+        },
+        {
+          "id": "tb_user",
+          "logicalName": "TB_USER",
+          "physicalName": "TB_USER",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "USER_ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "pk",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "USER_NM",
+              "physicalName": "USER_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "PSWD",
+              "physicalName": "PSWD",
+              "type": "VARCHAR(255)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "USE_YN",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "REG_DT",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MDF_DT",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            }
+          ],
+          "x": 443.1307929969105,
+          "y": 8.215242018537591,
+          "indexes": []
+        },
+        {
+          "id": "tb_hypr_prmtr",
+          "logicalName": "TB_HYPR_PRMTR",
+          "physicalName": "TB_HYPR_PRMTR",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "PRMTR_SN",
+              "physicalName": "PRMTR_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "USER_ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "TEMP",
+              "physicalName": "TEMP",
+              "type": "NUMERIC",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "TOP_P",
+              "physicalName": "TOP_P",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "TOP_K",
+              "physicalName": "TOP_K",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MAX_TKN",
+              "physicalName": "MAX_TKN",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "LMT_CTX_CNT",
+              "physicalName": "LMT_CTX_CNT",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "TMOUT_MI",
+              "physicalName": "TMOUT_MI",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "REG_DT",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "MDF_DT",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "ref": null,
+              "autoIncrement": false
+            }
+          ],
+          "x": 905.3556893404696,
+          "y": 308.48496306334783,
           "indexes": []
         },
         {
@@ -2092,8 +2169,8 @@
               }
             }
           ],
-          "x": 415,
-          "y": 40,
+          "x": 68.95365602471679,
+          "y": 174.7384140061792,
           "indexes": []
         },
         {
@@ -2214,8 +2291,8 @@
               }
             }
           ],
-          "x": 415,
-          "y": 280,
+          "x": 62.47888774459318,
+          "y": 403.951596292482,
           "indexes": []
         },
         {
@@ -2297,79 +2374,8 @@
               "autoIncrement": false
             }
           ],
-          "x": 1700,
-          "y": 380,
-          "indexes": []
-        },
-        {
-          "id": "tb_cmm_vctr_cfg",
-          "logicalName": "TB_CMM_VCTR_CFG",
-          "physicalName": "TB_CMM_VCTR_CFG",
-          "description": "",
-          "attrs": [
-            {
-              "logicalName": "VCTR_CFG_SN",
-              "physicalName": "VCTR_CFG_SN",
-              "type": "INTEGER",
-              "kind": "pk",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "HST_IP_ADDR",
-              "physicalName": "HST_IP_ADDR",
-              "type": "VARCHAR(20)",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "SRVR_PORT_NO",
-              "physicalName": "SRVR_PORT_NO",
-              "type": "INTEGER",
-              "kind": "normal",
-              "description": "",
-              "notNull": true,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "REG_DT",
-              "physicalName": "REG_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            },
-            {
-              "logicalName": "MDF_DT",
-              "physicalName": "MDF_DT",
-              "type": "TIMESTAMP",
-              "kind": "normal",
-              "description": "",
-              "notNull": false,
-              "unique": false,
-              "defaultValue": "",
-              "ref": null,
-              "autoIncrement": false
-            }
-          ],
-          "x": 1700,
-          "y": 660,
+          "x": 607,
+          "y": 803,
           "indexes": []
         }
       ],
@@ -2378,28 +2384,162 @@
           "from": "tb_cmm_mdl",
           "to": "tb_prmpt",
           "card": "1:N",
-          "bend": null
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.5,
+            "toFace": "top",
+            "toPct": 0.5,
+            "wpts": [
+              [
+                1633.5,
+                313
+              ],
+              [
+                1633.5,
+                588
+              ]
+            ]
+          }
         },
         {
           "from": "tb_hypr_prmtr",
           "to": "tb_vctr_cfg",
           "card": "1:N",
-          "bend": null
+          "bend": {
+            "fromFace": "left",
+            "fromPct": 0.3333333333333333,
+            "toFace": "right",
+            "toPct": 0.5,
+            "wpts": [
+              [
+                634.6546726825932,
+                393.81829639668115
+              ],
+              [
+                634.6546726825932,
+                269.7384140061792
+              ]
+            ]
+          }
         },
         {
           "from": "tb_hypr_prmtr",
           "to": "tb_api_key",
           "card": "1:N",
-          "bend": null
+          "bend": {
+            "fromFace": "left",
+            "fromPct": 0.6666666666666666,
+            "toFace": "right",
+            "toPct": 0.3749949302136711,
+            "wpts": [
+              [
+                631.4172885425314,
+                479.1516297300145
+              ],
+              [
+                631.4172885425314,
+                491.70040996248105
+              ]
+            ]
+          }
+        },
+        {
+          "from": "tb_user",
+          "to": "tb_cmm_vctr_cfg",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "right",
+            "fromPct": 0.5,
+            "toFace": "left",
+            "toPct": 0.5,
+            "wpts": []
+          }
+        },
+        {
+          "from": "tb_user",
+          "to": "tb_cmm_prmpt",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.3333333333333333,
+            "toFace": "top",
+            "toPct": 0.8496867099433861,
+            "wpts": [
+              [
+                541.4641263302439,
+                489.60762100926877
+              ],
+              [
+                514.6575794332989,
+                489.60762100926877
+              ]
+            ]
+          }
+        },
+        {
+          "from": "tb_cnn_vndr",
+          "to": "tb_user",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "top",
+            "fromPct": 0.3333333333333333,
+            "toFace": "bottom",
+            "toPct": 0.6666666666666666,
+            "wpts": [
+              [
+                705.3333333333334,
+                489.60762100926877
+              ],
+              [
+                639.7974596635771,
+                489.60762100926877
+              ]
+            ]
+          },
+          "cardOffset": {
+            "dx": 25.097560464933053,
+            "dy": 28.86219453467305
+          }
+        },
+        {
+          "from": "tb_cnn_vndr",
+          "to": "tb_hypr_prmtr",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "right",
+            "fromPct": 0.283016408922116,
+            "toFace": "bottom",
+            "toPct": 0.5,
+            "wpts": [
+              [
+                1003.8903361236327,
+                849.6800436931674
+              ],
+              [
+                1052.8556893404696,
+                849.6800436931674
+              ]
+            ]
+          },
+          "cardOffset": {
+            "dx": -43.314652571889155,
+            "dy": -27.805243973831352
+          },
+          "label": "333",
+          "labelOffset": {
+            "dx": -46.318770407148236,
+            "dy": -8.173900660084996
+          }
         }
       ],
-      "vx": 88.79795396419438,
-      "vy": 88.79795396419438,
-      "scale": 0.7800511508951407,
+      "vx": 239.34655858672534,
+      "vy": 226.67749000855247,
+      "scale": 0.3,
       "sections": [],
       "notes": [],
-      "collapsed": []
+      "collapsed": [],
+      "tabColor": "purple"
     }
   ],
-  "activeDiagramId": "diag_mph5g8u8mk7"
+  "activeDiagramId": "diag_mpgahd5rnby"
 }
