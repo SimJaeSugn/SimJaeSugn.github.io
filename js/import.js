@@ -110,32 +110,30 @@ function _doImportWithGroups(data, groups) {
   }
 }
 
+let _importFileDiagrams = [];
+
 function handleImportFile(e) {
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) { e.target.value = ''; return; }
   const reader = new FileReader();
   reader.onload = (ev) => {
+    e.target.value = '';
     try {
       const data = JSON.parse(ev.target.result);
       if (Array.isArray(data.diagrams) && data.diagrams.length) {
-        askConfirm('모든 다이어그램을 파일 내용으로 교체합니다. 계속할까요?', () => {
-          diagrams = data.diagrams;
-          activeDiagramId = data.activeDiagramId && diagrams.find(d => d.id === data.activeDiagramId)
-            ? data.activeDiagramId : diagrams[0].id;
-          loadDiagramIntoWorkspace(getActiveDiagram());
-          renderDiagramPanel(); updateZoomLabel(); render(); saveState();
-        }, '교체');
+        _importFileDiagrams = data.diagrams;
+        openImportDiagSelectModal();
         return;
       }
       if (Array.isArray(data.entities)) {
-        const name = file.name.replace(/\.json$/i, '') || '불러온 다이어그램';
+        // 레거시 형식: entities 직접 포함 → 새 다이어그램으로 추가
+        const name = _uniqueDiagName(file.name.replace(/\.json$/i, '') || '불러온 다이어그램');
         const d = createEmptyDiagram(name);
         d.entities = data.entities;
         d.relations = data.relations || [];
         if (data.viewport) { d.vx = data.viewport.vx ?? 40; d.vy = data.viewport.vy ?? 40; d.scale = data.viewport.scale ?? 1; }
         flushCurrentState();
-        diagrams.push(d);
-        activeDiagramId = d.id;
+        diagrams.push(d); activeDiagramId = d.id;
         loadDiagramIntoWorkspace(d);
         renderDiagramPanel(); updateZoomLabel(); render(); saveState();
         return;
@@ -144,9 +142,91 @@ function handleImportFile(e) {
     } catch {
       alert('파일을 읽는 중 오류가 발생했습니다.\n올바른 JSON 파일인지 확인하세요.');
     }
-    e.target.value = '';
   };
   reader.readAsText(file);
+}
+
+function openImportDiagSelectModal() {
+  const list = document.getElementById('importDiagList');
+  if (!list) return;
+  list.innerHTML = '';
+  _importFileDiagrams.forEach((d, i) => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;background:#313244;user-select:none;';
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'importDiagRadio'; radio.value = String(i);
+    if (i === 0) radio.checked = true;
+    radio.style.cssText = 'width:14px;height:14px;cursor:pointer;accent-color:var(--ac,#89b4fa);flex-shrink:0;';
+    const span = document.createElement('span');
+    span.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    span.innerHTML = `<span style="color:#cdd6f4;font-size:13px;">${escHtml(d.name || '이름 없음')}</span>`
+                   + `<span style="color:#6c7086;font-size:11px;">엔티티 ${(d.entities||[]).length}개</span>`;
+    label.appendChild(radio); label.appendChild(span);
+    list.appendChild(label);
+  });
+  document.getElementById('importDiagSelectOverlay').classList.add('active');
+}
+
+function closeImportDiagSelectModal() {
+  document.getElementById('importDiagSelectOverlay').classList.remove('active');
+  _importFileDiagrams = [];
+}
+
+function doImportSelectedDiag(mode) {
+  const radio = document.querySelector('#importDiagList input[name="importDiagRadio"]:checked');
+  if (!radio) { showToast('다이어그램을 선택하세요.'); return; }
+  const src = _importFileDiagrams[parseInt(radio.value)];
+  if (!src) return;
+  closeImportDiagSelectModal();
+  if (mode === 'overwrite') {
+    _applyImportDiagram(src);
+  } else {
+    _addImportDiagramAsNew(src);
+  }
+}
+
+// 덮어쓰기: 내용만 교체, 다이어그램 명칭은 기존 유지
+function _applyImportDiagram(src) {
+  const active = getActiveDiagram();
+  if (!active) return;
+  active.entities  = (src.entities  || []).map(migrateEntity);
+  active.relations = src.relations  || [];
+  active.sections  = src.sections   || [];
+  active.notes     = src.notes      || [];
+  active.collapsed = src.collapsed  || [];
+  if (src.vx    != null) active.vx    = src.vx;
+  if (src.vy    != null) active.vy    = src.vy;
+  if (src.scale != null) active.scale = src.scale;
+  loadDiagramIntoWorkspace(active);
+  renderDiagramPanel(); updateZoomLabel(); render(); saveState();
+  showToast('✅ 다이어그램을 덮어썼습니다.');
+}
+
+// 새 탭 추가: 동명 다이어그램 있으면 끝에 (2), (3) ... 붙임
+function _addImportDiagramAsNew(src) {
+  flushCurrentState();
+  const name = _uniqueDiagName(src.name || '불러온 다이어그램');
+  const d = createEmptyDiagram(name);
+  d.entities  = (src.entities  || []).map(migrateEntity);
+  d.relations = src.relations  || [];
+  d.sections  = src.sections   || [];
+  d.notes     = src.notes      || [];
+  d.collapsed = src.collapsed  || [];
+  if (src.vx    != null) d.vx    = src.vx;
+  if (src.vy    != null) d.vy    = src.vy;
+  if (src.scale != null) d.scale = src.scale;
+  diagrams.push(d); activeDiagramId = d.id;
+  loadDiagramIntoWorkspace(d);
+  renderDiagramPanel(); updateZoomLabel(); render(); saveState();
+  showToast(`✅ '${name}' 다이어그램이 추가됐습니다.`);
+}
+
+function _uniqueDiagName(name) {
+  const existing = new Set(diagrams.map(d => d.name));
+  if (!existing.has(name)) return name;
+  let i = 2;
+  while (existing.has(`${name} (${i})`)) i++;
+  return `${name} (${i})`;
 }
 
 // ── DDL 역파싱 (SQL → ERD) ─────────────────────────────────────
