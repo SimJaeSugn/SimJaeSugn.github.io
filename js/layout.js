@@ -233,7 +233,7 @@ function autoLayout(type = 'hierarchical') {
 
   RELATIONS.forEach(r => { r.bend = null; });
   const label = { hierarchical: '계층형', grid: '격자형', circular: '원형' }[type] || type;
-  deOverlapLines(`${label} 배치 — 관계선 최적화 중...`);
+  autoOptimizeRelations(`${label} 배치 — 관계선 최적화 중...`);
 }
 
 // ── 진행 표시 UI ──────────────────────────────────────────────
@@ -265,52 +265,45 @@ function hideLayoutProgress() {
 }
 
 // ── 관계선 겹침 해소 (비동기) ─────────────────────────────────
-function deOverlapLines(title = '관계선 최적화 중...') {
+function autoOptimizeRelations(title = '자동 관계선 최적화 중...') {
   showLayoutProgress(title);
   document.getElementById('layoutTitle').textContent = title;
-  setTimeout(_runDeOverlap, 60);
+  setTimeout(_runAutoOptimizeRelations, 60);
 }
 
-function _runDeOverlap() {
-  const NUDGE = 12, TOL = 2, MAX_PASS = 80;
+function _runAutoOptimizeRelations() {
+  const NUDGE = 12, TOL = 2, MAX_PASS = 80, MAX_ITER = 12;
 
-  // 1. 모든 경로 초기화
-  RELATIONS.forEach(r => { if (!r.bend) initWpts(r); else if (!r.bend.wpts) initWpts(r); });
+  // Phase 1: 모든 bend 초기화
+  RELATIONS.forEach(rel => { rel.bend = null; });
 
-  // 2. 포트 분산: 같은 면에 붙은 여러 선을 간격을 두고 배분
-  const em = entityMap();
-  const faceMap = {};
-  RELATIONS.forEach(rel => {
-    if (!rel.bend?.fromFace) return;
-    const fk = `${rel.from}_${rel.bend.fromFace}`;
-    const tk = `${rel.to}_${rel.bend.toFace}`;
-    (faceMap[fk] = faceMap[fk] || []).push({ rel, isFrom: true });
-    (faceMap[tk] = faceMap[tk] || []).push({ rel, isFrom: false });
-  });
-  Object.values(faceMap).forEach(rels => {
-    if (rels.length <= 1) return;
-    rels.sort((a, b) => {
-      const pos = ({ rel, isFrom }) => {
-        const other = em[isFrom ? rel.to : rel.from];
-        return other ? other.y + entityHeight(other) / 2 : 0;
-      };
-      return pos(a) - pos(b);
-    });
-    rels.forEach(({ rel, isFrom }, i) => {
-      const pct = (i + 1) / (rels.length + 1);
-      if (isFrom) rel.bend.fromPct = pct; else rel.bend.toPct = pct;
-    });
-    rels.forEach(({ rel }) => _recomputeRelWpts(rel, em));
-  });
+  // Phase 2: 면 분산 — 같은 면에 연결된 선을 균등 배분, 수렴까지 반복
+  updateLayoutProgress(5, '면 분산 중...');
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const before = RELATIONS.map(r => JSON.stringify(r.bend));
+    _runFaceSpacingPass();
+    const after = RELATIONS.map(r => JSON.stringify(r.bend));
+    if (before.every((s, i) => s === after[i])) break;
+  }
 
-  updateLayoutProgress(8, '포트 분산 완료, 겹침 탐색 중...');
+  // Phase 3: 엔티티 관통 보정 — 관계선이 엔티티를 가로지르지 않도록, 수렴까지 반복
+  updateLayoutProgress(18, '엔티티 관통 보정 중...');
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const before = RELATIONS.map(r => JSON.stringify(r.bend));
+    RELATIONS.forEach(rel => _fixEntityCrossingsForRel(rel));
+    const after = RELATIONS.map(r => JSON.stringify(r.bend));
+    if (before.every((s, i) => s === after[i])) break;
+  }
+
+  updateLayoutProgress(32, '겹침 탐색 중...');
   render();
 
+  // Phase 4: 선 겹침 nudge — 겹치는 세그먼트를 밀어내는 애니메이션 루프
   let pass = 0;
   function iterate() {
     pass++;
     const overlaps = _nudgeOverlapPass(NUDGE, TOL);
-    const pct = 8 + Math.round(pass / MAX_PASS * 90);
+    const pct = 32 + Math.round(pass / MAX_PASS * 66);
     updateLayoutProgress(pct, `패스 ${pass} / ${MAX_PASS}  —  겹치는 선 ${overlaps}개`);
     render();
 
@@ -318,7 +311,9 @@ function _runDeOverlap() {
       hideLayoutProgress();
       fitAll();
       saveState();
-      showToast(overlaps === 0 ? `관계선 최적화 완료 (${pass}패스)` : `최적화 완료 (잔여 겹침 ${overlaps}개)`);
+      showToast(overlaps === 0
+        ? `관계선 최적화 완료 (${pass}패스)`
+        : `최적화 완료 (잔여 겹침 ${overlaps}개)`);
     } else {
       requestAnimationFrame(iterate);
     }
