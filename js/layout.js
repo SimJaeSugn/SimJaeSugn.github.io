@@ -401,6 +401,221 @@ function _applySegNudge(rel, si, dir, offset) {
   }
 }
 
+// ── 관계선최적화 V2 (방향 기반 포트 배정 + 스파인 라우팅) ─────────
+
+function autoOptimizeRelationsV2() {
+  showLayoutProgress('관계선최적화 V2 실행 중...');
+  document.getElementById('layoutTitle').textContent = '관계선최적화 V2';
+  setTimeout(_runOptimizeV2, 60);
+}
+
+function _runOptimizeV2() {
+  const NUDGE = 14, TOL = 2, MAX_PASS = 100;
+
+  // 1. 전체 초기화
+  RELATIONS.forEach(rel => { rel.bend = null; });
+  updateLayoutProgress(4, '포트 배정 중...');
+
+  // 2. 방향 벡터 기반 포트 배정
+  _v2AssignPorts();
+  updateLayoutProgress(18, '스파인 경로 계산 중...');
+
+  // 3. 각 관계선: 스파인 라우팅 (L자형 우선, 막히면 3세그먼트) + 즉시 단순화
+  RELATIONS.forEach(rel => _v2SpineRoute(rel));
+  RELATIONS.forEach(rel => _v2SimplifyWpts(rel));  // 직선 가능 구간 즉시 정리
+  updateLayoutProgress(36, '엔티티 관통 보정 중...');
+
+  // 4. 엔티티 관통 반복 보정 (수렴까지) + 단순화
+  for (let i = 0; i < 15; i++) {
+    const before = RELATIONS.map(r => JSON.stringify(r.bend));
+    RELATIONS.forEach(rel => _fixEntityCrossingsForRel(rel));
+    const after = RELATIONS.map(r => JSON.stringify(r.bend));
+    if (before.every((s, j) => s === after[j])) break;
+  }
+  RELATIONS.forEach(rel => _v2SimplifyWpts(rel));  // 관통 보정 후 불필요 점 정리
+
+  updateLayoutProgress(52, '겹침 분리 시작...');
+  render();
+
+  // 5. 겹침 분리 애니메이션 루프
+  let pass = 0;
+  function iterate() {
+    pass++;
+    const overlaps = _nudgeOverlapPass(NUDGE, TOL);
+    updateLayoutProgress(52 + Math.round(pass / MAX_PASS * 46), `V2 패스 ${pass}  —  겹침 ${overlaps}개`);
+    render();
+    if (overlaps === 0 || pass >= MAX_PASS) {
+      RELATIONS.forEach(rel => _v2SimplifyWpts(rel)); // 최종 정리
+      render();
+      hideLayoutProgress();
+      fitAll();
+      saveState();
+      showToast(overlaps === 0 ? `V2 최적화 완료 (${pass}패스)` : `V2 완료 (잔여 겹침 ${overlaps}개)`);
+    } else {
+      requestAnimationFrame(iterate);
+    }
+  }
+  requestAnimationFrame(iterate);
+}
+
+// 두 엔티티 중심 벡터 → 출발/도착 면 배정 (방향 강도 기반 확률로 매 실행 다양화)
+function _v2AssignPorts() {
+  const em = entityMap();
+
+  RELATIONS.forEach(rel => {
+    const a = em[rel.from], b = em[rel.to];
+    if (!a || !b) return;
+    const ah = entityHeight(a), bh = entityHeight(b);
+    const dx = (b.x + W / 2) - (a.x + W / 2);
+    const dy = (b.y + bh / 2) - (a.y + ah / 2);
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    const total = adx + ady || 1;
+
+    if (!rel.bend) rel.bend = {};
+
+    // 수평 방향 강도(0~1) — 0.5에 가까울수록 대각선, 확률적으로 면 선택
+    const horizStrength = adx / total;
+    const useHoriz = Math.random() < horizStrength;
+
+    if (useHoriz) {
+      rel.bend.fromFace = dx >= 0 ? 'right' : 'left';
+      rel.bend.toFace   = dx >= 0 ? 'left'  : 'right';
+    } else {
+      rel.bend.fromFace = dy >= 0 ? 'bottom' : 'top';
+      rel.bend.toFace   = dy >= 0 ? 'top'    : 'bottom';
+    }
+    rel.bend.fromPct = 0.5;
+    rel.bend.toPct   = 0.5;
+    rel.bend.wpts    = null;
+  });
+
+  // 같은 면 다중 포트: 상대 엔티티 위치 기준 정렬 + 미세 무작위 섞기 → 매 실행 포트 순서 다양화
+  ENTITIES.forEach(ent => {
+    ['left', 'right', 'top', 'bottom'].forEach(face => {
+      const items = [];
+      RELATIONS.forEach(rel => {
+        if (rel.from === ent.id && rel.bend?.fromFace === face) items.push({ rel, isFrom: true });
+        if (rel.to   === ent.id && rel.bend?.toFace   === face) items.push({ rel, isFrom: false });
+      });
+      if (items.length < 2) return;
+      const isH = face === 'left' || face === 'right';
+      // 위치 기반 정렬에 랜덤 노이즈 추가 → 동률 구간에서 순서 섞임
+      items.sort((x, y) => {
+        const axis = ({ rel, isFrom }) => {
+          const other = em[isFrom ? rel.to : rel.from];
+          if (!other) return 0;
+          return isH ? other.y + entityHeight(other) / 2 : other.x + W / 2;
+        };
+        return (axis(x) - axis(y)) + (Math.random() - 0.5) * 40;
+      });
+      items.forEach(({ rel, isFrom }, i) => {
+        const pct = (i + 1) / (items.length + 1);
+        if (isFrom) rel.bend.fromPct = pct; else rel.bend.toPct = pct;
+      });
+    });
+  });
+}
+
+// L자형 우선 라우팅: 막히면 3세그먼트 스파인으로 대체
+function _v2SpineRoute(rel) {
+  const em = entityMap();
+  const a = em[rel.from], b = em[rel.to];
+  if (!a || !b || !rel.bend?.fromFace || !rel.bend?.toFace) return;
+
+  const fromPt   = faceAnchor(a, rel.bend.fromFace, rel.bend.fromPct);
+  const toPt     = faceAnchor(b, rel.bend.toFace,   rel.bend.toPct);
+  const fromFace = rel.bend.fromFace;
+  const toFace   = rel.bend.toFace;
+  const exIds    = [rel.from, rel.to];
+  const fromH    = fromFace === 'left' || fromFace === 'right';
+  const toH      = toFace   === 'left' || toFace   === 'right';
+
+  if (fromH === toH) {
+    // 같은 방향 출구 → 스파인 라우팅 (무작위 시작 위치)
+    if (fromH) {
+      const spX = _v2ClearSpineX(fromPt, toPt, exIds);
+      rel.bend.wpts = [[spX, fromPt[1]], [spX, toPt[1]]];
+    } else {
+      const spY = _v2ClearSpineY(fromPt, toPt, exIds);
+      rel.bend.wpts = [[fromPt[0], spY], [toPt[0], spY]];
+    }
+  } else {
+    // 혼합 출구 → L자형 시도, 막히면 스파인 대체
+    const corner = fromH ? [toPt[0], fromPt[1]] : [fromPt[0], toPt[1]];
+    const ok1 = !obstacleOnSeg(fromPt[0], fromPt[1], corner[0], corner[1], exIds);
+    const ok2 = !obstacleOnSeg(corner[0],  corner[1], toPt[0],  toPt[1],  exIds);
+    if (ok1 && ok2) {
+      rel.bend.wpts = [corner];
+    } else if (fromH) {
+      const spX = _v2ClearSpineX(fromPt, toPt, exIds);
+      rel.bend.wpts = [[spX, fromPt[1]], [spX, toPt[1]]];
+    } else {
+      const spY = _v2ClearSpineY(fromPt, toPt, exIds);
+      rel.bend.wpts = [[fromPt[0], spY], [toPt[0], spY]];
+    }
+  }
+}
+
+// 수직 스파인 X: 무작위 시작 위치 + 장애물 회피
+function _v2ClearSpineX(fromPt, toPt, exIds) {
+  // 엔티티 간 범위를 넘어 좌우로 W/2까지 확장된 영역에서 무작위 시작
+  const lo = Math.min(fromPt[0], toPt[0]) - W / 2;
+  const hi = Math.max(fromPt[0], toPt[0]) + W / 2;
+  let x = lo + Math.random() * (hi - lo);
+  for (let t = 0; t < 12; t++) {
+    const obs = obstacleOnSeg(fromPt[0], fromPt[1], x,         fromPt[1], exIds)
+             || obstacleOnSeg(x,         fromPt[1], x,         toPt[1],   exIds)
+             || obstacleOnSeg(x,         toPt[1],   toPt[0],   toPt[1],   exIds);
+    if (!obs) break;
+    const candL = obs.x - GAP, candR = obs.x + W + GAP;
+    x = Math.abs(candL - x) <= Math.abs(candR - x) ? candL : candR;
+  }
+  return x;
+}
+
+// 수평 스파인 Y: 무작위 시작 위치 + 장애물 회피
+function _v2ClearSpineY(fromPt, toPt, exIds) {
+  const lo = Math.min(fromPt[1], toPt[1]) - entityHeight(ENTITIES[0] || { cols: [] }) / 2;
+  const hi = Math.max(fromPt[1], toPt[1]) + 80;
+  let y = lo + Math.random() * Math.max(0, hi - lo);
+  for (let t = 0; t < 12; t++) {
+    const obs = obstacleOnSeg(fromPt[0], fromPt[1], fromPt[0], y,         exIds)
+             || obstacleOnSeg(fromPt[0], y,          toPt[0],  y,         exIds)
+             || obstacleOnSeg(toPt[0],   y,          toPt[0],  toPt[1],   exIds);
+    if (!obs) break;
+    const oh = entityHeight(obs);
+    const candA = obs.y - GAP, candB = obs.y + oh + GAP;
+    y = Math.abs(candA - y) <= Math.abs(candB - y) ? candA : candB;
+  }
+  return y;
+}
+
+// 직교 경로에서 동일선상(collinear) 중간 점 반복 제거 — 직선 가능 구간 정리
+function _v2SimplifyWpts(rel) {
+  if (!rel.bend?.wpts) return;
+  const TOL = 0.5;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const bfw = buildFullWpts(rel);
+    if (!bfw || bfw.full.length < 3) break;
+    const f = bfw.full;
+    for (let i = 1; i < f.length - 1; i++) {
+      const p = f[i - 1], c = f[i], n = f[i + 1];
+      const colH = Math.abs(p[1] - c[1]) < TOL && Math.abs(c[1] - n[1]) < TOL;
+      const colV = Math.abs(p[0] - c[0]) < TOL && Math.abs(c[0] - n[0]) < TOL;
+      if (colH || colV) {
+        const wi = i - 1;
+        if (wi >= 0 && wi < rel.bend.wpts.length) {
+          rel.bend.wpts.splice(wi, 1);
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
 // ── 정렬 도구 ────────────────────────────────────────────────
 function alignEntities(type) {
   const ids = selectedEntities.size > 1 ? [...selectedEntities]
