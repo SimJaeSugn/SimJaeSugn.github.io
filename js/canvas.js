@@ -422,48 +422,126 @@ function collapseCollinearWpts(rel) {
   return anyChanged;
 }
 
-// Feature 5: 평행선 간격 균등 정렬 — 같은 면에 붙은 선들을 균등 배분
+// 선 겹침 해소 — 반복 시뮬레이션으로 최적 결과 도출
 function autoSpaceParallelRelations() {
-  ENTITIES.forEach(ent => {
-    const groups = {}; // face → [{rel, isFrom}]
-    RELATIONS.forEach(rel => {
-      const path = getRelationPath(rel);
-      if (!path) return;
-      const wp = path.waypoints;
-      const eh = entityHeight(ent);
-      if (rel.from === ent.id) {
-        if (!rel.bend) rel.bend = {};
-        if (!rel.bend.fromFace) {
-          rel.bend.fromFace = detFace(ent, wp[0], eh);
-          rel.bend.fromPct = Math.max(0.05, Math.min(0.95, facePct(ent, rel.bend.fromFace, wp[0], eh)));
+  const MAX_ITER = 8;
+
+  // 모든 bend 초기화 → computeOrthogonalPath(shiftForObstacle 포함)로 새로 계산
+  RELATIONS.forEach(rel => { rel.bend = null; });
+
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const snapBefore = RELATIONS.map(r => JSON.stringify(r.bend));
+
+    // ── Phase 1: 같은 면에 연결된 선 균등 분산 ──────────────────────
+    ENTITIES.forEach(ent => {
+      const groups = {};
+      RELATIONS.forEach(rel => {
+        const path = getRelationPath(rel);
+        if (!path) return;
+        const wp = path.waypoints;
+        const eh = entityHeight(ent);
+        if (rel.from === ent.id) {
+          if (!rel.bend) rel.bend = {};
+          if (!rel.bend.fromFace) {
+            rel.bend.fromFace = detFace(ent, wp[0], eh);
+            rel.bend.fromPct  = Math.max(0.05, Math.min(0.95,
+              facePct(ent, rel.bend.fromFace, wp[0], eh)));
+          }
+          (groups[rel.bend.fromFace] = groups[rel.bend.fromFace] || []).push({ rel, isFrom: true });
         }
-        const k = rel.bend.fromFace;
-        if (!groups[k]) groups[k] = [];
-        groups[k].push({ rel, isFrom: true });
-      }
-      if (rel.to === ent.id) {
-        if (!rel.bend) rel.bend = {};
-        if (!rel.bend.toFace) {
-          const last = wp[wp.length - 1];
-          rel.bend.toFace = detFace(ent, last, eh);
-          rel.bend.toPct = Math.max(0.05, Math.min(0.95, facePct(ent, rel.bend.toFace, last, eh)));
+        if (rel.to === ent.id) {
+          if (!rel.bend) rel.bend = {};
+          if (!rel.bend.toFace) {
+            const last = wp[wp.length - 1];
+            rel.bend.toFace = detFace(ent, last, eh);
+            rel.bend.toPct  = Math.max(0.05, Math.min(0.95,
+              facePct(ent, rel.bend.toFace, last, eh)));
+          }
+          (groups[rel.bend.toFace] = groups[rel.bend.toFace] || []).push({ rel, isFrom: false });
         }
-        const k = rel.bend.toFace;
-        if (!groups[k]) groups[k] = [];
-        groups[k].push({ rel, isFrom: false });
-      }
-    });
-    Object.values(groups).forEach(group => {
-      if (group.length < 2) return;
-      const n = group.length;
-      group.forEach(({ rel, isFrom }, i) => {
-        const pct = (i + 1) / (n + 1);
-        if (isFrom) { rel.bend.fromPct = pct; rel.bend.wpts = null; }
-        else        { rel.bend.toPct   = pct; rel.bend.wpts = null; }
+      });
+      Object.values(groups).forEach(group => {
+        if (group.length < 2) return;
+        const n = group.length;
+        group.forEach(({ rel, isFrom }, i) => {
+          const pct = (i + 1) / (n + 1);
+          if (isFrom) { rel.bend.fromPct = pct; rel.bend.wpts = null; }
+          else        { rel.bend.toPct   = pct; rel.bend.wpts = null; }
+        });
       });
     });
-  });
+
+    // ── Phase 2: 엔티티 관통 선 우회 ───────────────────────────────
+    RELATIONS.forEach(rel => _fixEntityCrossingsForRel(rel));
+
+    // ── 수렴 확인 ───────────────────────────────────────────────────
+    const snapAfter = RELATIONS.map(r => JSON.stringify(r.bend));
+    if (snapBefore.every((s, i) => s === snapAfter[i])) break;
+  }
+
   render(); saveState();
+}
+
+// 관계선이 엔티티를 관통할 경우 우회 경로 삽입
+function _fixEntityCrossingsForRel(rel) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const path = getRelationPath(rel);
+    if (!path) return;
+    const wp = path.waypoints;
+
+    // 관통하는 첫 번째 세그먼트 탐색
+    let crossIdx = -1, obs = null;
+    for (let i = 0; i < wp.length - 1; i++) {
+      const o = obstacleOnSeg(wp[i][0], wp[i][1], wp[i+1][0], wp[i+1][1], [rel.from, rel.to]);
+      if (o) { crossIdx = i; obs = o; break; }
+    }
+    if (crossIdx < 0 || !obs) return;
+
+    const oh      = entityHeight(obs);
+    const isHoriz = Math.abs(wp[crossIdx][1] - wp[crossIdx + 1][1]) < 1;
+
+    // wpts 모드 전환
+    if (!rel.bend?.wpts) initWpts(rel);
+    const bfw = buildFullWpts(rel);
+    if (!bfw) return;
+    const full = bfw.full;
+
+    // 재구성된 full path에서 관통 세그먼트 재탐색
+    let fSeg = -1;
+    for (let j = 0; j < full.length - 1; j++) {
+      if (obstacleOnSeg(full[j][0], full[j][1], full[j+1][0], full[j+1][1],
+          [rel.from, rel.to]) === obs) { fSeg = j; break; }
+    }
+    if (fSeg < 0) return;
+
+    if (isHoriz) {
+      const y     = full[fSeg][1];
+      const above = obs.y - GAP;
+      const below = obs.y + oh + GAP;
+      const newY  = Math.abs(above - y) <= Math.abs(below - y) ? above : below;
+      if (fSeg > 0 && fSeg < full.length - 2) {
+        // 내부 세그먼트: 세그먼트 자체를 이동
+        const origBend = JSON.parse(JSON.stringify(rel.bend));
+        applyRelSegDrag(rel, fSeg, origBend, 0, newY - y);
+      } else {
+        // 출입구 세그먼트: 우회 포인트 삽입
+        const p1 = full[fSeg], p2 = full[fSeg + 1];
+        rel.bend.wpts.splice(fSeg, 0, [p1[0], newY], [p2[0], newY]);
+      }
+    } else {
+      const x     = full[fSeg][0];
+      const left  = obs.x - GAP;
+      const right = obs.x + W + GAP;
+      const newX  = Math.abs(left - x) <= Math.abs(right - x) ? left : right;
+      if (fSeg > 0 && fSeg < full.length - 2) {
+        const origBend = JSON.parse(JSON.stringify(rel.bend));
+        applyRelSegDrag(rel, fSeg, origBend, newX - x, 0);
+      } else {
+        const p1 = full[fSeg], p2 = full[fSeg + 1];
+        rel.bend.wpts.splice(fSeg, 0, [newX, p1[1]], [newX, p2[1]]);
+      }
+    }
+  }
 }
 
 function getRelationPath(rel) {
