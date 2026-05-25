@@ -1111,18 +1111,41 @@ function _renderRelPropPanel(rel) {
   labelRow.appendChild(labelInp);
   content.appendChild(labelRow);
 
-  // 선 스타일
-  const lineRow = document.createElement('div');
-  lineRow.className = 'pp-rel-row';
-  lineRow.innerHTML = `<span class="pp-rel-lbl">선</span>`;
-  const lineGrp = document.createElement('div');
-  lineGrp.className = 'pp-card-grp';
-  [['solid','실선'], ['dashed','점선']].forEach(([v, txt]) => {
+  // 선 형태 (직선 / 곡선)
+  const pathRow = document.createElement('div');
+  pathRow.className = 'pp-rel-row';
+  pathRow.innerHTML = `<span class="pp-rel-lbl">형태</span>`;
+  const pathGrp = document.createElement('div');
+  pathGrp.className = 'pp-card-grp';
+  const _curPath = (rel.pathStyle === 'curved' || rel.lineStyle === 'curved') ? 'curved' : 'straight';
+  [['straight','직선'], ['curved','곡선']].forEach(([v, txt]) => {
     const btn = document.createElement('button');
-    btn.className = 'pp-card-btn' + ((rel.lineStyle || 'solid') === v ? ' on' : '');
+    btn.className = 'pp-card-btn' + (_curPath === v ? ' on' : '');
     btn.textContent = txt;
     btn.addEventListener('click', () => {
-      rel.lineStyle = v;
+      rel.pathStyle  = v === 'curved' ? 'curved' : undefined;
+      if (rel.lineStyle === 'curved') rel.lineStyle = undefined; // 레거시 정리
+      pathGrp.querySelectorAll('.pp-card-btn').forEach(b => b.classList.toggle('on', b.textContent === txt));
+      render(); saveState();
+    });
+    pathGrp.appendChild(btn);
+  });
+  pathRow.appendChild(pathGrp);
+  content.appendChild(pathRow);
+
+  // 선 패턴 (실선 / 점선)
+  const lineRow = document.createElement('div');
+  lineRow.className = 'pp-rel-row';
+  lineRow.innerHTML = `<span class="pp-rel-lbl">패턴</span>`;
+  const lineGrp = document.createElement('div');
+  lineGrp.className = 'pp-card-grp';
+  const _curLine = rel.lineStyle === 'dashed' ? 'dashed' : 'solid';
+  [['solid','실선'], ['dashed','점선']].forEach(([v, txt]) => {
+    const btn = document.createElement('button');
+    btn.className = 'pp-card-btn' + (_curLine === v ? ' on' : '');
+    btn.textContent = txt;
+    btn.addEventListener('click', () => {
+      rel.lineStyle = v === 'dashed' ? 'dashed' : undefined;
       lineGrp.querySelectorAll('.pp-card-btn').forEach(b => b.classList.toggle('on', b.textContent === txt));
       render(); saveState();
     });
@@ -1219,7 +1242,7 @@ function ctxFn(action) {
   if (action === 'editRel') showRelPropPanel(ctxTargetRelation);
   if (action === 'styleRel') {
     if (!ctxTargetRelation) return;
-    ctxTargetRelation.lineStyle = (ctxTargetRelation.lineStyle === 'dashed') ? 'solid' : 'dashed';
+    ctxTargetRelation.lineStyle = (ctxTargetRelation.lineStyle === 'dashed') ? undefined : 'dashed';
     render(); saveState();
   }
   if (action === 'delRel')  askConfirm('이 관계를 삭제합니다.', () => deleteRelation(ctxTargetRelation), '삭제');
