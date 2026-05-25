@@ -108,9 +108,12 @@ async function doExportSelectedDiag() {
   const exportActiveId = _exportDiagIds.has(activeDiagramId) ? activeDiagramId : selected[0].id;
   const data = { version: 2, diagrams: selected, activeDiagramId: exportActiveId };
   const text = JSON.stringify(data, null, 2);
+  const _n = new Date();
+  const _ts = [_n.getFullYear(), _n.getMonth()+1, _n.getDate()].map(v => String(v).padStart(2,'0')).join('')
+            + '_' + [_n.getHours(), _n.getMinutes(), _n.getSeconds()].map(v => String(v).padStart(2,'0')).join('');
   const filename = selected.length === 1
-    ? (selected[0].name || 'diagram').replace(/[<>:"/\\|?*]/g, '_') + '.json'
-    : 'bsss_erd.json';
+    ? (selected[0].name || 'diagram').replace(/[<>:"/\\|?*]/g, '_') + '_' + _ts + '.json'
+    : 'uxerd_' + _ts + '.json';
   const saved = await _writeExportFile(filename, text);
   if (saved) {
     showToast(`💾 ${filename} 저장 완료`);
@@ -129,7 +132,7 @@ async function _doExportWithGroups(groups) {
   const data = {
     backupVersion: 3,
     exportedAt: new Date().toISOString(),
-    appVersion: 'bsss-erd',
+    appVersion: 'uxerd',
   };
   if (groups.includes('diagrams')) {
     data.main = { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap };
@@ -158,7 +161,10 @@ async function _doExportWithGroups(groups) {
   }
 
   const text = JSON.stringify(data, null, 2);
-  const filename = 'bsss_erd_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  const _bn = new Date();
+  const _bts = [_bn.getFullYear(), _bn.getMonth()+1, _bn.getDate()].map(v => String(v).padStart(2,'0')).join('')
+             + '_' + [_bn.getHours(), _bn.getMinutes(), _bn.getSeconds()].map(v => String(v).padStart(2,'0')).join('');
+  const filename = 'erd_all_backup_' + _bts + '.json';
   const saved = await _writeExportFile(filename, text);
   if (saved) {
     showToast(`💾 ${filename} 저장 완료`);

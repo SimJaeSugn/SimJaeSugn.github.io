@@ -252,10 +252,10 @@ const GAP = 15;
 const UNDO_MAX = 50;
 
 // ── 로컬스토리지 키 ────────────────────────────────────────────
-const STORAGE_KEY = 'bsss_erd_v3';
+const STORAGE_KEY = 'uxerd_v3';
 const SNAPSHOT_KEY = 'erd_snapshots';
 const SNAPSHOT_MAX = 20;
-const TEMPLATE_KEY = 'bsss_erd_col_templates';
+const TEMPLATE_KEY = 'uxerd_col_templates';
 const AI_KEY_STORAGE = 'erd_ai_key';
 
 // ── DB별 자료형 목록 ─────────────────────────────────────────
