@@ -422,10 +422,10 @@ function collapseCollinearWpts(rel) {
   return anyChanged;
 }
 
-// Feature 5: 평행선 간격 균등 정렬 — 같은 면에 붙은 선들을 균등 배분
-function autoSpaceParallelRelations() {
+// 각 엔티티 면별로 연결선을 균등 분산 (autoOptimizeRelations Phase 2에서 호출)
+function _runFaceSpacingPass() {
   ENTITIES.forEach(ent => {
-    const groups = {}; // face → [{rel, isFrom}]
+    const groups = {};
     RELATIONS.forEach(rel => {
       const path = getRelationPath(rel);
       if (!path) return;
@@ -435,35 +435,164 @@ function autoSpaceParallelRelations() {
         if (!rel.bend) rel.bend = {};
         if (!rel.bend.fromFace) {
           rel.bend.fromFace = detFace(ent, wp[0], eh);
-          rel.bend.fromPct = Math.max(0.05, Math.min(0.95, facePct(ent, rel.bend.fromFace, wp[0], eh)));
+          rel.bend.fromPct  = Math.max(0.05, Math.min(0.95,
+            facePct(ent, rel.bend.fromFace, wp[0], eh)));
         }
-        const k = rel.bend.fromFace;
-        if (!groups[k]) groups[k] = [];
-        groups[k].push({ rel, isFrom: true });
+        (groups[rel.bend.fromFace] = groups[rel.bend.fromFace] || []).push({ rel, isFrom: true });
       }
       if (rel.to === ent.id) {
         if (!rel.bend) rel.bend = {};
         if (!rel.bend.toFace) {
           const last = wp[wp.length - 1];
           rel.bend.toFace = detFace(ent, last, eh);
-          rel.bend.toPct = Math.max(0.05, Math.min(0.95, facePct(ent, rel.bend.toFace, last, eh)));
+          rel.bend.toPct  = Math.max(0.05, Math.min(0.95,
+            facePct(ent, rel.bend.toFace, last, eh)));
         }
-        const k = rel.bend.toFace;
-        if (!groups[k]) groups[k] = [];
-        groups[k].push({ rel, isFrom: false });
+        (groups[rel.bend.toFace] = groups[rel.bend.toFace] || []).push({ rel, isFrom: false });
       }
     });
     Object.values(groups).forEach(group => {
       if (group.length < 2) return;
       const n = group.length;
+      const EPS = 0.001;
       group.forEach(({ rel, isFrom }, i) => {
         const pct = (i + 1) / (n + 1);
-        if (isFrom) { rel.bend.fromPct = pct; rel.bend.wpts = null; }
-        else        { rel.bend.toPct   = pct; rel.bend.wpts = null; }
+        if (isFrom) {
+          if (Math.abs((rel.bend.fromPct ?? -1) - pct) > EPS) { rel.bend.fromPct = pct; rel.bend.wpts = null; }
+        } else {
+          if (Math.abs((rel.bend.toPct ?? -1) - pct) > EPS) { rel.bend.toPct = pct; rel.bend.wpts = null; }
+        }
       });
     });
   });
-  render(); saveState();
+}
+
+// 관계선이 엔티티를 관통할 경우 우회 경로 삽입
+function _fixEntityCrossingsForRel(rel) {
+  const em = entityMap();
+  const fromEnt = em[rel.from], toEnt = em[rel.to];
+  if (!fromEnt || !toEnt) return;
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const path = getRelationPath(rel);
+    if (!path) return;
+    const wp = path.waypoints;
+
+    // 관통하는 첫 번째 세그먼트 탐색
+    let crossIdx = -1, obs = null;
+    for (let i = 0; i < wp.length - 1; i++) {
+      const o = obstacleOnSeg(wp[i][0], wp[i][1], wp[i+1][0], wp[i+1][1], [rel.from, rel.to]);
+      if (o) { crossIdx = i; obs = o; break; }
+    }
+    if (crossIdx < 0 || !obs) return;
+
+    const oh      = entityHeight(obs);
+    const isHoriz = Math.abs(wp[crossIdx][1] - wp[crossIdx + 1][1]) < 1;
+
+    // wpts 모드 전환
+    if (!rel.bend?.wpts) initWpts(rel);
+    const bfw = buildFullWpts(rel);
+    if (!bfw) return;
+    const full = bfw.full;
+
+    // 재구성된 full path에서 관통 세그먼트 재탐색
+    let fSeg = -1;
+    for (let j = 0; j < full.length - 1; j++) {
+      if (obstacleOnSeg(full[j][0], full[j][1], full[j+1][0], full[j+1][1],
+          [rel.from, rel.to]) === obs) { fSeg = j; break; }
+    }
+    if (fSeg < 0) return;
+
+    if (isHoriz) {
+      // 수평 세그먼트 → 위/아래로 이동
+      const y     = full[fSeg][1];
+      const above = obs.y - GAP;
+      const below = obs.y + oh + GAP;
+      const newY  = Math.abs(above - y) <= Math.abs(below - y) ? above : below;
+      if (fSeg > 0 && fSeg < full.length - 2) {
+        const origBend = JSON.parse(JSON.stringify(rel.bend));
+        applyRelSegDrag(rel, fSeg, origBend, 0, newY - y);
+      } else {
+        const p1 = full[fSeg], p2 = full[fSeg + 1];
+        rel.bend.wpts.splice(fSeg, 0, [p1[0], newY], [p2[0], newY]);
+      }
+    } else {
+      // 수직 세그먼트 → 좌/우 이동 가능 여부 확인
+      const x     = full[fSeg][0];
+      const left  = obs.x - GAP;
+      const right = obs.x + W + GAP;
+      const fromX = full[0][0];
+      const toX   = full[full.length - 1][0];
+      const lo    = Math.min(fromX, toX);
+      const hi    = Math.max(fromX, toX);
+      const canL  = left  >= lo;
+      const canR  = right <= hi;
+
+      if ((canL || canR) && fSeg > 0 && fSeg < full.length - 2) {
+        // 유효 범위 내에서 세그먼트 이동
+        const newX = canL && (!canR || Math.abs(left - x) <= Math.abs(right - x)) ? left : right;
+        const origBend = JSON.parse(JSON.stringify(rel.bend));
+        applyRelSegDrag(rel, fSeg, origBend, newX - x, 0);
+      } else {
+        // 복도 전체가 막힌 경우 → 상/하 우회로 전환
+        _routeAroundBlockingObs(rel, obs, fromEnt, toEnt);
+      }
+    }
+  }
+}
+
+// 엔티티가 경로 복도 전체를 막을 때 상/하 우회 경로 생성
+function _routeAroundBlockingObs(rel, obs, fromEnt, toEnt) {
+  const oh = entityHeight(obs);
+  const fh = entityHeight(fromEnt);
+  const th = entityHeight(toEnt);
+
+  const aboveY = Math.min(obs.y, fromEnt.y, toEnt.y) - GAP * 3;
+  const belowY = Math.max(obs.y + oh, fromEnt.y + fh, toEnt.y + th) + GAP * 3;
+  const midY   = (obs.y + oh/2 + fromEnt.y + fh/2 + toEnt.y + th/2) / 3;
+  const routeY = Math.abs(aboveY - midY) <= Math.abs(belowY - midY) ? aboveY : belowY;
+
+  const fromFace = routeY < fromEnt.y + fh / 2 ? 'top' : 'bottom';
+  const toFace   = routeY < toEnt.y  + th / 2  ? 'top' : 'bottom';
+
+  if (!rel.bend) rel.bend = {};
+  rel.bend.fromFace = fromFace;
+  rel.bend.toFace   = toFace;
+  rel.bend.fromPct  = rel.bend.fromPct ?? 0.5;
+  rel.bend.toPct    = rel.bend.toPct   ?? 0.5;
+
+  const fromPt = faceAnchor(fromEnt, fromFace, rel.bend.fromPct);
+  const toPt   = faceAnchor(toEnt,   toFace,   rel.bend.toPct);
+
+  const obsL = obs.x - GAP;
+  const obsR = obs.x + W + GAP;
+
+  // 수직 세그먼트가 obs를 관통하는지 확인
+  function vertCrossesObs(x, y1, y2) {
+    const yMin = Math.min(y1, y2), yMax = Math.max(y1, y2);
+    return x > obs.x - GAP && x < obs.x + W + GAP && yMax > obs.y && yMin < obs.y + oh;
+  }
+  // obs 중심 기준으로 가까운 측면 탈출 x 좌표
+  function escapeX(x) { return x < obs.x + W / 2 ? obsL : obsR; }
+
+  const wpts = [];
+
+  if (vertCrossesObs(fromPt[0], fromPt[1], routeY)) {
+    // 수직 탈출 전에 수평으로 obs 밖으로 이동
+    const ex = escapeX(fromPt[0]);
+    wpts.push([ex, fromPt[1]], [ex, routeY]);
+  } else {
+    wpts.push([fromPt[0], routeY]);
+  }
+
+  if (vertCrossesObs(toPt[0], toPt[1], routeY)) {
+    const ex = escapeX(toPt[0]);
+    wpts.push([ex, routeY], [ex, toPt[1]]);
+  } else {
+    wpts.push([toPt[0], routeY]);
+  }
+
+  rel.bend.wpts = wpts;
 }
 
 function getRelationPath(rel) {
