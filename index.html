@@ -276,6 +276,11 @@
   <div class="ctx-sep" id="ctx-sep-ent"></div>
   <div class="ctx-item" id="ctx-add-note" onclick="ctxFn('addNote')"><span class="ctx-ico">📝</span>메모 추가</div>
   <div class="ctx-item danger" id="ctx-del-note" onclick="ctxFn('delNote')"><span class="ctx-ico">✕</span>메모 삭제</div>
+  <div class="ctx-sep" id="ctx-sep-note-v2"></div>
+  <div class="ctx-item" id="ctx-add-note-v2" onclick="ctxFn('addNoteV2')"><span class="ctx-ico">🗒️</span>메모 추가 (V2)</div>
+  <div class="ctx-item danger" id="ctx-del-note-v2" onclick="ctxFn('delNoteV2')"><span class="ctx-ico">✕</span>V2 메모 삭제</div>
+  <div class="ctx-item" id="ctx-pin-note-v2" onclick="ctxFn('pinNoteV2')"><span class="ctx-ico">📌</span>핀 고정 토글</div>
+  <div class="ctx-item" id="ctx-color-note-v2" onclick="ctxFn('colorNoteV2')"><span class="ctx-ico">🎨</span>V2 색상 변경</div>
   <div class="ctx-item" id="ctx-add-rel" onclick="ctxFn('addRel')"><span class="ctx-ico">⟷</span>관계 추가</div>
   <div class="ctx-item" id="ctx-edit-rel" onclick="ctxFn('editRel')"><span class="ctx-ico">✏</span>관계 편집</div>
   <div class="ctx-item" id="ctx-style-rel" onclick="ctxFn('styleRel')"><span class="ctx-ico">╌</span>실선 / 점선 전환</div>
@@ -940,6 +945,7 @@
 
 <!-- 마크다운 노트 오버레이 컨테이너 (pointer-events:none → 마우스 이벤트는 캔버스로 통과) -->
 <div id="noteMarkdownLayer" style="position:fixed;inset:0;pointer-events:none;z-index:9;overflow:hidden;"></div>
+<div id="noteV2Layer" style="position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden;"></div>
 
 <!-- ── Scripts (load order: config → state → diagrams → entities → relations → canvas → layout → export → import → ui → main) ── -->
 <!-- marked.js : markdown → HTML 파싱 라이브러리 -->

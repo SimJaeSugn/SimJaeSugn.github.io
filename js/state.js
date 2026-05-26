@@ -13,6 +13,7 @@ let RELATIONS = [];
 // ── 섹션 / 메모 ───────────────────────────────────────────────────
 let SECTIONS = [];
 let NOTES = [];
+let NOTES_V2 = [];
 
 // ── 보기 모드 ────────────────────────────────────────────────────
 let viewMode = 'logical'; // 'logical' | 'physical'
@@ -61,6 +62,7 @@ function flushCurrentState() {
   d.relations = RELATIONS.map(r => JSON.parse(JSON.stringify(r)));
   d.sections  = SECTIONS.map(s => JSON.parse(JSON.stringify(s)));
   d.notes     = NOTES.map(n => JSON.parse(JSON.stringify(n)));
+  d.notesV2   = NOTES_V2.map(n => JSON.parse(JSON.stringify(n)));
   d.collapsed = [...collapsedEntities];
   d.vx = vx; d.vy = vy; d.scale = scale;
 }
@@ -70,6 +72,7 @@ function loadDiagramIntoWorkspace(d) {
   RELATIONS.length = 0; d.relations.forEach(r => RELATIONS.push(JSON.parse(JSON.stringify(r))));
   SECTIONS.length = 0;  (d.sections || []).forEach(s => SECTIONS.push(JSON.parse(JSON.stringify(s))));
   NOTES.length = 0;     (d.notes    || []).forEach(n => NOTES.push(JSON.parse(JSON.stringify(n))));
+  NOTES_V2.length = 0;  (d.notesV2  || []).forEach(n => NOTES_V2.push(JSON.parse(JSON.stringify(n))));
   collapsedEntities = new Set(d.collapsed || []);
   selectedSection = null; selectedSections = new Set();
   vx = d.vx ?? 40; vy = d.vy ?? 40; scale = d.scale ?? 1;
@@ -221,6 +224,8 @@ function resetToDefault() {
     d.entities = DEFAULT_ENTITIES.map(e => JSON.parse(JSON.stringify(e)));
     d.relations = DEFAULT_RELATIONS.map(r => ({ ...r }));
     d.sections  = [];
+    d.notes     = [];
+    d.notesV2   = [];
     d.vx = 40; d.vy = 40; d.scale = 1;
     loadDiagramIntoWorkspace(d);
     updateZoomLabel();

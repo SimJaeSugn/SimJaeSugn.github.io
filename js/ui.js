@@ -13,7 +13,7 @@ function updateStatusBar() {
   const sbZ = document.getElementById('sb-zoom-stat');
   if (sbE) sbE.textContent = `엔티티 ${ENTITIES.length}`;
   if (sbR) sbR.textContent = `관계 ${RELATIONS.length}`;
-  if (sbN) sbN.textContent = `메모 ${(typeof NOTES !== 'undefined' ? NOTES.length : 0)}`;
+  if (sbN) sbN.textContent = `메모 ${(typeof NOTES !== 'undefined' ? NOTES.length : 0) + (typeof NOTES_V2 !== 'undefined' ? NOTES_V2.length : 0)}`;
   const sel = typeof selectedEntities !== 'undefined' ? selectedEntities.size : 0;
   if (sbS && sbT) { sbT.textContent = `선택 ${sel}개`; sbS.style.display = sel ? '' : 'none'; }
   if (sbZ) sbZ.textContent = `${Math.round((typeof scale !== 'undefined' ? scale : 1) * 100)}%`;
@@ -782,6 +782,304 @@ function showNoteEdit(note) {
   ta.onkeydown = ev => { if (ev.key === 'Escape') closeNoteEdit(); };
 }
 
+// ── 스티커 메모 V2 ──────────────────────────────────────────────
+let _noteV2ColorIdx = 0;
+let _v2DragState = null;  // { noteId, startX, startY, origX, origY }
+let _v2ResizeState = null; // { noteId, startX, startY, origW, origH }
+let _ctxTargetNoteV2 = null;
+
+function makeNoteV2Id() {
+  return 'nv2_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+}
+
+function addNoteV2At(wx, wy) {
+  const themes = Object.keys(NOTE_V2_THEMES);
+  const color = themes[_noteV2ColorIdx % themes.length];
+  _noteV2ColorIdx++;
+  const note = {
+    id: makeNoteV2Id(),
+    x: wx - NOTE_V2_W / 2,
+    y: wy - NOTE_V2_H / 2,
+    w: NOTE_V2_W,
+    h: NOTE_V2_H,
+    title: '',
+    text: '',
+    color,
+    pinned: false,
+    tags: [],
+    createdAt: new Date().toISOString(),
+  };
+  NOTES_V2.push(note);
+  renderNoteV2Overlays();
+  saveState();
+}
+
+function deleteNoteV2(noteId) {
+  const i = NOTES_V2.findIndex(n => n.id === noteId);
+  if (i >= 0) { NOTES_V2.splice(i, 1); renderNoteV2Overlays(); saveState(); }
+}
+
+function toggleNoteV2Pin(noteId) {
+  const n = NOTES_V2.find(n => n.id === noteId);
+  if (!n) return;
+  const _qlo = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
+  if (!n.pinned) {
+    // 월드 → 스크린 좌표 변환 (핀 고정 시)
+    n.x = Math.round(n.x * scale + vx) + _qlo;
+    n.y = Math.round(n.y * scale + vy);
+    n.w = Math.round(n.w * scale);
+    n.h = Math.round(n.h * scale);
+  } else {
+    // 스크린 → 월드 좌표 변환 (핀 해제 시)
+    n.x = (n.x - _qlo - vx) / scale;
+    n.y = (n.y - vy) / scale;
+    n.w = n.w / scale;
+    n.h = n.h / scale;
+  }
+  n.pinned = !n.pinned;
+  renderNoteV2Overlays();
+  saveState();
+}
+
+function renderNoteV2Overlays() {
+  const layer = document.getElementById('noteV2Layer');
+  if (!layer) return;
+
+  // 기존 카드 id 맵
+  const existing = {};
+  layer.querySelectorAll('.note-v2-card').forEach(el => { existing[el.dataset.id] = el; });
+
+  const toRemove = new Set(Object.keys(existing));
+
+  NOTES_V2.forEach(note => {
+    toRemove.delete(note.id);
+    let card = existing[note.id];
+    const isNew = !card;
+    if (isNew) {
+      card = _createNoteV2Card(note);
+      layer.appendChild(card);
+    }
+    _positionNoteV2Card(card, note);
+    _updateNoteV2Card(card, note);
+  });
+
+  toRemove.forEach(id => { const el = existing[id]; if (el) el.remove(); });
+}
+
+function _noteV2WorldToScreen(note) {
+  const _qlo = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
+  if (note.pinned) {
+    return { left: note.x + _qlo, top: note.y, w: note.w, h: note.h };
+  }
+  return {
+    left: Math.round(note.x * scale + vx) + _qlo,
+    top:  Math.round(note.y * scale + vy),
+    w:    Math.round(note.w * scale),
+    h:    Math.round(note.h * scale),
+  };
+}
+
+function _positionNoteV2Card(card, note) {
+  const pos = _noteV2WorldToScreen(note);
+  card.style.left   = pos.left + 'px';
+  card.style.top    = pos.top  + 'px';
+  card.style.width  = pos.w   + 'px';
+  card.style.height = pos.h   + 'px';
+}
+
+function _updateNoteV2Card(card, note) {
+  card.dataset.theme = note.color || 'cream';
+  card.classList.toggle('pinned', !!note.pinned);
+
+  // 핀 버튼 아이콘 갱신
+  const pinBtn = card.querySelector('.note-v2-actions button[title="핀 고정"]');
+  if (pinBtn) pinBtn.textContent = note.pinned ? '📌' : '📍';
+
+  // 제목
+  const titleEl = card.querySelector('.nv2-title');
+  if (titleEl && document.activeElement !== titleEl) titleEl.textContent = note.title || '';
+
+  // 본문
+  const bodyEl = card.querySelector('.note-v2-body');
+  if (bodyEl && document.activeElement !== bodyEl) bodyEl.textContent = note.text || '';
+
+  // 태그
+  const footer = card.querySelector('.note-v2-footer');
+  if (footer) {
+    // 기존 tag/add-btn 제거 후 재렌더
+    footer.querySelectorAll('.nv2-tag, .nv2-tag-add').forEach(el => el.remove());
+    note.tags.forEach((tag, idx) => {
+      const pill = document.createElement('span');
+      pill.className = 'nv2-tag';
+      pill.textContent = tag;
+      const rm = document.createElement('span');
+      rm.className = 'nv2-tag-rm'; rm.textContent = '×';
+      rm.onmousedown = e => { e.stopPropagation(); };
+      rm.onclick = e => { e.stopPropagation(); note.tags.splice(idx, 1); renderNoteV2Overlays(); saveState(); };
+      pill.appendChild(rm);
+      footer.appendChild(pill);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'nv2-tag-add'; addBtn.textContent = '+ 태그';
+    addBtn.onmousedown = e => e.stopPropagation();
+    addBtn.onclick = e => {
+      e.stopPropagation();
+      const tag = prompt('태그 입력:');
+      if (tag && tag.trim()) { note.tags.push(tag.trim()); renderNoteV2Overlays(); saveState(); }
+    };
+    footer.appendChild(addBtn);
+  }
+}
+
+function _createNoteV2Card(note) {
+  const card = document.createElement('div');
+  card.className = 'note-v2-card';
+  card.dataset.id = note.id;
+
+  // 헤더
+  const header = document.createElement('div');
+  header.className = 'note-v2-header';
+
+  const title = document.createElement('div');
+  title.className = 'nv2-title';
+  title.contentEditable = 'true';
+  title.spellcheck = false;
+  title.onmousedown = e => e.stopPropagation();
+  title.oninput = () => { note.title = title.textContent; };
+  title.onblur  = () => { saveState(); };
+  title.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); title.blur(); } };
+
+  const actions = document.createElement('div');
+  actions.className = 'note-v2-actions';
+
+  const pinBtn = document.createElement('button');
+  pinBtn.title = '핀 고정';
+  pinBtn.textContent = note.pinned ? '📌' : '📍';
+  pinBtn.onmousedown = e => e.stopPropagation();
+  pinBtn.onclick = e => { e.stopPropagation(); toggleNoteV2Pin(note.id); };
+
+  const colorBtn = document.createElement('button');
+  colorBtn.title = '색상 변경'; colorBtn.textContent = '🎨';
+  colorBtn.onmousedown = e => e.stopPropagation();
+  colorBtn.onclick = e => { e.stopPropagation(); showNoteV2ColorPicker(note.id, colorBtn); };
+
+  const delBtn = document.createElement('button');
+  delBtn.title = '삭제'; delBtn.textContent = '✕';
+  delBtn.onmousedown = e => e.stopPropagation();
+  delBtn.onclick = e => { e.stopPropagation(); deleteNoteV2(note.id); };
+
+  actions.append(pinBtn, colorBtn, delBtn);
+  header.append(title, actions);
+
+  // 본문
+  const body = document.createElement('div');
+  body.className = 'note-v2-body';
+  body.contentEditable = 'true';
+  body.spellcheck = false;
+  body.onmousedown = e => e.stopPropagation();
+  body.oninput = () => { note.text = body.textContent; };
+  body.onblur  = () => { saveState(); };
+
+  // 푸터 (태그 영역)
+  const footer = document.createElement('div');
+  footer.className = 'note-v2-footer';
+
+  // 리사이즈 핸들
+  const resize = document.createElement('div');
+  resize.className = 'note-v2-resize';
+  resize.onmousedown = e => {
+    e.preventDefault(); e.stopPropagation();
+    _v2ResizeState = { noteId: note.id, startX: e.clientX, startY: e.clientY, origW: note.w, origH: note.h };
+  };
+
+  card.append(header, body, footer, resize);
+
+  // 드래그 이벤트 (헤더로 드래그)
+  header.onmousedown = e => {
+    if (e.target.closest('button, [contenteditable]')) return;
+    e.preventDefault();
+    _v2DragState = { noteId: note.id, startX: e.clientX, startY: e.clientY, origX: note.x, origY: note.y };
+    card.classList.add('dragging');
+  };
+
+  // 컨텍스트 메뉴
+  card.oncontextmenu = e => {
+    e.preventDefault(); e.stopPropagation();
+    _ctxTargetNoteV2 = note;
+    showCtxMenu(e.clientX, e.clientY, 'noteV2');
+  };
+
+  return card;
+}
+
+function showNoteV2ColorPicker(noteId, anchor) {
+  // 기존 피커 제거
+  document.querySelectorAll('.nv2-color-picker').forEach(el => el.remove());
+  const note = NOTES_V2.find(n => n.id === noteId);
+  if (!note) return;
+
+  const picker = document.createElement('div');
+  picker.className = 'nv2-color-picker';
+
+  Object.keys(NOTE_V2_THEMES).forEach(theme => {
+    const sw = document.createElement('div');
+    sw.className = 'nv2-color-swatch' + (note.color === theme ? ' active' : '');
+    sw.title = theme;
+    const t = NOTE_V2_THEMES[theme];
+    sw.style.background = t.header;
+    sw.style.border = '2px solid ' + (note.color === theme ? t.text : 'transparent');
+    sw.onclick = e => {
+      e.stopPropagation();
+      note.color = theme;
+      renderNoteV2Overlays();
+      saveState();
+      picker.remove();
+    };
+    picker.appendChild(sw);
+  });
+
+  const rect = anchor.getBoundingClientRect();
+  picker.style.top  = (rect.bottom + 4) + 'px';
+  picker.style.left = (rect.left - 60) + 'px';
+  document.body.appendChild(picker);
+  setTimeout(() => document.addEventListener('click', () => picker.remove(), { once: true }), 0);
+}
+
+// 마우스 이벤트 — V2 드래그/리사이즈
+document.addEventListener('mousemove', e => {
+  if (_v2DragState) {
+    const { noteId, startX, startY, origX, origY } = _v2DragState;
+    const note = NOTES_V2.find(n => n.id === noteId);
+    if (!note) return;
+    const dx = (e.clientX - startX) / (note.pinned ? 1 : scale);
+    const dy = (e.clientY - startY) / (note.pinned ? 1 : scale);
+    note.x = origX + dx;
+    note.y = origY + dy;
+    const card = document.querySelector('.note-v2-card[data-id="' + noteId + '"]');
+    if (card) _positionNoteV2Card(card, note);
+  }
+  if (_v2ResizeState) {
+    const { noteId, startX, startY, origW, origH } = _v2ResizeState;
+    const note = NOTES_V2.find(n => n.id === noteId);
+    if (!note) return;
+    const dx = (e.clientX - startX) / (note.pinned ? 1 : scale);
+    const dy = (e.clientY - startY) / (note.pinned ? 1 : scale);
+    note.w = Math.max(NOTE_V2_MIN_W, origW + dx);
+    note.h = Math.max(NOTE_V2_MIN_H, origH + dy);
+    const card = document.querySelector('.note-v2-card[data-id="' + noteId + '"]');
+    if (card) _positionNoteV2Card(card, note);
+  }
+});
+document.addEventListener('mouseup', e => {
+  if (_v2DragState) {
+    const card = document.querySelector('.note-v2-card[data-id="' + _v2DragState.noteId + '"]');
+    if (card) card.classList.remove('dragging');
+    _v2DragState = null;
+    saveState();
+  }
+  if (_v2ResizeState) { _v2ResizeState = null; saveState(); }
+});
+
 // ── Context Menu ─────────────────────────────────────────────────
 let ctxTargetEntity = null;
 let ctxTargetRelation = null;
@@ -790,12 +1088,13 @@ let _ctxScreenX = 0, _ctxScreenY = 0;
 const ctxMenu = document.getElementById('ctxMenu');
 
 const CTX_VISIBILITY = {
-  canvas:        { 'ctx-add-ent':1, 'ctx-add-rel':1, 'ctx-add-note':1, 'ctx-sep-canvas':1, 'ctx-sel-all':1, 'ctx-auto-arrange':1 },
+  canvas:        { 'ctx-add-ent':1, 'ctx-add-rel':1, 'ctx-add-note':1, 'ctx-sep-canvas':1, 'ctx-sel-all':1, 'ctx-auto-arrange':1, 'ctx-sep-note-v2':1, 'ctx-add-note-v2':1 },
   entity:        { 'ctx-edit-ent':1, 'ctx-dup-ent':1, 'ctx-copy-diag':1, 'ctx-color-ent':1, 'ctx-sel-related':1, 'ctx-sep-ent':1, 'ctx-add-rel':1, 'ctx-sep-del':1, 'ctx-del-ent':1 },
   relation:      { 'ctx-edit-rel':1, 'ctx-style-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
   relation_bent: { 'ctx-edit-rel':1, 'ctx-style-rel':1, 'ctx-reset-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
   section:       { 'ctx-rename-sec':1, 'ctx-sep-del':1, 'ctx-del-sec':1 },
   note:          { 'ctx-add-note':1, 'ctx-sep-del':1, 'ctx-del-note':1 },
+  noteV2:        { 'ctx-add-note-v2':1, 'ctx-del-note-v2':1, 'ctx-pin-note-v2':1, 'ctx-color-note-v2':1 },
 };
 
 function showCtxMenu(x, y, mode) {
@@ -807,6 +1106,7 @@ function showCtxMenu(x, y, mode) {
    'ctx-edit-rel','ctx-style-rel','ctx-reset-rel',
    'ctx-sep-del','ctx-del-ent','ctx-del-rel',
    'ctx-rename-sec','ctx-del-sec','ctx-del-note',
+   'ctx-sep-note-v2','ctx-add-note-v2','ctx-del-note-v2','ctx-pin-note-v2','ctx-color-note-v2',
    'ctx-sep-canvas','ctx-sel-all','ctx-auto-arrange'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = visible[id] ? '' : 'none';
@@ -1251,6 +1551,10 @@ function ctxFn(action) {
   if (action === 'delSec')    askConfirm(`'${ctxTargetSection.name || '섹션'}' 섹션을 삭제합니다.`, () => deleteSection(ctxTargetSection), '삭제');
   if (action === 'selAll')    { ENTITIES.forEach(e => selectedEntities.add(e.id)); render(); }
   if (action === 'autoArrange') autoLayout('hierarchical');
+  if (action === 'addNoteV2')   addNoteV2At(ctxLastWorld.x, ctxLastWorld.y);
+  if (action === 'delNoteV2')   { if (_ctxTargetNoteV2) { deleteNoteV2(_ctxTargetNoteV2.id); _ctxTargetNoteV2 = null; } }
+  if (action === 'pinNoteV2')   { if (_ctxTargetNoteV2) toggleNoteV2Pin(_ctxTargetNoteV2.id); }
+  if (action === 'colorNoteV2') { if (_ctxTargetNoteV2) showNoteV2ColorPicker(_ctxTargetNoteV2.id, ctxMenu); }
 }
 
 // ── 관련 엔티티 선택 ─────────────────────────────────────────────
@@ -1546,7 +1850,7 @@ let _bkFileData = null;
 const _BK_GROUPS = [
   { id: 'diagrams',   icon: '📊', label: '다이어그램 데이터', descFn: (fd) => {
       const n = fd ? (fd.main?.diagrams?.length ?? 0) : diagrams.length;
-      return `다이어그램 ${n}개 · 엔티티 · 관계 · 섹션 · 메모`;
+      return `다이어그램 ${n}개 · 엔티티 · 관계 · 섹션 · 메모 · V2메모`;
     }
   },
   { id: 'snapshots',  icon: '⏱', label: '스냅샷', descFn: (fd) => {

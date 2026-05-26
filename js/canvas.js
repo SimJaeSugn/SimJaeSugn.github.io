@@ -1787,6 +1787,7 @@ function renderNow() {
   ctx.restore();
   renderMinimap();
   syncMarkdownOverlays();   // 마크다운 노트 DOM 오버레이 위치/내용 동기화
+  if (typeof renderNoteV2Overlays === 'function') renderNoteV2Overlays();
   if (typeof updateStatusBar === 'function') updateStatusBar();
 }
 

@@ -244,6 +244,20 @@ const NOTE_W = 180, NOTE_H = 110;
 const NOTE_TAB_H = 24;           // 탭 바 높이 (월드 단위)
 const NOTE_COLORS = ['#f9e2af', '#a6e3a1', '#89b4fa', '#f38ba8', '#cba6f7'];
 
+// ── 스티커 메모 V2 상수 ────────────────────────────────────────
+const NOTE_V2_W = 220, NOTE_V2_H = 160;
+const NOTE_V2_MIN_W = 140, NOTE_V2_MIN_H = 100;
+const NOTE_V2_THEMES = {
+  cream:    { header: '#f5e6c4', text: '#5c4b32' },
+  ocean:    { header: '#b8dff5', text: '#2c5f7c' },
+  rose:     { header: '#f5b8ca', text: '#7c2c42' },
+  mint:     { header: '#a8efc0', text: '#2c6b42' },
+  lavender: { header: '#c8b0f0', text: '#4c2c7c' },
+  sunset:   { header: '#f5c8a0', text: '#7c4b2c' },
+  slate:    { header: '#c0c4d0', text: '#3c3f4c' },
+  coral:    { header: '#f0a890', text: '#6b3225' },
+};
+
 // ── 그리드 ────────────────────────────────────────────────────
 const GRID = 20;
 const GAP = 15;
