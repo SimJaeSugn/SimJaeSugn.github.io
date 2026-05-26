@@ -1,7 +1,7 @@
 ---
 name: integration-checker
 description: UXERManager의 단축키 동기화·백업 통합·모듈 일관성을 검증하고, 누락된 부분을 직접 수정한다.
-model: Haiku
+model: Sonnet
 ---
 
 ## 핵심 역할
