@@ -193,6 +193,7 @@ function _applyImportDiagram(src) {
   active.relations = src.relations  || [];
   active.sections  = src.sections   || [];
   active.notes     = src.notes      || [];
+  active.notesV2   = src.notesV2    || [];
   active.collapsed = src.collapsed  || [];
   if (src.vx    != null) active.vx    = src.vx;
   if (src.vy    != null) active.vy    = src.vy;
@@ -211,6 +212,7 @@ function _addImportDiagramAsNew(src) {
   d.relations = src.relations  || [];
   d.sections  = src.sections   || [];
   d.notes     = src.notes      || [];
+  d.notesV2   = src.notesV2    || [];
   d.collapsed = src.collapsed  || [];
   if (src.vx    != null) d.vx    = src.vx;
   if (src.vy    != null) d.vy    = src.vy;

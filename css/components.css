@@ -354,3 +354,131 @@
 .theme-card-preview .tp-body { flex: 1; display: flex; align-items: center; padding: 4px 6px; gap: 4px; }
 .theme-card-preview .tp-line { height: 4px; border-radius: 2px; flex: 1; }
 .theme-card-name { color: var(--tx-main); font-size: 13px; font-weight: bold; text-align: center; }
+
+/* ── Note V2 Card ─────────────────────────────────────────── */
+.note-v2-card {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.10);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.1s;
+  cursor: grab;
+  user-select: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-width: 140px;
+  min-height: 100px;
+}
+.note-v2-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+  transform: translateY(-1px);
+}
+.note-v2-card.dragging { cursor: grabbing !important; transform: scale(1.02); z-index: 100; opacity: 0.92; }
+.note-v2-card.pinned { outline: 2px solid rgba(255,200,50,0.5); }
+.note-v2-card.pinned::before {
+  content: '\1F4CC';
+  position: absolute; top: -8px; right: 6px;
+  font-size: 14px; z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+}
+
+.note-v2-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 10px; min-height: 34px;
+  border-bottom: 1px solid rgba(0,0,0,0.09);
+  font-size: 12.5px; font-weight: 600;
+  flex-shrink: 0;
+}
+.note-v2-header .nv2-title {
+  flex: 1; outline: none; border: none; background: transparent;
+  font: inherit; color: inherit; cursor: text;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+}
+.note-v2-header .nv2-title:focus { white-space: normal; overflow: visible; text-overflow: initial; }
+.note-v2-header .nv2-title:empty::before { content: '제목 없음'; opacity: 0.38; font-style: italic; }
+.note-v2-actions { display: flex; gap: 1px; align-items: center; flex-shrink: 0; }
+.note-v2-actions button {
+  background: none; border: none; cursor: pointer; padding: 2px 5px;
+  font-size: 12px; opacity: 0.45; border-radius: 5px;
+  transition: opacity 0.15s, background 0.15s; line-height: 1;
+}
+.note-v2-actions button:hover { opacity: 1; background: rgba(0,0,0,0.09); }
+
+.note-v2-body {
+  flex: 1; padding: 9px 11px; overflow-y: auto;
+  font-size: 12px; line-height: 1.65;
+  outline: none; cursor: text;
+  word-break: break-word; white-space: pre-wrap;
+}
+.note-v2-body:empty::before { content: '메모를 입력하세요...'; opacity: 0.32; font-style: italic; }
+
+.note-v2-footer {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 5px 10px; min-height: 26px;
+  border-top: 1px solid rgba(0,0,0,0.07);
+  align-items: center;
+}
+.nv2-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 8px; border-radius: 10px; font-size: 10px;
+  background: rgba(0,0,0,0.09); cursor: default;
+  transition: background 0.12s;
+}
+.nv2-tag:hover { background: rgba(0,0,0,0.15); }
+.nv2-tag-rm { cursor: pointer; opacity: 0.45; font-size: 9px; margin-left: 2px; }
+.nv2-tag-rm:hover { opacity: 1; }
+.nv2-tag-add {
+  padding: 1px 7px; border-radius: 10px; font-size: 10px;
+  background: rgba(0,0,0,0.05); border: 1px dashed rgba(0,0,0,0.18);
+  cursor: pointer; color: inherit; opacity: 0.48;
+  transition: opacity 0.12s; outline: none;
+}
+.nv2-tag-add:hover { opacity: 0.82; }
+
+.note-v2-resize {
+  position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
+  cursor: nwse-resize; opacity: 0; transition: opacity 0.15s;
+}
+.note-v2-card:hover .note-v2-resize { opacity: 1; }
+.note-v2-resize::after {
+  content: ''; position: absolute; right: 3px; bottom: 3px;
+  width: 9px; height: 9px;
+  border-right: 2px solid rgba(0,0,0,0.28); border-bottom: 2px solid rgba(0,0,0,0.28);
+}
+
+/* V2 color themes */
+.note-v2-card[data-theme="cream"]    { background: linear-gradient(145deg,#fef9ef,#fdf2d8); color:#5c4b32; }
+.note-v2-card[data-theme="ocean"]    { background: linear-gradient(145deg,#e8f4fd,#d1ecf9); color:#2c5f7c; }
+.note-v2-card[data-theme="rose"]     { background: linear-gradient(145deg,#fde8ee,#fad0dc); color:#7c2c42; }
+.note-v2-card[data-theme="mint"]     { background: linear-gradient(145deg,#e8fdf0,#d1f9e0); color:#2c6b42; }
+.note-v2-card[data-theme="lavender"] { background: linear-gradient(145deg,#f0e8fd,#e0d1f9); color:#4c2c7c; }
+.note-v2-card[data-theme="sunset"]   { background: linear-gradient(145deg,#fef0e8,#fde0d1); color:#7c4b2c; }
+.note-v2-card[data-theme="slate"]    { background: linear-gradient(145deg,#eef0f5,#dde0e8); color:#3c3f4c; }
+.note-v2-card[data-theme="coral"]    { background: linear-gradient(145deg,#fde8e0,#f9cec0); color:#6b3225; }
+
+.note-v2-card[data-theme="cream"]    .note-v2-header { background:#f5e6c4; }
+.note-v2-card[data-theme="ocean"]    .note-v2-header { background:#b8dff5; }
+.note-v2-card[data-theme="rose"]     .note-v2-header { background:#f5b8ca; }
+.note-v2-card[data-theme="mint"]     .note-v2-header { background:#a8efc0; }
+.note-v2-card[data-theme="lavender"] .note-v2-header { background:#c8b0f0; }
+.note-v2-card[data-theme="sunset"]   .note-v2-header { background:#f5c8a0; }
+.note-v2-card[data-theme="slate"]    .note-v2-header { background:#c0c4d0; }
+.note-v2-card[data-theme="coral"]    .note-v2-header { background:#f0a890; }
+
+/* V2 color picker popup */
+.nv2-color-picker {
+  position: fixed; z-index: 9999; background: var(--bg-card, #24273a);
+  border: 1px solid var(--border-col, #45475a); border-radius: 10px;
+  padding: 8px; display: flex; gap: 6px; flex-wrap: wrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  max-width: 180px;
+}
+.nv2-color-swatch {
+  width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
+  border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s;
+}
+.nv2-color-swatch:hover { transform: scale(1.15); }
+.nv2-color-swatch.active { border-color: #cdd6f4; }
