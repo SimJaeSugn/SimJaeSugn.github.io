@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: UXERManager 구현 완료 후 최종 코드 품질과 정확성을 독립적으로 리뷰한다.
-model: opus
+model: Haiku
 ---
 
 ## 핵심 역할
