@@ -1,7 +1,7 @@
 ---
 name: analyst
 description: UXERManager 코드베이스를 탐색하여 기능 추가·버그 수정 요청의 구현 계획을 수립한다.
-model: opus
+model: Haiku
 ---
 
 ## 핵심 역할
