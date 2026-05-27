@@ -105,11 +105,18 @@ function getQueries(dbType) {
   }
 }
 
-// mysql2가 information_schema 컬럼을 Buffer로 반환하는 경우 문자열로 변환
+// mysql2가 information_schema 컬럼을 Buffer로 반환하거나 대문자 키로 반환하는 경우 정규화
 function s(val) {
   if (val == null) return null;
   if (Buffer.isBuffer(val)) return val.toString('utf8');
   return String(val);
+}
+
+// MySQL 서버에 따라 컬럼명이 대문자로 반환될 수 있으므로 키를 소문자로 정규화
+function norm(row) {
+  const out = {};
+  for (const [k, v] of Object.entries(row)) out[k.toLowerCase()] = v;
+  return out;
 }
 
 function buildResult(colRows, viewRows, fkRows) {
@@ -117,7 +124,8 @@ function buildResult(colRows, viewRows, fkRows) {
   const tableMap = {};
   const viewSet = new Set();
 
-  for (const row of colRows) {
+  for (const rawRow of colRows) {
+    const row = norm(rawRow);
     const name = s(row.table_name);
     const isView = (s(row.table_type) || '').toUpperCase().includes('VIEW');
     if (isView) viewSet.add(name);
@@ -136,7 +144,7 @@ function buildResult(colRows, viewRows, fkRows) {
 
   // 뷰 DDL 병합
   const viewDdlMap = {};
-  for (const v of viewRows) viewDdlMap[s(v.view_name)] = s(v.view_def) || '';
+  for (const raw of viewRows) { const v = norm(raw); viewDdlMap[s(v.view_name)] = s(v.view_def) || ''; }
 
   const views = viewMeta.map(v => ({
     viewName: v.tableName,
@@ -144,12 +152,12 @@ function buildResult(colRows, viewRows, fkRows) {
     ddl: viewDdlMap[v.tableName] || ''
   }));
 
-  const fks = fkRows.map(r => ({
+  const fks = fkRows.map(raw => { const r = norm(raw); return {
     fromTable: s(r.from_table),
     fromCol:   s(r.from_col),
     toTable:   s(r.to_table),
     toCol:     s(r.to_col)
-  }));
+  }; });
 
   return { tables, views, fks };
 }

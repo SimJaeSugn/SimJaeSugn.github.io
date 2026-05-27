@@ -51,7 +51,13 @@
       "PowerShell(Invoke-WebRequest -Uri \"http://127.0.0.1:3737/schema\" -Method GET -UseBasicParsing 2>&1 | Select-Object -ExpandProperty Content)",
       "PowerShell(netstat *)",
       "PowerShell(Get-Process *)",
-      "PowerShell(npm run *)"
+      "PowerShell(npm run *)",
+      "Bash(git filter-repo *)",
+      "Bash(git filter-branch *)",
+      "Bash(git stash *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch \"docs/erd_all_backup_20260527_112337.json\"' --prune-empty --tag-name-filter cat -- --all)",
+      "Bash(rm _test_useschool.js)",
+      "Bash(npm run *)"
     ]
   }
 }
