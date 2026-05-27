@@ -1,22 +1,42 @@
 # UXERManager 미들웨어
 
 ERD 도구(브라우저)와 운영 DB를 연결하는 로컬 프록시 서버.  
-`dist/uxermanager.exe` 를 실행하면 `http://127.0.0.1:3737` 에서 대기한다.
+실행하면 `http://127.0.0.1:3737` 에서 대기하며 시스템 트레이에 아이콘이 등록된다.
 
 ---
 
 ## 실행
 
+### 배포용 (트레이 백그라운드 실행 — 콘솔 창 없음)
+```
+start.vbs 더블클릭
+```
+`uxermanager.exe`와 `start.vbs`를 같은 폴더에 두고 `start.vbs`를 실행한다.  
+시스템 트레이에 아이콘이 등록되며, 우클릭 → **종료**로 미들웨어를 종료한다.
+
+### 개발용 (콘솔 직접 실행)
 ```bash
-# 개발 (Node.js 필요)
 npm install
 npm start
+```
 
-# 배포용 exe 빌드 (Windows)
+### exe 빌드
+```bash
 npm run build:win
 ```
 
-빌드 결과물: `dist/uxermanager.exe`
+빌드 결과물: `dist/uxermanager.exe`  
+배포 시 `start.vbs`와 함께 제공한다.
+
+---
+
+## 트레이 메뉴
+
+| 항목 | 설명 |
+|------|------|
+| UXERManager v1.0.0 | 버전 정보 (클릭 불가) |
+| 포트 3737에서 실행 중 | 실행 상태 (클릭 불가) |
+| 종료 | 미들웨어 프로세스 종료 |
 
 ---
 
