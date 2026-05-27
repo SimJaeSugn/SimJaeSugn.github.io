@@ -3,6 +3,7 @@ const cors = require('cors');
 const configRouter = require('./routes/config');
 const executeRouter = require('./routes/execute');
 const schemaRouter = require('./routes/schema');
+const { setupTray } = require('./tray');
 
 const PORT = 3737;
 const app = express();
@@ -44,10 +45,12 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`UXERManager 미들웨어 실행 중 — http://127.0.0.1:${PORT}`);
-  console.log('종료: Ctrl+C');
+  try {
+    setupTray(PORT);
+    console.log('트레이 아이콘 등록됨 — 트레이에서 종료 가능');
+  } catch (e) {
+    console.log('트레이 등록 실패 (콘솔 모드로 실행 중). 종료: Ctrl+C');
+  }
 });
 
-process.on('SIGINT', () => {
-  console.log('\n미들웨어를 종료합니다.');
-  process.exit(0);
-});
+process.on('SIGINT', () => process.exit(0));
