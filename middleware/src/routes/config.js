@@ -230,6 +230,40 @@ router.delete('/profiles/:name', (req, res) => {
   res.json({ ok: true, message: `프로파일 '${name}'이 삭제되었습니다.` });
 });
 
+// ---- PUT /config/profiles/:name — 프로파일 수정 ----
+router.put('/profiles/:name', async (req, res) => {
+  const { name } = req.params;
+  const { dbType, host, port, database, username, password } = req.body;
+
+  if (!dbType || !host || !database || !username) {
+    return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
+  }
+
+  let store = loadRawStore();
+  if (!store) return res.status(404).json({ error: '프로파일이 없습니다.' });
+
+  const idx = store.profiles.findIndex(p => p.name === name);
+  if (idx === -1) return res.status(404).json({ error: `'${name}' 프로파일을 찾을 수 없습니다.` });
+
+  const existing = store.profiles[idx];
+  const updated = {
+    ...existing,
+    dbType,
+    host,
+    port: port || getDefaultPort(dbType),
+    database,
+    username,
+    updatedAt: new Date().toISOString()
+  };
+  if (password) updated.password = encrypt(password);
+
+  store.profiles[idx] = updated;
+  saveStore(store);
+
+  if (store.active === name) await closeAllPools();
+  res.json({ ok: true, message: `프로파일 '${name}'이 수정되었습니다.` });
+});
+
 // ---- POST /config/profiles/:name/activate — 프로파일 전환 ----
 router.post('/profiles/:name/activate', async (req, res) => {
   const { name } = req.params;

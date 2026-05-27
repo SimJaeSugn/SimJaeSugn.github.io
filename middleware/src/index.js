@@ -25,7 +25,7 @@ app.use(cors({
       cb(new Error(`CORS 차단: ${origin}`));
     }
   },
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
 }));
 

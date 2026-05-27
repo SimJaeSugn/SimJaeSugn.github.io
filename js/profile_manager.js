@@ -59,29 +59,22 @@ async function _refreshProfileList() {
   _renderProfileList(data);
 }
 
+// ── 추가 폼 ───────────────────────────────────────────────────────
+
 async function _submitAddProfile() {
-  const nameEl = document.getElementById('pmAddName');
-  const typeEl = document.getElementById('pmAddType');
-  const hostEl = document.getElementById('pmAddHost');
-  const portEl = document.getElementById('pmAddPort');
-  const dbEl   = document.getElementById('pmAddDatabase');
-  const userEl = document.getElementById('pmAddUsername');
-  const pwEl   = document.getElementById('pmAddPassword');
-
-  _pmErrClear();
-
   const payload = {
-    name:     nameEl.value.trim(),
-    dbType:   typeEl.value,
-    host:     hostEl.value.trim(),
-    port:     parseInt(portEl.value, 10) || null,
-    database: dbEl.value.trim(),
-    username: userEl.value.trim(),
-    password: pwEl.value
+    name:     document.getElementById('pmAddName').value.trim(),
+    dbType:   document.getElementById('pmAddType').value,
+    host:     document.getElementById('pmAddHost').value.trim(),
+    port:     parseInt(document.getElementById('pmAddPort').value, 10) || null,
+    database: document.getElementById('pmAddDatabase').value.trim(),
+    username: document.getElementById('pmAddUsername').value.trim(),
+    password: document.getElementById('pmAddPassword').value
   };
 
+  _pmErrClear('pmAddErr');
   if (!payload.name || !payload.host || !payload.database || !payload.username || !payload.password) {
-    _pmErrShow('필수 항목을 모두 입력하세요.');
+    _pmErrShow('pmAddErr', '필수 항목을 모두 입력하세요.');
     return;
   }
 
@@ -100,20 +93,19 @@ async function _submitAddProfile() {
     _closeAddProfileForm();
     await _refreshProfileList();
   } catch (e) {
-    _pmErrShow(e.message);
+    _pmErrShow('pmAddErr', e.message);
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = '저장';
   }
 }
 
-// ── 폼 토글 ───────────────────────────────────────────────────────
-
 function _openAddProfileForm() {
+  _closeEditForms();
   document.getElementById('pmAddForm').style.display = 'block';
   document.getElementById('pmAddToggleBtn').style.display = 'none';
-  _pmErrClear();
-  _pmOnDbTypeChange();
+  _pmErrClear('pmAddErr');
+  _pmAutoPort('pmAddType', 'pmAddPort');
 }
 
 function _closeAddProfileForm() {
@@ -122,25 +114,100 @@ function _closeAddProfileForm() {
   ['pmAddName','pmAddHost','pmAddPort','pmAddDatabase','pmAddUsername','pmAddPassword']
     .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('pmAddType').value = 'postgres';
-  _pmErrClear();
+  _pmErrClear('pmAddErr');
 }
 
-function _pmOnDbTypeChange() {
-  const type = document.getElementById('pmAddType').value;
+// ── 편집 폼 ───────────────────────────────────────────────────────
+
+// 현재 열려있는 편집 폼의 프로파일 이름
+let _pmEditingName = null;
+
+function _openEditProfileForm(name, dbType, host, port, database, username) {
+  _closeAddProfileForm();
+  _closeEditForms();
+
+  _pmEditingName = name;
+  const formId = `pmEditForm_${_pmEditId(name)}`;
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  form.querySelector('[data-field="dbType"]').value = dbType;
+  form.querySelector('[data-field="host"]').value   = host;
+  form.querySelector('[data-field="port"]').value   = port || '';
+  form.querySelector('[data-field="database"]').value = database;
+  form.querySelector('[data-field="username"]').value = username;
+  form.querySelector('[data-field="password"]').value = '';
+  form.style.display = 'block';
+  _pmErrClear(`pmEditErr_${_pmEditId(name)}`);
+}
+
+function _closeEditForms() {
+  document.querySelectorAll('[id^="pmEditForm_"]').forEach(f => { f.style.display = 'none'; });
+  _pmEditingName = null;
+}
+
+async function _submitEditProfile(name) {
+  const eid = _pmEditId(name);
+  const form = document.getElementById(`pmEditForm_${eid}`);
+
+  const payload = {
+    dbType:   form.querySelector('[data-field="dbType"]').value,
+    host:     form.querySelector('[data-field="host"]').value.trim(),
+    port:     parseInt(form.querySelector('[data-field="port"]').value, 10) || null,
+    database: form.querySelector('[data-field="database"]').value.trim(),
+    username: form.querySelector('[data-field="username"]').value.trim(),
+    password: form.querySelector('[data-field="password"]').value
+  };
+
+  _pmErrClear(`pmEditErr_${eid}`);
+  if (!payload.host || !payload.database || !payload.username) {
+    _pmErrShow(`pmEditErr_${eid}`, '필수 항목을 모두 입력하세요.');
+    return;
+  }
+
+  const saveBtn = form.querySelector('[data-role="save"]');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '저장 중...';
+  try {
+    const res = await fetch(`${MW_URL}/config/profiles/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '수정 실패');
+    showToast(`'${name}' 프로파일이 수정되었습니다.`);
+    _closeEditForms();
+    await _refreshProfileList();
+  } catch (e) {
+    _pmErrShow(`pmEditErr_${eid}`, e.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '저장';
+  }
+}
+
+// DOM id에 사용할 수 없는 문자 제거
+function _pmEditId(name) {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+// ── 공통 헬퍼 ─────────────────────────────────────────────────────
+
+function _pmAutoPort(typeId, portId) {
+  const type = document.getElementById(typeId).value;
   const defaults = { postgres: 5432, mysql: 3306, mssql: 1433 };
-  const portEl = document.getElementById('pmAddPort');
+  const portEl = document.getElementById(portId);
   if (!portEl.dataset.userEdited) portEl.value = defaults[type] || 5432;
 }
 
-// ── 오류 헬퍼 ─────────────────────────────────────────────────────
-
-function _pmErrShow(msg) {
-  const el = document.getElementById('pmAddErr');
+function _pmErrShow(id, msg) {
+  const el = document.getElementById(id);
   if (el) { el.textContent = msg; el.classList.add('show'); }
 }
 
-function _pmErrClear() {
-  const el = document.getElementById('pmAddErr');
+function _pmErrClear(id) {
+  const el = document.getElementById(id);
   if (el) { el.textContent = ''; el.classList.remove('show'); }
 }
 
@@ -168,7 +235,7 @@ function _renderProfileManagerModal(data) {
   overlay.id = 'pmOverlay';
   overlay.setAttribute('onmousedown', "overlayClose(event,'pmOverlay')");
   overlay.innerHTML = `
-    <div class="modal" style="width:500px;max-height:80vh;display:flex;flex-direction:column" onmousedown.stop>
+    <div class="modal" style="width:520px;max-height:80vh;display:flex;flex-direction:column" onmousedown.stop>
       <h3>DB 접속 프로파일 관리</h3>
 
       <div id="pmProfileList" style="overflow-y:auto;flex:1;margin-bottom:12px"></div>
@@ -185,7 +252,7 @@ function _renderProfileManagerModal(data) {
         </div>
         <div class="form-row">
           <label class="form-label">DB 종류</label>
-          <select class="form-input" id="pmAddType" onchange="_pmOnDbTypeChange()">
+          <select class="form-input" id="pmAddType" onchange="_pmAutoPort('pmAddType','pmAddPort')">
             <option value="postgres">PostgreSQL</option>
             <option value="mysql">MySQL</option>
             <option value="mssql">SQL Server</option>
@@ -245,6 +312,7 @@ function _renderProfileList(data) {
     const isOnly   = profiles.length === 1;
     const eName    = _pmEsc(p.name);
     const eInfo    = _pmEsc(`${p.dbType} · ${p.host}:${p.port || '-'}`);
+    const eid      = _pmEditId(p.name);
 
     const activeBadge = isActive
       ? `<span style="font-size:11px;color:var(--green,#22c55e);font-weight:600;margin-right:6px;flex-shrink:0">✔ 활성</span>`
@@ -253,21 +321,75 @@ function _renderProfileList(data) {
     const switchBtn = `<button class="btn" style="font-size:12px;padding:2px 8px"
       ${isActive ? 'disabled' : `onclick="_activateProfile('${eName}')"`}>전환</button>`;
 
+    const editArgs = [
+      `'${eName}'`,
+      `'${_pmEsc(p.dbType)}'`,
+      `'${_pmEsc(p.host)}'`,
+      p.port || 'null',
+      `'${_pmEsc(p.database)}'`,
+      `'${_pmEsc(p.username)}'`
+    ].join(',');
+    const editBtn = `<button class="btn" style="font-size:12px;padding:2px 8px"
+      onclick="_openEditProfileForm(${editArgs})">편집</button>`;
+
     const deleteBtn = `<button class="btn-del-m" style="font-size:12px;padding:2px 8px"
       ${(isActive || isOnly) ? 'disabled' : `onclick="_deleteProfile('${eName}')"`}>삭제</button>`;
 
+    // 인라인 편집 폼
+    const editForm = `
+      <div id="pmEditForm_${eid}" style="display:none;padding:10px 4px 4px;border-top:1px solid var(--border,#e0e0e0)">
+        <div class="form-row">
+          <label class="form-label">DB 종류</label>
+          <select class="form-input" data-field="dbType">
+            <option value="postgres">PostgreSQL</option>
+            <option value="mysql">MySQL</option>
+            <option value="mssql">SQL Server</option>
+          </select>
+        </div>
+        <div class="form-row" style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label class="form-label">호스트</label>
+            <input class="form-input" data-field="host" type="text">
+          </div>
+          <div style="width:90px">
+            <label class="form-label">포트</label>
+            <input class="form-input" data-field="port" type="number">
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">데이터베이스</label>
+          <input class="form-input" data-field="database" type="text">
+        </div>
+        <div class="form-row">
+          <label class="form-label">사용자명</label>
+          <input class="form-input" data-field="username" type="text">
+        </div>
+        <div class="form-row">
+          <label class="form-label">비밀번호</label>
+          <input class="form-input" data-field="password" type="password" placeholder="변경 시 입력 (미입력 시 유지)">
+        </div>
+        <div class="form-err" id="pmEditErr_${eid}" style="margin-bottom:8px"></div>
+        <div class="modal-actions" style="justify-content:flex-end;margin-bottom:4px">
+          <button class="btn-cancel-m" onclick="_closeEditForms()">취소</button>
+          <button class="btn-save-m" data-role="save" onclick="_submitEditProfile('${eName}')">저장</button>
+        </div>
+      </div>`;
+
     return `
-      <div style="display:flex;align-items:center;justify-content:space-between;
-                  padding:8px 4px;border-bottom:1px solid var(--border,#e0e0e0)">
-        <div style="display:flex;align-items:center;flex:1;min-width:0">
-          ${activeBadge}
-          <span style="font-weight:500;margin-right:8px;white-space:nowrap">${eName}</span>
-          <span style="font-size:12px;color:var(--tx-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eInfo}</span>
+      <div style="border-bottom:1px solid var(--border,#e0e0e0)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px">
+          <div style="display:flex;align-items:center;flex:1;min-width:0">
+            ${activeBadge}
+            <span style="font-weight:500;margin-right:8px;white-space:nowrap">${eName}</span>
+            <span style="font-size:12px;color:var(--tx-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eInfo}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px">
+            ${switchBtn}
+            ${editBtn}
+            ${deleteBtn}
+          </div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px">
-          ${switchBtn}
-          ${deleteBtn}
-        </div>
+        ${editForm}
       </div>`;
   }).join('');
 }
