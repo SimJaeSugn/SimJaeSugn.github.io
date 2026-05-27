@@ -3,27 +3,31 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-// pkg 번들 실행 시 base64 임베드 바이너리를 tmpdir로 추출
-// (pkg 가상 FS는 실행 불가 → 실제 FS에 써야 spawn 가능)
+// pkg 번들 실행 시 base64 임베드 바이너리를 systray2 캐시 경로로 추출
+// systray2 v2.x 실제 spawn 경로: ~/.cache/node-systray/{version}/tray_windows_release.exe
 function _prepTrayBin() {
   if (!process.pkg || process.platform !== 'win32') return;
 
   const binName = 'tray_windows_release.exe';
-  const dstDir = path.join(os.tmpdir(), 'traybin');
+
+  let version = '2.1.4'; // fallback
+  try { version = require('systray2/package.json').version; } catch (_) {}
+
+  const dstDir = path.join(os.homedir(), '.cache', 'node-systray', version);
   const dstBin = path.join(dstDir, binName);
 
   if (!fs.existsSync(dstBin)) {
     fs.mkdirSync(dstDir, { recursive: true });
-    const b64 = require('./tray_win_bin'); // base64-encoded exe
-    fs.writeFileSync(dstBin, Buffer.from(b64, 'base64'));
+    fs.writeFileSync(dstBin, Buffer.from(require('./tray_win_bin'), 'base64'));
   }
 
-  // copyDir:true 시 systray2가 fse.copy로 snapshot→tmpdir 복사 시도하는 것을 차단
+  // systray2가 fse.copy로 snapshot→캐시 복사를 시도하면 차단 (이미 추출 완료)
   try {
     const fse = require('fs-extra');
     const orig = fse.copy.bind(fse);
     fse.copy = (src, dst, opts) => {
-      if (src.includes('systray2') && src.includes('traybin')) return Promise.resolve();
+      if (src.includes('node-systray') || (src.includes('systray2') && src.includes('traybin')))
+        return Promise.resolve();
       return orig(src, dst, opts);
     };
   } catch (_) {}
@@ -94,7 +98,7 @@ function setupTray(port) {
       ]
     },
     debug: false,
-    copyDir: true  // pkg 호환: 트레이 헬퍼 바이너리를 임시 디렉토리로 추출
+    copyDir: true,
   });
 
   tray.onClick(action => {

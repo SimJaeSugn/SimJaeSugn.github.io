@@ -7,11 +7,22 @@ ERD 도구(브라우저)와 운영 DB를 연결하는 로컬 프록시 서버.
 
 ## 실행
 
-### 배포용 (트레이 백그라운드 실행 — 콘솔 창 없음)
+### 배포용 — 인스톨러 (권장)
+```bash
+npm run build:installer
 ```
-start.vbs 더블클릭
+빌드 결과물: `dist/UXERManager_Setup_{version}.exe`  
+인스톨러를 실행하면 `C:\Program Files\UXERManager\`에 파일이 설치되고 시작 메뉴에 등록된다.  
+언인스톨러 포함. **Inno Setup 6** 이 개발 PC에 설치되어 있어야 한다.
+
+> Inno Setup 다운로드: https://jrsoftware.org/isinfo.php
+
+### 배포용 — exe 단독 (인스톨러 없이 배포 시)
+```bash
+npm run build:win
 ```
-`uxermanager.exe`와 `start.vbs`를 같은 폴더에 두고 `start.vbs`를 실행한다.  
+빌드 결과물: `dist/uxermanager.exe`  
+`uxermanager.exe`와 `start.vbs`를 같은 폴더에 두고 `start.vbs`를 더블클릭한다.  
 시스템 트레이에 아이콘이 등록되며, 우클릭 → **종료**로 미들웨어를 종료한다.
 
 ### 개발용 (콘솔 직접 실행)
@@ -19,14 +30,6 @@ start.vbs 더블클릭
 npm install
 npm start
 ```
-
-### exe 빌드
-```bash
-npm run build:win
-```
-
-빌드 결과물: `dist/uxermanager.exe`  
-배포 시 `start.vbs`와 함께 제공한다.
 
 ---
 
@@ -311,6 +314,8 @@ null  (file:// 로컬 실행)
 middleware/
 ├── src/
 │   ├── index.js              Express 서버 진입점 (port 3737)
+│   ├── tray.js               시스템 트레이 아이콘 등록
+│   ├── tray_win_bin.js       tray 헬퍼 바이너리 (base64 임베드)
 │   ├── routes/
 │   │   ├── config.js         POST/GET /config, POST /config/test
 │   │   ├── execute.js        POST /execute, POST /execute/stream
@@ -323,8 +328,13 @@ middleware/
 │   │       └── mssql.js      mssql(tedious) 드라이버
 │   └── utils/
 │       └── crypto.js         AES-256-GCM 암호화/복호화
+├── scripts/
+│   └── run-iscc.js           Inno Setup 경로 탐색 헬퍼
 ├── dist/
-│   └── uxermanager.exe       배포용 단일 실행파일
+│   ├── uxermanager.exe               배포용 단일 실행파일
+│   └── UXERManager_Setup_{ver}.exe   인스톨러
+├── installer.iss             Inno Setup 인스톨러 스크립트
+├── start.vbs                 콘솔 창 없이 exe 실행하는 런처
 ├── package.json
 └── .gitignore
 ```

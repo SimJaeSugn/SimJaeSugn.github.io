@@ -44,7 +44,10 @@
       "PowerShell(Out-File *)",
       "Bash(./uxermanager.exe)",
       "Read(//tmp/**)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-Item \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\\\\middleware\\\\dist\\\\UXERManager_Setup_1.0.0.exe\" | Select-Object Name, @{N='Size\\(MB\\)';E={[math]::Round\\($_.Length/1MB,1\\)}}, LastWriteTime)"
     ]
   }
 }

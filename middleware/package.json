@@ -8,7 +8,8 @@
     "build:win": "pkg src/index.js --targets node18-win-x64 --output dist/uxermanager.exe",
     "build:mac": "pkg src/index.js --targets node18-macos-x64 --output dist/uxermanager-mac",
     "build:linux": "pkg src/index.js --targets node18-linux-x64 --output dist/uxermanager-linux",
-    "build": "pkg src/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path dist"
+    "build": "pkg src/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path dist",
+    "build:installer": "npm run build:win && node scripts/run-iscc.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
