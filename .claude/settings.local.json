@@ -57,7 +57,14 @@
       "Bash(git stash *)",
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch \"docs/erd_all_backup_20260527_112337.json\"' --prune-empty --tag-name-filter cat -- --all)",
       "Bash(rm _test_useschool.js)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(not exist *)",
+      "Bash(Test-Path \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\\\\middleware\\\\scripts\\\\install-watchdog.ps1\")",
+      "Bash(Test-Path \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\\\\middleware\\\\scripts\\\\uninstall-watchdog.ps1\")",
+      "Bash(findstr _workspace)",
+      "Bash(New-Item -ItemType File -Path \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\\\\_workspace\\\\01_analyst_plan.md\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Test-Path *)"
     ]
   }
 }

@@ -2,15 +2,38 @@ const express = require('express');
 const router = express.Router();
 const { getAdapter } = require('../db/connector');
 const { loadConfig } = require('./config');
+const { writeAuditLog } = require('../utils/auditLogger');
+
+function splitSql(sql) {
+  const results = [];
+  let current = '';
+  let inString = false;
+  let stringChar = '';
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i];
+    if (inString) {
+      current += ch;
+      if (ch === stringChar && sql[i - 1] !== '\\') inString = false;
+    } else if (ch === "'" || ch === '"') {
+      inString = true;
+      stringChar = ch;
+      current += ch;
+    } else if (ch === ';') {
+      const trimmed = current.trim();
+      if (trimmed) results.push(trimmed);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  const trimmed = current.trim();
+  if (trimmed) results.push(trimmed);
+  return results;
+}
 
 function parseSqls(body) {
   if (Array.isArray(body.sqls)) return body.sqls.filter(s => s && s.trim());
-  if (typeof body.sql === 'string') {
-    return body.sql
-      .split(/;\s*\n|;\s*$/)
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
+  if (typeof body.sql === 'string') return splitSql(body.sql);
   return [];
 }
 
@@ -26,8 +49,11 @@ router.post('/', async (req, res) => {
     const adapter = getAdapter(config.dbType);
     const start = Date.now();
     const result = await adapter.execute(config, sql.trim());
-    res.json({ ok: true, ...result, duration: Date.now() - start });
+    const duration = Date.now() - start;
+    writeAuditLog('EXECUTE', sql.trim(), { durationMs: duration, rowCount: result.rowCount });
+    res.json({ ok: true, ...result, duration });
   } catch (err) {
+    writeAuditLog('EXECUTE', sql.trim(), { error: err.message });
     res.status(400).json({ ok: false, error: err.message });
   }
 });
@@ -45,6 +71,8 @@ router.post('/stream', async (req, res) => {
     res.status(400).json({ error: '실행할 SQL이 없습니다.' });
     return;
   }
+
+  const stopOnError = req.body.stopOnError === true;
 
   // SSE 헤더 설정
   res.setHeader('Content-Type', 'text/event-stream');
@@ -72,14 +100,18 @@ router.post('/stream', async (req, res) => {
       const start = Date.now();
       const result = await adapter.execute(config, sql);
       success++;
+      const duration = Date.now() - start;
+      writeAuditLog('STREAM', sql, { durationMs: duration, rowCount: result.rowCount });
       send('progress', {
         step, total, sql, status: 'ok',
         rowCount: result.rowCount,
-        duration: Date.now() - start
+        duration
       });
     } catch (err) {
       failed++;
+      writeAuditLog('STREAM', sql, { error: err.message });
       send('error', { step, total, sql, error: err.message });
+      if (stopOnError) break;
     }
   }
 

@@ -3,6 +3,9 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
+let _appVersion = 'unknown';
+try { _appVersion = require('../package.json').version; } catch (_) {}
+
 // pkg 번들 실행 시 base64 임베드 바이너리를 systray2 캐시 경로로 추출
 // systray2 v2.x 실제 spawn 경로: ~/.cache/node-systray/{version}/tray_windows_release.exe
 function _prepTrayBin() {
@@ -91,7 +94,7 @@ function setupTray(port) {
       title: '',
       tooltip: `UXERManager 미들웨어`,
       items: [
-        { title: `UXERManager v1.0.0`, tooltip: '', enabled: false, name: 'info' },
+        { title: `UXERManager v${_appVersion}`, tooltip: '', enabled: false, name: 'info' },
         { title: `포트 ${port}에서 실행 중`, tooltip: '', enabled: false, name: 'port' },
         SysTray.separator,
         { title: '종료', tooltip: '미들웨어를 종료합니다', enabled: true, name: 'quit' }
