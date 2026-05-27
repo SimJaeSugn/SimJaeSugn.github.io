@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const configRouter = require('./routes/config');
 const executeRouter = require('./routes/execute');
+const schemaRouter = require('./routes/schema');
 
 const PORT = 3737;
 const app = express();
@@ -34,6 +35,7 @@ app.get('/ping', (req, res) => {
 
 app.use('/config', configRouter);
 app.use('/execute', executeRouter);
+app.use('/schema', schemaRouter);
 
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message);
