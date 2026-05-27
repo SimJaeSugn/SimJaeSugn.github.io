@@ -102,7 +102,7 @@ async function testDbConfig() {
 
 function _onDbTypeChange() {
   const type = document.getElementById('dbConnType').value;
-  const defaults = { postgres: 5432, mysql: 3306, mssql: 1433 };
+  const defaults = { postgres: 5432, mysql: 3306, mssql: 1433, oracle: 1521 };
   const portEl = document.getElementById('dbConnPort');
   if (!portEl.dataset.userEdited) portEl.value = defaults[type] || 5432;
 }
@@ -172,6 +172,7 @@ function _renderDbConnectModal(existing) {
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="mssql">SQL Server</option>
+          <option value="oracle">Oracle</option>
         </select>
       </div>
 
@@ -188,7 +189,7 @@ function _renderDbConnectModal(existing) {
       </div>
 
       <div class="form-row">
-        <label class="form-label">데이터베이스</label>
+        <label class="form-label">데이터베이스(서비스명)</label>
         <input class="form-input" id="dbConnDatabase" type="text" placeholder="mydb">
       </div>
 

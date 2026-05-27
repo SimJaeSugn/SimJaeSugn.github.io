@@ -93,7 +93,7 @@ function loadConfig() {
 }
 
 function getDefaultPort(dbType) {
-  const PORTS = { postgres: 5432, mysql: 3306, mssql: 1433 };
+  const PORTS = { postgres: 5432, mysql: 3306, mssql: 1433, oracle: 1521 };
   return PORTS[dbType] ?? null;
 }
 

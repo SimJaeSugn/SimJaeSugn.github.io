@@ -9,11 +9,18 @@
 .modal {
   background: var(--bg-base); border: 1px solid var(--bd2); border-radius: 12px;
   padding: 28px 28px 22px; width: 560px; max-height: 84vh; overflow-y: auto;
-  box-shadow: 0 12px 48px rgba(0,0,0,0.75);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.75); color: var(--tx-main);
 }
 .modal h3 { color: var(--ac); margin-bottom: 22px; font-size: 16px; }
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; color: var(--tx-sub); font-size: 12px; margin-bottom: 5px; }
+.form-row   { margin-bottom: 12px; }
+.form-label {
+  display: block;
+  color: var(--tx-sub);
+  font-size: 12px;
+  margin-bottom: 5px;
+}
 .form-input {
   width: 100%; background: var(--bg-surface); border: 1px solid var(--bd2);
   border-radius: 6px; color: var(--tx-main); padding: 8px 11px;

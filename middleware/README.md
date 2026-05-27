@@ -1,4 +1,4 @@
-# UXERManager 미들웨어
+﻿# UXERManager 미들웨어
 
 ERD 도구(브라우저)와 운영 DB를 연결하는 로컬 프록시 서버.  
 실행하면 `http://127.0.0.1:3737` 에서 대기하며 시스템 트레이에 아이콘이 등록된다.
@@ -50,6 +50,7 @@ npm start
 | `postgres` | PostgreSQL    | 5432      |
 | `mysql`    | MySQL         | 3306      |
 | `mssql`    | SQL Server    | 1433      |
+| `oracle`   | Oracle DB     | 1521      |
 
 ---
 
@@ -441,7 +442,8 @@ middleware/
 │   │   └── adapters/
 │   │       ├── postgres.js   pg Pool 드라이버 (커넥션 풀링)
 │   │       ├── mysql.js      mysql2 Pool 드라이버 (커넥션 풀링)
-│   │       └── mssql.js      mssql ConnectionPool 드라이버 (커넥션 풀링)
+│   │       ├── mssql.js      mssql ConnectionPool 드라이버 (커넥션 풀링)
+│   │       └── oracle.js     oracledb Pool 드라이버 (thin mode, 커넥션 풀링)
 │   └── utils/
 │       ├── crypto.js         AES-256-GCM 암호화/복호화 (레거시 마이그레이션 포함)
 │       ├── keystore.js       ~/.uxermanager/key 기반 암호화 키 생성·로드

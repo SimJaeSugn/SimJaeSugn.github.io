@@ -196,7 +196,7 @@ function _pmEditId(name) {
 
 function _pmAutoPort(typeId, portId) {
   const type = document.getElementById(typeId).value;
-  const defaults = { postgres: 5432, mysql: 3306, mssql: 1433 };
+  const defaults = { postgres: 5432, mysql: 3306, mssql: 1433, oracle: 1521 };
   const portEl = document.getElementById(portId);
   if (!portEl.dataset.userEdited) portEl.value = defaults[type] || 5432;
 }
@@ -256,6 +256,7 @@ function _renderProfileManagerModal(data) {
             <option value="postgres">PostgreSQL</option>
             <option value="mysql">MySQL</option>
             <option value="mssql">SQL Server</option>
+            <option value="oracle">Oracle</option>
           </select>
         </div>
         <div class="form-row" style="display:flex;gap:8px">
@@ -270,7 +271,7 @@ function _renderProfileManagerModal(data) {
           </div>
         </div>
         <div class="form-row">
-          <label class="form-label">데이터베이스</label>
+          <label class="form-label">데이터베이스(서비스명)</label>
           <input class="form-input" id="pmAddDatabase" type="text" placeholder="mydb">
         </div>
         <div class="form-row">
@@ -344,6 +345,7 @@ function _renderProfileList(data) {
             <option value="postgres">PostgreSQL</option>
             <option value="mysql">MySQL</option>
             <option value="mssql">SQL Server</option>
+            <option value="oracle">Oracle</option>
           </select>
         </div>
         <div class="form-row" style="display:flex;gap:8px">
@@ -357,7 +359,7 @@ function _renderProfileList(data) {
           </div>
         </div>
         <div class="form-row">
-          <label class="form-label">데이터베이스</label>
+          <label class="form-label">데이터베이스(서비스명)</label>
           <input class="form-input" data-field="database" type="text">
         </div>
         <div class="form-row">

@@ -96,11 +96,65 @@ JOIN sys.tables tr ON fkc.referenced_object_id = tr.object_id
 JOIN sys.columns cr ON fkc.referenced_object_id = cr.object_id AND fkc.referenced_column_id = cr.column_id
 `;
 
+// ── Oracle 쿼리 ───────────────────────────────────────────────────
+const ORA_COLUMNS = `
+SELECT t.table_name,
+       c.column_name,
+       c.data_type,
+       c.char_length AS character_maximum_length,
+       c.nullable     AS is_nullable,
+       c.data_default AS column_default,
+       CASE WHEN pk.column_name IS NOT NULL THEN 1 ELSE 0 END AS is_pk,
+       CASE WHEN v.view_name IS NOT NULL THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type
+FROM all_tab_columns c
+JOIN (
+  SELECT table_name FROM all_tables WHERE owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+  UNION ALL
+  SELECT view_name AS table_name FROM all_views WHERE owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+) t ON c.table_name = t.table_name
+LEFT JOIN all_views v
+  ON v.view_name = c.table_name AND v.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+LEFT JOIN (
+  SELECT ac.table_name, acc.column_name
+  FROM all_constraints ac
+  JOIN all_cons_columns acc
+    ON ac.constraint_name = acc.constraint_name AND ac.owner = acc.owner
+  WHERE ac.constraint_type = 'P'
+    AND ac.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+) pk ON c.table_name = pk.table_name AND c.column_name = pk.column_name
+WHERE c.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+ORDER BY c.table_name, c.column_id
+`;
+
+const ORA_VIEWS = `
+SELECT view_name, text AS view_def
+FROM all_views
+WHERE owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+`;
+
+const ORA_FKS = `
+SELECT ac.table_name AS from_table,
+       acc.column_name AS from_col,
+       rc.table_name AS to_table,
+       rcc.column_name AS to_col
+FROM all_constraints ac
+JOIN all_cons_columns acc
+  ON ac.constraint_name = acc.constraint_name AND ac.owner = acc.owner
+JOIN all_constraints rc
+  ON ac.r_constraint_name = rc.constraint_name AND ac.r_owner = rc.owner
+JOIN all_cons_columns rcc
+  ON rc.constraint_name = rcc.constraint_name AND rc.owner = rcc.owner
+  AND acc.position = rcc.position
+WHERE ac.constraint_type = 'R'
+  AND ac.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+`;
+
 function getQueries(dbType) {
   switch (dbType) {
     case 'postgres': return { columns: PG_COLUMNS, views: PG_VIEWS, fks: PG_FKS };
     case 'mysql':    return { columns: MY_COLUMNS, views: MY_VIEWS, fks: MY_FKS };
     case 'mssql':    return { columns: MS_COLUMNS, views: MS_VIEWS, fks: MS_FKS };
+    case 'oracle':   return { columns: ORA_COLUMNS, views: ORA_VIEWS, fks: ORA_FKS };
     default: throw new Error(`지원하지 않는 DB 타입: ${dbType}`);
   }
 }
@@ -134,7 +188,7 @@ function buildResult(colRows, viewRows, fkRows) {
       columnName:   s(row.column_name),
       dataType:     s(row.data_type) || '',
       isPk:         !!row.is_pk,
-      isNullable:   s(row.is_nullable) === 'YES' || row.is_nullable === true || row.is_nullable === 1,
+      isNullable:   s(row.is_nullable) === 'YES' || s(row.is_nullable) === 'Y' || row.is_nullable === true || row.is_nullable === 1,
       defaultValue: row.column_default != null ? s(row.column_default) : null
     });
   }
