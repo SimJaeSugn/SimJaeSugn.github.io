@@ -11,7 +11,7 @@ async function execute(config, sql) {
     multipleStatements: false
   });
   try {
-    const [rows, fields] = await conn.execute(sql);
+    const [rows, fields] = await conn.query(sql);
     const isArray = Array.isArray(rows);
     return {
       rows: isArray ? rows : [],

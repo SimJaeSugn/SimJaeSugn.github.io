@@ -105,22 +105,29 @@ function getQueries(dbType) {
   }
 }
 
+// mysql2가 information_schema 컬럼을 Buffer로 반환하는 경우 문자열로 변환
+function s(val) {
+  if (val == null) return null;
+  if (Buffer.isBuffer(val)) return val.toString('utf8');
+  return String(val);
+}
+
 function buildResult(colRows, viewRows, fkRows) {
   // 테이블/뷰별 컬럼 그룹화
   const tableMap = {};
   const viewSet = new Set();
 
   for (const row of colRows) {
-    const name = row.table_name;
-    const isView = (row.table_type || '').toUpperCase().includes('VIEW');
+    const name = s(row.table_name);
+    const isView = (s(row.table_type) || '').toUpperCase().includes('VIEW');
     if (isView) viewSet.add(name);
     if (!tableMap[name]) tableMap[name] = { tableName: name, isView, columns: [] };
     tableMap[name].columns.push({
-      columnName:   row.column_name,
-      dataType:     row.data_type,
+      columnName:   s(row.column_name),
+      dataType:     s(row.data_type) || '',
       isPk:         !!row.is_pk,
-      isNullable:   row.is_nullable === 'YES' || row.is_nullable === true || row.is_nullable === 1,
-      defaultValue: row.column_default || null
+      isNullable:   s(row.is_nullable) === 'YES' || row.is_nullable === true || row.is_nullable === 1,
+      defaultValue: row.column_default != null ? s(row.column_default) : null
     });
   }
 
@@ -129,7 +136,7 @@ function buildResult(colRows, viewRows, fkRows) {
 
   // 뷰 DDL 병합
   const viewDdlMap = {};
-  for (const v of viewRows) viewDdlMap[v.view_name] = v.view_def || '';
+  for (const v of viewRows) viewDdlMap[s(v.view_name)] = s(v.view_def) || '';
 
   const views = viewMeta.map(v => ({
     viewName: v.tableName,
@@ -138,10 +145,10 @@ function buildResult(colRows, viewRows, fkRows) {
   }));
 
   const fks = fkRows.map(r => ({
-    fromTable: r.from_table,
-    fromCol:   r.from_col,
-    toTable:   r.to_table,
-    toCol:     r.to_col
+    fromTable: s(r.from_table),
+    fromCol:   s(r.from_col),
+    toTable:   s(r.to_table),
+    toCol:     s(r.to_col)
   }));
 
   return { tables, views, fks };
