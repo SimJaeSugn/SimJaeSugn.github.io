@@ -1,5 +1,5 @@
 ## 단축키 동기화
-- 상태: N/A (미들웨어 작업)
+- 상태: N/A (미들웨어 전용 변경)
 
 ## 백업 통합 (export/import/ui)
 - export.js: N/A
@@ -12,55 +12,80 @@
 ## 렌더링 연동
 - 상태: N/A
 
+---
+
 ## 미들웨어 특화 검사
 
 ### A. 모듈 연결 일관성
-- `src/utils/keystore.js` 파일 존재 여부: OK
-  - `loadOrCreateKey()` 구현 및 `module.exports` 정상
-- `src/utils/crypto.js`에서 keystore.js require: OK
-  - `require('./keystore')` 로 `loadOrCreateKey` import
-  - `decryptLegacy` exports에 포함: OK (`module.exports = { encrypt, decrypt, decryptLegacy }`)
-- `src/db/connector.js`에서 `closeAllPools` exports: OK
-  - `module.exports = { getAdapter, closeAllPools }` 확인
-- `src/routes/config.js`에서 `decryptLegacy`, `closeAllPools` import: OK
-  - `const { encrypt, decrypt, decryptLegacy } = require('../utils/crypto')`
-  - `const { getAdapter, closeAllPools } = require('../db/connector')`
 
-### B. 풀링 일관성
-- `postgres.js` `closePool()` exports: OK (`module.exports = { execute, test, closePool }`)
-- `mysql.js` `closePool()` exports: OK (`module.exports = { execute, test, closePool }`)
-- `mssql.js` `closePool()` exports: OK (`module.exports = { execute, test, closePool }`)
-- `connector.js`의 `closeAllPools()`가 어댑터들의 `closePool()` 호출: OK
-  - `Object.values(adapters)` 순회하며 `adapter.closePool()` 호출
-- `config.js` POST /config 핸들러가 async이고 저장 후 `closeAllPools()` 호출: OK
-  - `router.post('/', async (req, res) => { ... await closeAllPools(); ... })`
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| auditLogger.js 존재 | OK | `~/.uxermanager/audit.log` 기록, 10MB 로테이션 |
+| auditLogger.js `writeAuditLog` export | OK | `module.exports = { writeAuditLog }` |
+| health.js 존재 | OK | |
+| health.js `loadConfig` import | OK | `require('./config')` |
+| health.js `getAdapter` import | OK | `require('../db/connector')` |
+| health.js `GET /` 라우터 구현 | OK | DB 연결 테스트 후 latencyMs 반환 |
+| execute.js `auditLogger` import | OK | `require('../utils/auditLogger')` |
+| execute.js `writeAuditLog` 호출 (POST /execute 성공) | OK | `writeAuditLog('EXECUTE', sql, { durationMs, rowCount })` |
+| execute.js `writeAuditLog` 호출 (POST /execute 실패) | OK | `writeAuditLog('EXECUTE', sql, { error: err.message })` |
+| execute.js `writeAuditLog` 호출 (POST /execute/stream 성공) | OK | `writeAuditLog('STREAM', sql, { durationMs, rowCount })` |
+| execute.js `writeAuditLog` 호출 (POST /execute/stream 실패) | OK | `writeAuditLog('STREAM', sql, { error: err.message })` |
+| config.js 라우터 `GET /profiles` | OK | 비밀번호 마스킹 후 전체 목록 반환 |
+| config.js 라우터 `POST /profiles` | OK | 중복 이름 409 거부 |
+| config.js 라우터 `DELETE /profiles/:name` | OK | 활성/마지막 프로파일 삭제 400 거부 |
+| config.js 라우터 `POST /profiles/:name/activate` | OK | closeAllPools() 호출 후 전환 |
+| config.js `loadConfig` export | OK | `module.exports.loadConfig = loadConfig` |
+| index.js `healthRouter` 등록 | OK | `app.use('/health', healthRouter)` |
+| index.js CORS `methods`에 `DELETE` 포함 | OK | `['GET', 'POST', 'DELETE', 'OPTIONS']` |
 
-### C. 캐시 무효화
-- `config.js`의 `loadConfig()`가 `_configCache`를 먼저 확인: OK
-  - `if (_configCache) return _configCache;` 첫 줄에서 체크
-- POST /config 저장 후 `invalidateCache()` 호출: OK
-  - `invalidateCache()` 호출 후 `await closeAllPools()` 순서 정상
+### B. 다중 프로파일 로직 정확성
 
-### D. stopOnError 구현
-- `execute.js`의 SSE 스트리밍에서 `stopOnError` 파싱: OK
-  - `const stopOnError = req.body.stopOnError === true;`
-- catch 블록에서 `stopOnError` 분기: OK
-  - `if (stopOnError) break;` — 오류 발생 시 루프 탈출
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `loadRawStore()` 구버전 단일 객체 마이그레이션 | OK | `if (!raw.profiles)` 체크 후 `{ profiles: [{ name: '기본', ...raw }], active: '기본' }` 형태로 변환 및 파일 재기록 |
+| `loadConfig()` 기존 시그니처 유지 (활성 프로파일 평문 반환) | OK | store에서 active 이름으로 프로파일 조회 후 decrypt 적용, 레거시 키 자동 마이그레이션 포함 |
+| `saveStore()` 호출 후 `invalidateCache()` 실행 | OK | `saveStore()` 내부 마지막에 `invalidateCache()` 호출 |
+| `DELETE /profiles/:name` 활성 프로파일 삭제 거부 | OK | `store.active === name` 시 400 반환 |
+| `DELETE /profiles/:name` 마지막 프로파일 삭제 거부 | OK | `store.profiles.length <= 1` 시 400 반환 |
+| `POST /profiles/:name/activate` `closeAllPools()` 호출 | OK | `saveStore()` → `invalidateCache()` → `await closeAllPools()` 순서 실행 |
+
+**참고:** `POST /profiles/:name/activate`에서 `saveStore()` 내부의 `invalidateCache()` 호출 이후 라우터 본문에서 `invalidateCache()`를 한 번 더 호출하는 중복이 있으나, 기능 오류는 없음.
+
+### C. 감사 로그 완전성
+
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `POST /execute` 성공 시 `writeAuditLog('EXECUTE', ...)` | OK | `{ durationMs, rowCount }` 포함 |
+| `POST /execute` 실패 시 `writeAuditLog('EXECUTE', ...)` | OK | `{ error: err.message }` 포함 |
+| `POST /execute/stream` 각 SQL 성공 시 `writeAuditLog('STREAM', ...)` | OK | `{ durationMs, rowCount }` 포함 |
+| `POST /execute/stream` 각 SQL 실패 시 `writeAuditLog('STREAM', ...)` | OK | `{ error: err.message }` 포함 |
+
+### D. Watchdog 스크립트
+
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `scripts/install-watchdog.ps1` 존재 | OK | |
+| `scripts/uninstall-watchdog.ps1` 존재 | OK | |
 
 ### E. README 동기화
-- `keystore.js` 신규 파일 (파일 구조 섹션): OK
-  - `utils/keystore.js — ~/.uxermanager/key 기반 암호화 키 생성·로드` 반영됨
-- 커넥션 풀링 적용 (어댑터 설명): OK
-  - 파일 구조에 `(커넥션 풀링)` 명시됨 (postgres, mysql, mssql 모두)
-  - `connector.js — dbType → 어댑터 라우팅, 전체 풀 종료` 반영됨
-  - POST /config 설명에 "기존 DB 커넥션 풀을 모두 닫고 설정 캐시를 초기화한다" 반영됨
-- `stopOnError` 옵션 (API 레퍼런스 POST /execute/stream): OK
-  - `stopOnError: true` 예시 및 설명 반영됨
-- 버전 동적 로드 (GET /ping 응답): OK
-  - `` `version` 값은 `package.json`의 버전을 그대로 반환한다.`` 반영됨
-- EADDRINUSE 처리: OK (index.js에 구현됨, README에 별도 섹션 없으나 실행/빌드 섹션에 포트 정보 있음 — 추가 문서화 불필요)
-- `express.json` 10mb limit: OK (index.js에 `express.json({ limit: '10mb' })` 구현됨, README에 API 레퍼런스에서 암묵적으로 지원)
+
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `/health` API 섹션 | OK | `GET /health` 섹션에 응답 예시 3가지(성공/접속정보없음/연결실패) 기술 |
+| `/config/profiles` 관련 API 섹션 | OK | GET/POST/DELETE/activate 4개 엔드포인트 모두 기술 |
+| 감사 로그(`audit.log`) 경로 및 설명 | OK | `## 접속정보 저장 위치` 하단 `### 감사 로그 (audit.log)` 섹션에 OS별 경로·형식·로테이션 설명 포함 |
+| Watchdog 설치 섹션 | OK | `## Watchdog 설치 (Windows)` 섹션에 등록/제거 명령어 포함 |
+| 파일 구조에 `health.js` 반영 | OK | `routes/health.js` 기술됨 |
+| 파일 구조에 `auditLogger.js` 반영 | OK | `utils/auditLogger.js` 기술됨 |
+| 파일 구조에 `scripts/` 반영 | OK | `install-watchdog.ps1`, `uninstall-watchdog.ps1` 모두 기술됨 |
+
+- 상태: OK (수정 불필요)
+
+---
 
 ## 최종 상태: PASS
 
-모든 검사 항목 이상 없음. 누락된 구현 또는 README 미동기화 항목 없음.
+모든 검사 항목이 정상 확인됨. 미해결 이슈 없음.
+
+> **참고 (비기능적 중복):** `config.js`의 `POST /profiles/:name/activate` 라우터에서 `saveStore()` 내부와 라우터 본문 양쪽에서 `invalidateCache()`가 호출되는 중복이 존재하나, 동작 오류는 없음. 향후 정리 대상.

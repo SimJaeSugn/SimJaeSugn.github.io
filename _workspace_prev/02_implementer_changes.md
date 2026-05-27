@@ -1,21 +1,17 @@
 ## 변경 파일 목록
-
-- src/utils/keystore.js: 신규 생성 - ~/.uxermanager/key 파일 기반으로 AES-256-GCM 암호화 키를 로드 또는 최초 생성
-- src/utils/crypto.js: loadOrCreateKey() 기반 KEY로 교체, LEGACY_KEY 보존, decryptLegacy() 추가, exports에 decryptLegacy 포함
-- src/db/adapters/mssql.js: mssql.connect() 매번 생성하던 방식 → ConnectionPool 기반 싱글톤 풀링으로 전체 재작성, closePool() 추가
-- src/db/adapters/postgres.js: Client 매번 생성하던 방식 → Pool 기반 싱글톤 풀링으로 전체 재작성, closePool() 추가
-- src/db/adapters/mysql.js: createConnection() 매번 생성하던 방식 → createPool() 기반 싱글톤 풀링으로 전체 재작성, MAX_EXECUTION_TIME 설정, closePool() 추가
-- src/db/connector.js: closeAllPools() 함수 추가 및 exports에 포함
-- src/routes/config.js: decryptLegacy·closeAllPools import 추가; _configCache/invalidateCache 추가; loadConfig()에 캐시 + 레거시 키 마이그레이션 로직 추가; POST /config를 async로 변경하여 저장 후 invalidateCache()·closeAllPools() 호출
-- src/routes/execute.js: POST /execute/stream 라우트에 stopOnError 옵션 추가, catch 블록에 if (stopOnError) break 분기 추가
-- src/index.js: package.json에서 version 동적 로드; express.json({ limit: '10mb' }) 적용; CORS null origin 주석 명확화; app.listen → const server = app.listen으로 변경 후 EADDRINUSE 에러 핸들러 추가; /ping의 version 하드코딩 제거
-- src/tray.js: _appVersion을 package.json에서 동적 로드하여 트레이 제목에 반영
+- src/routes/config.js: 다중 프로파일 지원으로 전체 재작성 — loadRawStore/saveStore 추가, _storeCache/_activeConfigCache 이중 캐시, 구버전 단일 객체 자동 마이그레이션, GET/POST /config 기존 호환 유지, 프로파일 CRUD 5개 엔드포인트 신규 추가
+- src/utils/auditLogger.js: 신규 생성 — SQL 실행 감사 로그 기록 (writeAuditLog), 10 MB 로테이션
+- src/routes/execute.js: auditLogger import 추가, POST /execute 성공·실패 분기에 writeAuditLog 호출, POST /execute/stream 성공·실패 분기에 writeAuditLog 호출, duration 변수 분리로 중복 계산 제거
+- src/routes/health.js: 신규 생성 — GET /health (DB 연결 상태 확인, latencyMs 반환)
+- src/index.js: healthRouter require 추가, app.use('/health', healthRouter) 등록
+- scripts/install-watchdog.ps1: 신규 생성 — Windows Task Scheduler Watchdog 등록 스크립트
+- scripts/uninstall-watchdog.ps1: 신규 생성 — Watchdog 작업 제거 스크립트
+- middleware/README.md: /health, 프로파일 CRUD API 섹션 추가; 파일 구조 다이어그램 갱신; 감사 로그 경로 및 형식 추가; Watchdog 설치 섹션 추가
 
 ## 주요 결정 사항
-
-- 계획과 동일하게 구현함. 특이 사항 없음.
-- config.js의 loadConfig()에서 마이그레이션 성공 후 _configCache 세팅 시 { ...raw, password } 형태로 저장 (raw.password는 암호문이지만 password 변수로 평문을 덮어쓰는 spread 순서가 맞아 정상 동작).
+- config.js의 loadRawStore 내부에서 saveStore를 호출하면 재귀적 캐시 무효화가 발생할 수 있으므로, 마이그레이션 후 _storeCache를 직접 할당하여 파일 재읽기 없이 반환했다.
+- 레거시 암호화 마이그레이션(decryptLegacy → encrypt)은 loadConfig 내부에서 loadRawStore를 재호출해 최신 store를 얻은 후 인덱스를 찾아 갱신하는 방식으로, 캐시 상태와의 일관성을 유지했다.
+- CORS allowedHeaders에 'DELETE' 메서드가 없어 DELETE /config/profiles/:name이 CORS 차단될 수 있으나, 이는 index.js CORS 설정 범위이므로 요청 범위(config.js 재작성)에 포함되지 않아 수정하지 않았다. (추후 별도 수정 권장)
 
 ## 미완료 항목
-
-없음. 계획의 모든 항목을 구현 완료.
+- 없음 (계획의 모든 항목 구현 완료)
