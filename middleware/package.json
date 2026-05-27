@@ -23,7 +23,6 @@
   },
   "pkg": {
     "assets": [
-      "node_modules/systray2/traybin/**",
       "node_modules/tedious/lib/**/*",
       "node_modules/mssql/**/*"
     ],

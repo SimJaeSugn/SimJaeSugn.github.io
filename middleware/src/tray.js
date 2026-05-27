@@ -1,8 +1,36 @@
-const SysTray = require('systray2').default;
 const zlib = require('zlib');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+
+// pkg 번들 실행 시 base64 임베드 바이너리를 tmpdir로 추출
+// (pkg 가상 FS는 실행 불가 → 실제 FS에 써야 spawn 가능)
+function _prepTrayBin() {
+  if (!process.pkg || process.platform !== 'win32') return;
+
+  const binName = 'tray_windows_release.exe';
+  const dstDir = path.join(os.tmpdir(), 'traybin');
+  const dstBin = path.join(dstDir, binName);
+
+  if (!fs.existsSync(dstBin)) {
+    fs.mkdirSync(dstDir, { recursive: true });
+    const b64 = require('./tray_win_bin'); // base64-encoded exe
+    fs.writeFileSync(dstBin, Buffer.from(b64, 'base64'));
+  }
+
+  // copyDir:true 시 systray2가 fse.copy로 snapshot→tmpdir 복사 시도하는 것을 차단
+  try {
+    const fse = require('fs-extra');
+    const orig = fse.copy.bind(fse);
+    fse.copy = (src, dst, opts) => {
+      if (src.includes('systray2') && src.includes('traybin')) return Promise.resolve();
+      return orig(src, dst, opts);
+    };
+  } catch (_) {}
+}
+
+_prepTrayBin();
+const SysTray = require('systray2').default;
 
 // 16x16 PNG 아이콘을 zlib(내장)으로 생성 — 외부 의존성 없음
 function _createIconBuffer() {

@@ -40,7 +40,11 @@
       "Bash(Get-Content \"C:\\\\Users\\\\lvtlv\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E--04------python-98-ETC-SimJaeSugn-github-io\\\\221a2ebf-a6a7-4711-9d8f-f104f17da13e\\\\tasks\\\\b1rjyx3r7.output\")",
       "Bash(curl *)",
       "PowerShell(Invoke-RestMethod -Uri http://127.0.0.1:3737/ping | ConvertTo-Json)",
-      "PowerShell(Stop-Job *)"
+      "PowerShell(Stop-Job *)",
+      "PowerShell(Out-File *)",
+      "Bash(./uxermanager.exe)",
+      "Read(//tmp/**)",
+      "Bash(kill %1)"
     ]
   }
 }
