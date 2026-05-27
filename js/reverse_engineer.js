@@ -2,6 +2,10 @@
 // 리버스 엔지니어링 — DB 스키마 → ERD 자동 생성
 // ══════════════════════════════════════════════════════════════════
 
+// ── 모듈 스코프 상태 ──────────────────────────────────────────────
+let _reverseEngineerStep = 1;            // 1 = 옵션, 2 = 테이블 선택
+let _reverseEngineerTables = [];         // [{name, type}]
+
 // ── 모달 열기 ─────────────────────────────────────────────────────
 async function openReverseEngineerModal() {
   // 미들웨어 실행 확인
@@ -37,12 +41,33 @@ async function openReverseEngineerModal() {
   }
 
   _renderReverseEngineerModal();
+  // 매번 1단계 상태로 초기화
+  _reverseEngineerStep = 1;
+  _reverseEngineerTables = [];
+  _resetReverseEngineerUI();
   document.getElementById('reverseEngineerOverlay').classList.add('active');
 }
 
 function closeReverseEngineerModal() {
   const ov = document.getElementById('reverseEngineerOverlay');
   if (ov) ov.classList.remove('active');
+  _reverseEngineerStep = 1;
+  _reverseEngineerTables = [];
+  _resetReverseEngineerUI();
+}
+
+// 모달 UI를 1단계 상태로 초기화
+function _resetReverseEngineerUI() {
+  const listWrap = document.getElementById('reTableListWrap');
+  if (listWrap) listWrap.style.display = 'none';
+  const optWrap = document.getElementById('reOptionsWrap');
+  if (optWrap) optWrap.style.display = '';
+  const btn = document.getElementById('reRunBtn');
+  if (btn) { btn.disabled = false; btn.textContent = 'ERD 생성'; }
+  const selectAllBtn = document.getElementById('reSelectAllBtn');
+  if (selectAllBtn) selectAllBtn.style.display = 'none';
+  const errEl = document.getElementById('reErrMsg');
+  if (errEl) errEl.style.display = 'none';
 }
 
 function _renderReverseEngineerModal() {
@@ -53,37 +78,47 @@ function _renderReverseEngineerModal() {
   overlay.id = 'reverseEngineerOverlay';
   overlay.setAttribute('onmousedown', "overlayClose(event,'reverseEngineerOverlay')");
   overlay.innerHTML = `
-    <div class="modal" style="width:440px" onmousedown.stop>
+    <div class="modal" style="width:480px" onmousedown.stop>
       <h3>리버스 엔지니어링</h3>
       <p style="color:var(--tx-sub);font-size:13px;margin-bottom:16px">
         DB 스키마를 읽어 ERD를 자동으로 생성합니다.
       </p>
 
-      <div class="form-row">
-        <label class="form-label">적용 방식</label>
-        <div style="display:flex;gap:16px;margin-top:4px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="reMode" value="new" checked id="reModeNew">
-            <span style="font-size:13px">새 다이어그램 생성</span>
+      <div id="reOptionsWrap">
+        <div class="form-row">
+          <label class="form-label">적용 방식</label>
+          <div style="display:flex;gap:16px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="radio" name="reMode" value="new" checked id="reModeNew">
+              <span style="font-size:13px">새 다이어그램 생성</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="radio" name="reMode" value="overwrite" id="reModeOverwrite">
+              <span style="font-size:13px">현재 다이어그램 덮어쓰기</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">명칭 대문자 변환</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px">
+            <input type="checkbox" id="reToUpper">
+            <span style="font-size:13px">테이블명·컬럼명을 모두 대문자로 변환</span>
           </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="reMode" value="overwrite" id="reModeOverwrite">
-            <span style="font-size:13px">현재 다이어그램 덮어쓰기</span>
-          </label>
+        </div>
+
+        <div class="form-row" id="reNewNameRow">
+          <label class="form-label">다이어그램 이름</label>
+          <input class="form-input" id="reNewDiagName" type="text" placeholder="DB 스키마 ERD" value="DB 스키마 ERD">
         </div>
       </div>
 
-      <div class="form-row">
-        <label class="form-label">명칭 대문자 변환</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px">
-          <input type="checkbox" id="reToUpper">
-          <span style="font-size:13px">테이블명·컬럼명을 모두 대문자로 변환</span>
-        </label>
-      </div>
-
-      <div class="form-row" id="reNewNameRow">
-        <label class="form-label">다이어그램 이름</label>
-        <input class="form-input" id="reNewDiagName" type="text" placeholder="DB 스키마 ERD" value="DB 스키마 ERD">
+      <div id="reTableListWrap" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label class="form-label" style="margin:0">대상 테이블 선택</label>
+          <button type="button" class="btn-cancel-m" id="reSelectAllBtn" style="padding:2px 8px;font-size:12px" onclick="toggleReverseEngineerAll()">전체 선택</button>
+        </div>
+        <div id="reTableList" style="max-height:260px;overflow:auto;border:1px solid var(--brd,#444);border-radius:4px;padding:8px;font-size:13px"></div>
       </div>
 
       <div id="reErrMsg" style="display:none;color:var(--err,#f38ba8);font-size:12px;margin-bottom:8px"></div>
@@ -104,11 +139,80 @@ function _renderReverseEngineerModal() {
   });
 }
 
-// ── ERD 생성 실행 ─────────────────────────────────────────────────
+// ── ERD 생성 실행 (2단계) ─────────────────────────────────────────
 async function runReverseEngineering() {
+  if (_reverseEngineerStep === 1) {
+    await _runReverseEngineerStep1();
+  } else {
+    await _runReverseEngineerStep2();
+  }
+}
+
+// 1단계: 테이블 목록 조회 → 체크리스트 표시
+async function _runReverseEngineerStep1() {
   const btn = document.getElementById('reRunBtn');
   const errEl = document.getElementById('reErrMsg');
   errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '테이블 목록 조회 중...';
+
+  try {
+    const res = await fetch(`${MW_URL}/schema/tables`, { signal: AbortSignal.timeout(30000) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || `HTTP ${res.status}`);
+    }
+    const { items } = await res.json();
+    _reverseEngineerTables = items || [];
+
+    // 체크리스트 렌더링
+    const listEl = document.getElementById('reTableList');
+    if (!_reverseEngineerTables.length) {
+      listEl.innerHTML = '<div style="color:var(--tx-sub);font-size:12px">조회된 테이블·뷰가 없습니다.</div>';
+    } else {
+      listEl.innerHTML = _reverseEngineerTables.map((it, i) => {
+        const badge = it.type === 'view'
+          ? '<span style="display:inline-block;background:#2e8b8b;color:#fff;border-radius:2px;padding:1px 5px;font-size:10px;margin-left:6px">VIEW</span>'
+          : '';
+        return `
+          <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer">
+            <input type="checkbox" class="reTableChk" data-name="${it.name}" data-type="${it.type}" checked>
+            <span>${it.name}</span>${badge}
+          </label>`;
+      }).join('');
+    }
+
+    // UI 전환
+    document.getElementById('reOptionsWrap').style.display = 'none';
+    document.getElementById('reTableListWrap').style.display = '';
+    document.getElementById('reSelectAllBtn').style.display = '';
+    _reverseEngineerStep = 2;
+    btn.textContent = '선택한 테이블로 ERD 생성';
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+    btn.textContent = 'ERD 생성';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 2단계: 선택된 테이블만 필터링하여 ERD 생성
+async function _runReverseEngineerStep2() {
+  const btn = document.getElementById('reRunBtn');
+  const errEl = document.getElementById('reErrMsg');
+  errEl.style.display = 'none';
+
+  // 선택된 테이블 수집
+  const checked = Array.from(document.querySelectorAll('.reTableChk:checked'))
+    .map(el => el.getAttribute('data-name'));
+  if (!checked.length) {
+    errEl.textContent = '최소 한 개 이상의 테이블을 선택하세요.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const selectedSet = new Set(checked);
+
   btn.disabled = true;
   btn.textContent = '스키마 읽는 중...';
 
@@ -118,7 +222,13 @@ async function runReverseEngineering() {
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error || `HTTP ${res.status}`);
     }
-    const { tables, views, fks } = await res.json();
+    let { tables, views, fks } = await res.json();
+
+    // 클라이언트 측 필터링 — 선택한 테이블·뷰만 유지
+    tables = (tables || []).filter(t => selectedSet.has(t.tableName));
+    views  = (views  || []).filter(v => selectedSet.has(v.viewName));
+    // FK는 양쪽 테이블이 모두 선택된 경우만 유지
+    fks    = (fks    || []).filter(fk => selectedSet.has(fk.fromTable) && selectedSet.has(fk.toTable));
 
     const toUpper = document.getElementById('reToUpper')?.checked ?? false;
     const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views, toUpper);
@@ -145,6 +255,15 @@ async function runReverseEngineering() {
       saveState();
     } else {
       const d = getActiveDiagram();
+      // 기존 엔티티 위치 보존 (physicalName 기준 매칭)
+      const posMap = {};
+      (d.entities || []).forEach(e => {
+        posMap[e.physicalName.toLowerCase()] = { x: e.x, y: e.y };
+      });
+      entities.forEach(e => {
+        const key = e.physicalName.toLowerCase();
+        if (posMap[key]) { e.x = posMap[key].x; e.y = posMap[key].y; }
+      });
       d.entities = entities;
       d.relations = relations;
       // 기존 VIEW DDL 메모 제거 후 새로 추가 (반복 실행 시 중복 방지)
@@ -160,10 +279,18 @@ async function runReverseEngineering() {
   } catch (e) {
     errEl.textContent = e.message;
     errEl.style.display = 'block';
-  } finally {
     btn.disabled = false;
-    btn.textContent = 'ERD 생성';
+    btn.textContent = '선택한 테이블로 ERD 생성';
   }
+}
+
+// 전체 선택/해제 토글
+function toggleReverseEngineerAll() {
+  const chks = document.querySelectorAll('.reTableChk');
+  const allChecked = Array.from(chks).every(c => c.checked);
+  chks.forEach(c => { c.checked = !allChecked; });
+  const btn = document.getElementById('reSelectAllBtn');
+  if (btn) btn.textContent = allChecked ? '전체 선택' : '전체 해제';
 }
 
 // ── 엔티티 객체 배열 생성 ─────────────────────────────────────────
@@ -174,11 +301,30 @@ function _buildEntitiesFromSchema(tables, views, toUpper = false) {
     ...views.map(v => ({ tableName: v.viewName, columns: v.columns, isView: true }))
   ];
 
+  const HEADER_H = 50;
+  const COL_ROW_H = 28;
+  const PADDING_H = 20;
+  const GAP_Y = 30;
+  const COL_W = 240;
+  const GAP_X = 30;
   const COLS = 5;
-  const COL_W = 220;
-  const COL_H = 200;
   const OFFSET_X = 60;
   const OFFSET_Y = 60;
+
+  // 1-pass: 행별 최대 높이 계산
+  const rowCount = Math.ceil(all.length / COLS);
+  const rowMaxH = Array(rowCount).fill(0);
+  all.forEach((tbl, idx) => {
+    const row = Math.floor(idx / COLS);
+    const h = HEADER_H + (tbl.columns || []).length * COL_ROW_H + PADDING_H;
+    if (h > rowMaxH[row]) rowMaxH[row] = h;
+  });
+
+  // rowOffsets 누적
+  const rowOffsets = [OFFSET_Y];
+  for (let r = 0; r < rowCount - 1; r++) {
+    rowOffsets.push(rowOffsets[r] + rowMaxH[r] + GAP_Y);
+  }
 
   const entities = [];
   const entityIdMap = {}; // tableName → entity id
@@ -194,8 +340,8 @@ function _buildEntitiesFromSchema(tables, views, toUpper = false) {
       type:          c.dataType || '',
       kind:          c.isPk ? 'pk' : 'normal',
       notNull:       !c.isNullable,
-      unique:        false,
-      autoIncrement: false,
+      unique:        c.isUnique ?? false,
+      autoIncrement: c.isAutoIncrement ?? false,
       defaultValue:  c.defaultValue || '',
       description:   '',
       ref:           null
@@ -209,8 +355,8 @@ function _buildEntitiesFromSchema(tables, views, toUpper = false) {
       colorTag:     tbl.isView ? 'teal' : null,
       isView:       tbl.isView,
       rowCount:     undefined,
-      x: OFFSET_X + col * COL_W,
-      y: OFFSET_Y + row * COL_H,
+      x: OFFSET_X + col * (COL_W + GAP_X),
+      y: rowOffsets[row],
       attrs,
       indexes: []
     });
@@ -228,7 +374,7 @@ function _buildRelationsFromFks(fks, entityIdMap) {
     const from = entityIdMap[fk.fromTable];
     const to   = entityIdMap[fk.toTable];
     if (from && to) {
-      relations.push({ from, to, card: '1:N' });
+      relations.push({ from, to, card: fk.card || '1:N' });
     }
   }
   return relations;

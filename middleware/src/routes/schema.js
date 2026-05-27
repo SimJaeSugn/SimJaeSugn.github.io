@@ -3,12 +3,24 @@ const router = express.Router();
 const { getAdapter } = require('../db/connector');
 const { loadConfig } = require('./config');
 
-// ── PostgreSQL 쿼리 ────────────────────────────────────────────────
-const PG_COLUMNS = `
+// ── PostgreSQL 스키마 화이트리스트 검증 ─────────────────────────────
+// PG adapter가 파라미터 바인딩을 지원하지 않으므로 알파뉴메릭+언더스코어+점만 허용한 후 문자열 치환
+function pgValidateSchema(schema) {
+  const v = String(schema || 'public');
+  if (!/^[A-Za-z0-9_.]+$/.test(v)) {
+    throw new Error(`잘못된 스키마 이름: ${schema}`);
+  }
+  return v;
+}
+
+// ── PostgreSQL 쿼리 (schema 치환) ───────────────────────────────────
+const PG_COLUMNS = (schema) => `
 SELECT c.table_name, c.column_name, c.data_type, c.character_maximum_length,
        c.is_nullable, c.column_default,
        CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END AS is_pk,
-       t.table_type
+       t.table_type,
+       CASE WHEN c.column_default LIKE 'nextval%' THEN true ELSE false END AS is_auto_increment,
+       false AS is_unique
 FROM information_schema.columns c
 JOIN information_schema.tables t
   ON c.table_name = t.table_name AND c.table_schema = t.table_schema
@@ -17,18 +29,18 @@ LEFT JOIN (
   FROM information_schema.table_constraints tc
   JOIN information_schema.key_column_usage kcu
     ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-  WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public'
+  WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = '${schema}'
 ) pk ON c.table_name = pk.table_name AND c.column_name = pk.column_name
-WHERE c.table_schema = 'public'
+WHERE c.table_schema = '${schema}'
 ORDER BY c.table_name, c.ordinal_position
 `;
 
-const PG_VIEWS = `
+const PG_VIEWS = (schema) => `
 SELECT table_name AS view_name, pg_get_viewdef(table_name::regclass, true) AS view_def
-FROM information_schema.views WHERE table_schema = 'public'
+FROM information_schema.views WHERE table_schema = '${schema}'
 `;
 
-const PG_FKS = `
+const PG_FKS = (schema) => `
 SELECT kcu.table_name AS from_table, kcu.column_name AS from_col,
        ccu.table_name AS to_table, ccu.column_name AS to_col
 FROM information_schema.table_constraints tc
@@ -36,7 +48,7 @@ JOIN information_schema.key_column_usage kcu
   ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
 JOIN information_schema.constraint_column_usage ccu
   ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
-WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
+WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = '${schema}'
 `;
 
 // ── MySQL 쿼리 ─────────────────────────────────────────────────────
@@ -44,7 +56,9 @@ const MY_COLUMNS = `
 SELECT c.table_name, c.column_name, c.column_type AS data_type,
        c.is_nullable, c.column_default,
        IF(c.column_key='PRI', true, false) AS is_pk,
-       t.table_type
+       t.table_type,
+       IF(c.column_key = 'UNI', true, false) AS is_unique,
+       IF(c.extra = 'auto_increment', true, false) AS is_auto_increment
 FROM information_schema.columns c
 JOIN information_schema.tables t
   ON c.table_name = t.table_name AND c.table_schema = t.table_schema
@@ -69,7 +83,9 @@ const MS_COLUMNS = `
 SELECT t.name AS table_name, c.name AS column_name,
        tp.name AS data_type, c.max_length, c.is_nullable,
        CASE WHEN pk.column_id IS NOT NULL THEN 1 ELSE 0 END AS is_pk,
-       CASE WHEN tv.object_id IS NOT NULL THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type
+       CASE WHEN tv.object_id IS NOT NULL THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type,
+       c.is_identity AS is_auto_increment,
+       0 AS is_unique
 FROM (SELECT object_id, name FROM sys.tables UNION ALL SELECT object_id, name FROM sys.views) t
 JOIN sys.columns c ON t.object_id = c.object_id
 JOIN sys.types tp ON c.user_type_id = tp.user_type_id
@@ -105,31 +121,27 @@ SELECT t.table_name,
        c.nullable     AS is_nullable,
        c.data_default AS column_default,
        CASE WHEN pk.column_name IS NOT NULL THEN 1 ELSE 0 END AS is_pk,
-       CASE WHEN v.view_name IS NOT NULL THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type
-FROM all_tab_columns c
+       CASE WHEN v.view_name IS NOT NULL THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type,
+       CASE WHEN c.identity_column = 'YES' THEN 1 ELSE 0 END AS is_auto_increment,
+       0 AS is_unique
+FROM user_tab_columns c
 JOIN (
-  SELECT table_name FROM all_tables WHERE owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+  SELECT table_name FROM user_tables
   UNION ALL
-  SELECT view_name AS table_name FROM all_views WHERE owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+  SELECT view_name AS table_name FROM user_views
 ) t ON c.table_name = t.table_name
-LEFT JOIN all_views v
-  ON v.view_name = c.table_name AND v.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+LEFT JOIN user_views v ON v.view_name = c.table_name
 LEFT JOIN (
   SELECT ac.table_name, acc.column_name
-  FROM all_constraints ac
-  JOIN all_cons_columns acc
-    ON ac.constraint_name = acc.constraint_name AND ac.owner = acc.owner
+  FROM user_constraints ac
+  JOIN user_cons_columns acc ON ac.constraint_name = acc.constraint_name
   WHERE ac.constraint_type = 'P'
-    AND ac.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
 ) pk ON c.table_name = pk.table_name AND c.column_name = pk.column_name
-WHERE c.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
 ORDER BY c.table_name, c.column_id
 `;
 
 const ORA_VIEWS = `
-SELECT view_name, text AS view_def
-FROM all_views
-WHERE owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+SELECT view_name, text AS view_def FROM user_views
 `;
 
 const ORA_FKS = `
@@ -137,24 +149,54 @@ SELECT ac.table_name AS from_table,
        acc.column_name AS from_col,
        rc.table_name AS to_table,
        rcc.column_name AS to_col
-FROM all_constraints ac
-JOIN all_cons_columns acc
-  ON ac.constraint_name = acc.constraint_name AND ac.owner = acc.owner
-JOIN all_constraints rc
-  ON ac.r_constraint_name = rc.constraint_name AND ac.r_owner = rc.owner
-JOIN all_cons_columns rcc
-  ON rc.constraint_name = rcc.constraint_name AND rc.owner = rcc.owner
+FROM user_constraints ac
+JOIN user_cons_columns acc ON ac.constraint_name = acc.constraint_name
+JOIN user_constraints rc ON ac.r_constraint_name = rc.constraint_name
+JOIN user_cons_columns rcc ON rc.constraint_name = rcc.constraint_name
   AND acc.position = rcc.position
 WHERE ac.constraint_type = 'R'
-  AND ac.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
 `;
 
-function getQueries(dbType) {
+// ── UNIQUE 컬럼 조회 쿼리 ──────────────────────────────────────────
+const PG_UNIQUE = (schema) => `
+SELECT tc.table_name, kcu.column_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+WHERE tc.constraint_type = 'UNIQUE' AND tc.table_schema = '${schema}'
+`;
+
+const MY_UNIQUE = `
+SELECT table_name, column_name
+FROM information_schema.statistics
+WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name != 'PRIMARY'
+`;
+
+const MS_UNIQUE = `
+SELECT t.name AS table_name, c.name AS column_name
+FROM sys.indexes i
+JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+JOIN sys.tables t ON i.object_id = t.object_id
+JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+WHERE i.is_unique = 1 AND i.is_primary_key = 0
+`;
+
+const ORA_UNIQUE = `
+SELECT ac.table_name, acc.column_name
+FROM user_constraints ac
+JOIN user_cons_columns acc ON ac.constraint_name = acc.constraint_name
+WHERE ac.constraint_type = 'U'
+`;
+
+function getQueries(dbType, schema = 'public') {
   switch (dbType) {
-    case 'postgres': return { columns: PG_COLUMNS, views: PG_VIEWS, fks: PG_FKS };
-    case 'mysql':    return { columns: MY_COLUMNS, views: MY_VIEWS, fks: MY_FKS };
-    case 'mssql':    return { columns: MS_COLUMNS, views: MS_VIEWS, fks: MS_FKS };
-    case 'oracle':   return { columns: ORA_COLUMNS, views: ORA_VIEWS, fks: ORA_FKS };
+    case 'postgres': {
+      const sch = pgValidateSchema(schema);
+      return { columns: PG_COLUMNS(sch), views: PG_VIEWS(sch), fks: PG_FKS(sch), unique: PG_UNIQUE(sch) };
+    }
+    case 'mysql':    return { columns: MY_COLUMNS, views: MY_VIEWS, fks: MY_FKS, unique: MY_UNIQUE };
+    case 'mssql':    return { columns: MS_COLUMNS, views: MS_VIEWS, fks: MS_FKS, unique: MS_UNIQUE };
+    case 'oracle':   return { columns: ORA_COLUMNS, views: ORA_VIEWS, fks: ORA_FKS, unique: ORA_UNIQUE };
     default: throw new Error(`지원하지 않는 DB 타입: ${dbType}`);
   }
 }
@@ -173,7 +215,14 @@ function norm(row) {
   return out;
 }
 
-function buildResult(colRows, viewRows, fkRows) {
+function buildResult(colRows, viewRows, fkRows, uniqueRows = []) {
+  // uniqueSet 구성: "table.column" 형식
+  const uniqueSet = new Set();
+  for (const raw of uniqueRows) {
+    const r = norm(raw);
+    uniqueSet.add(`${s(r.table_name)}.${s(r.column_name)}`);
+  }
+
   // 테이블/뷰별 컬럼 그룹화
   const tableMap = {};
   const viewSet = new Set();
@@ -181,15 +230,18 @@ function buildResult(colRows, viewRows, fkRows) {
   for (const rawRow of colRows) {
     const row = norm(rawRow);
     const name = s(row.table_name);
+    const colName = s(row.column_name);
     const isView = (s(row.table_type) || '').toUpperCase().includes('VIEW');
     if (isView) viewSet.add(name);
     if (!tableMap[name]) tableMap[name] = { tableName: name, isView, columns: [] };
     tableMap[name].columns.push({
-      columnName:   s(row.column_name),
-      dataType:     s(row.data_type) || '',
-      isPk:         !!row.is_pk,
-      isNullable:   s(row.is_nullable) === 'YES' || s(row.is_nullable) === 'Y' || row.is_nullable === true || row.is_nullable === 1,
-      defaultValue: row.column_default != null ? s(row.column_default) : null
+      columnName:      colName,
+      dataType:        s(row.data_type) || '',
+      isPk:            !!row.is_pk,
+      isNullable:      s(row.is_nullable) === 'YES' || s(row.is_nullable) === 'Y' || row.is_nullable === true || row.is_nullable === 1,
+      defaultValue:    row.column_default != null ? s(row.column_default) : null,
+      isUnique:        !!row.is_unique || uniqueSet.has(`${name}.${colName}`),
+      isAutoIncrement: !!(row.is_auto_increment || s(row.is_auto_increment) === 'true')
     });
   }
 
@@ -206,15 +258,77 @@ function buildResult(colRows, viewRows, fkRows) {
     ddl: viewDdlMap[v.tableName] || ''
   }));
 
-  const fks = fkRows.map(raw => { const r = norm(raw); return {
-    fromTable: s(r.from_table),
-    fromCol:   s(r.from_col),
-    toTable:   s(r.to_table),
-    toCol:     s(r.to_col)
-  }; });
+  const fks = fkRows.map(raw => {
+    const r = norm(raw);
+    const fromTable = s(r.from_table);
+    const fromCol   = s(r.from_col);
+    const isUniqFrom = uniqueSet.has(`${fromTable}.${fromCol}`);
+    return {
+      fromTable,
+      fromCol,
+      toTable: s(r.to_table),
+      toCol:   s(r.to_col),
+      card:    isUniqFrom ? '1:1' : '1:N'
+    };
+  });
 
   return { tables, views, fks };
 }
+
+// ── 테이블 목록 쿼리 ──────────────────────────────────────────────
+const PG_TABLES_LIST = (schema) => `
+SELECT table_name AS name,
+       CASE WHEN table_type = 'VIEW' THEN 'view' ELSE 'table' END AS type
+FROM information_schema.tables WHERE table_schema = '${schema}'
+ORDER BY table_type DESC, table_name
+`;
+
+const MY_TABLES_LIST = `
+SELECT table_name AS name,
+       CASE WHEN table_type = 'VIEW' THEN 'view' ELSE 'table' END AS type
+FROM information_schema.tables WHERE table_schema = DATABASE()
+ORDER BY table_type DESC, table_name
+`;
+
+const MS_TABLES_LIST = `
+SELECT name,
+       CASE WHEN type_desc = 'VIEW' THEN 'view' ELSE 'table' END AS type
+FROM (
+  SELECT name, 'TABLE' AS type_desc FROM sys.tables
+  UNION ALL SELECT name, 'VIEW' AS type_desc FROM sys.views
+) t ORDER BY type_desc DESC, name
+`;
+
+const ORA_TABLES_LIST = `
+SELECT table_name AS name, 'table' AS type FROM user_tables
+UNION ALL SELECT view_name AS name, 'view' AS type FROM user_views
+ORDER BY 2 DESC, 1
+`;
+
+// GET /schema/tables — 테이블·뷰 이름 목록만 반환 (2단계 선택용)
+router.get('/tables', async (req, res) => {
+  const config = loadConfig();
+  if (!config) return res.status(400).json({ error: '접속정보가 설정되지 않았습니다.' });
+  try {
+    const adapter = getAdapter(config.dbType);
+    let query;
+    switch (config.dbType) {
+      case 'postgres': query = PG_TABLES_LIST(pgValidateSchema(config.schema || 'public')); break;
+      case 'mysql':    query = MY_TABLES_LIST; break;
+      case 'mssql':    query = MS_TABLES_LIST; break;
+      case 'oracle':   query = ORA_TABLES_LIST; break;
+      default: throw new Error(`지원하지 않는 DB 타입: ${config.dbType}`);
+    }
+    const result = await adapter.execute(config, query);
+    const items = (result.rows || []).map(r => {
+      const row = norm(r);
+      return { name: s(row.name), type: s(row.type) };
+    });
+    res.json({ items });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // GET /schema
 router.get('/', async (req, res) => {
@@ -222,19 +336,21 @@ router.get('/', async (req, res) => {
   if (!config) return res.status(400).json({ error: '접속정보가 설정되지 않았습니다.' });
 
   try {
-    const queries = getQueries(config.dbType);
+    const queries = getQueries(config.dbType, config.schema || 'public');
     const adapter = getAdapter(config.dbType);
 
-    const [colResult, viewResult, fkResult] = await Promise.all([
+    const [colResult, viewResult, fkResult, uqResult] = await Promise.all([
       adapter.execute(config, queries.columns),
       adapter.execute(config, queries.views),
-      adapter.execute(config, queries.fks)
+      adapter.execute(config, queries.fks),
+      adapter.execute(config, queries.unique)
     ]);
 
     const result = buildResult(
       colResult.rows  || [],
       viewResult.rows || [],
-      fkResult.rows   || []
+      fkResult.rows   || [],
+      uqResult.rows   || []
     );
     res.json(result);
   } catch (err) {

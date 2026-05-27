@@ -108,13 +108,14 @@ router.get('/', (req, res) => {
     port: config.port,
     database: config.database,
     username: config.username,
+    schema: config.schema || '',
     password: '••••••••'
   });
 });
 
 // ---- POST /config — 활성 프로파일 덮어쓰기 (기존 요청 구조 유지) ----
 router.post('/', async (req, res) => {
-  const { dbType, host, port, database, username, password } = req.body;
+  const { dbType, host, port, database, username, password, schema } = req.body;
   if (!dbType || !host || !database || !username || !password) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
   }
@@ -134,6 +135,7 @@ router.post('/', async (req, res) => {
     database,
     username,
     password: encrypt(password),
+    schema: schema || '',
     updatedAt: new Date().toISOString()
   };
 
@@ -178,7 +180,7 @@ router.get('/profiles', (req, res) => {
 
 // ---- POST /config/profiles — 새 프로파일 추가 ----
 router.post('/profiles', (req, res) => {
-  const { name, dbType, host, port, database, username, password } = req.body;
+  const { name, dbType, host, port, database, username, password, schema } = req.body;
   if (!name || !dbType || !host || !database || !username || !password) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
   }
@@ -200,6 +202,7 @@ router.post('/profiles', (req, res) => {
     database,
     username,
     password: encrypt(password),
+    schema: schema || '',
     updatedAt: new Date().toISOString()
   });
 
@@ -233,7 +236,7 @@ router.delete('/profiles/:name', (req, res) => {
 // ---- PUT /config/profiles/:name — 프로파일 수정 ----
 router.put('/profiles/:name', async (req, res) => {
   const { name } = req.params;
-  const { dbType, host, port, database, username, password } = req.body;
+  const { dbType, host, port, database, username, password, schema } = req.body;
 
   if (!dbType || !host || !database || !username) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
@@ -253,6 +256,7 @@ router.put('/profiles/:name', async (req, res) => {
     port: port || getDefaultPort(dbType),
     database,
     username,
+    schema: schema !== undefined ? schema : (existing.schema || ''),
     updatedAt: new Date().toISOString()
   };
   if (password) updated.password = encrypt(password);
