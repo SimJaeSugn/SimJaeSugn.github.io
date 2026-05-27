@@ -1,139 +1,102 @@
-# 리버스 엔지니어링 기능 코드 리뷰
-
-- 리뷰어: Claude Code (독립 리뷰)
-- 리뷰 일자: 2026-05-27
-- 대상 파일: reverse_engineer.js, middleware/src/routes/schema.js, canvas.js (VIEW 뱃지), state.js (migrateEntity)
+## 리뷰 요약
+- 전체 평가: **PASS (주의사항 있음)**
 
 ---
 
-## 1. 기능 정확성
+## 발견 사항
 
-### 1-1. DB 스키마 → ERD 자동 생성
+### 심각 (즉시 수정 필요)
 
-**판정: PASS (경미 이슈 1건)**
+**config.js:246 — `saveStore()` 후 중복 `invalidateCache()` 호출 (이중 무효화)**
+- `saveStore()` 내부에서 이미 `invalidateCache()`를 호출하고 있음 (52번째 줄).
+- `POST /config/profiles/:name/activate` 핸들러(246번째 줄)는 `saveStore()` 호출 후 다시 `invalidateCache()`를 수동으로 호출하여 불필요한 이중 호출이 발생함.
+- 현재 구현은 단순 null 초기화라 기능 버그는 없으나, 향후 캐시 로직이 복잡해질 경우 의도치 않은 부작용이 생길 수 있음.
+- **수정 방안:** `activate` 핸들러에서 `invalidateCache()` 수동 호출 제거 (saveStore 내부가 이미 처리).
 
-- `runReverseEngineering()`이 `/schema` 엔드포인트를 호출하여 `{ tables, views, fks }`를 받아 `_buildEntitiesFromSchema`, `_buildRelationsFromFks`, `_buildViewNotes`를 순서대로 호출하는 흐름은 올바르다.
-- `schema.js`는 PostgreSQL/MySQL/MSSQL 3종에 대해 information_schema 기반 쿼리를 작성하고, `buildResult()`에서 테이블/뷰/FK를 분리하여 반환한다.
-- **경미 이슈**: `buildResult()`에서 `viewSet`(Set)을 선언하지만 이후 어디서도 사용하지 않는 미사용 변수다. 동작에는 영향 없다.
+**config.js:77 — 레거시 마이그레이션 중 `loadRawStore()` 재호출로 캐시 불일치 위험**
+- 레거시 암호 마이그레이션 코드(77번째 줄)에서 `loadRawStore()`를 다시 호출하고 있음.
+- 이때 `_storeCache`는 이미 채워져 있으므로 캐시된 값을 그대로 반환하는데, 직전에 `store` 변수(59번째 줄)와 동일 객체이므로 현재는 실제 문제 없음.
+- 그러나 `saveStore()` 호출 이후 `_storeCache`가 null로 초기화되어 있는 상황이라면(다른 경로로 중간에 무효화된 경우) 파일을 재파싱하게 되어 예외가 발생할 수 있음.
+- **수정 방안:** 이미 갖고 있는 `store` 변수를 직접 참조하도록 리팩터링하여 재호출 제거.
 
-### 1-2. 새 다이어그램 / 덮어쓰기 선택
+**auditLogger.js:23 — `result.rowCount` 가 undefined일 때 "undefined rows" 출력**
+- `writeAuditLog('EXECUTE', ..., { durationMs: ..., rowCount: result.rowCount })` 호출 시 어댑터가 `rowCount`를 반환하지 않으면 `undefined rows`라는 로그가 남음.
+- 특히 INSERT/UPDATE/DELETE 결과에서 어댑터별 반환 구조가 다를 수 있음.
+- **수정 방안:** `result.rowCount ?? 0` 또는 `result.rowCount ?? 'N/A'` 형태로 방어 처리.
 
-**판정: PASS (주의사항 1건)**
-
-- 라디오 버튼 `reMode`에 따라 `new` 분기는 `createEmptyDiagram()` → `diagrams.push()` → `activeDiagramId` 교체 → `loadDiagramIntoWorkspace()` 순서가 정확하다.
-- `overwrite` 분기는 `getActiveDiagram()`의 `entities/relations`를 교체한다.
-- **주의사항**: `overwrite` 분기에서 `d.notesV2 = [...(d.notesV2 || []), ...viewNotes]`는 덮어쓰기를 반복 실행할 때마다 VIEW DDL 메모가 누적된다. 의도적인 설계인지 명확하지 않다. 동일 뷰의 메모가 중복 생성될 수 있으므로 실용 시 주의가 필요하다. 버그로 분류한다면 "덮어쓰기 전 기존 `tags: ['VIEW','DDL']` 메모를 필터링 후 병합"이 적절하다.
-- `new` 분기에서 `flushCurrentState()` → `diagrams.push()` → `activeDiagramId` 설정 순서는 올바르다. `flushCurrentState()`로 현재 작업 내용을 기존 다이어그램에 먼저 저장하므로 데이터 손실 없다.
-
-### 1-3. VIEW 색상 구분
-
-**판정: PASS**
-
-- `_buildEntitiesFromSchema()`에서 `colorTag: tbl.isView ? 'teal' : null`로 VIEW 엔티티에 'teal' 색상 태그를 부여한다.
-- `config.js`의 `ENTITY_COLOR_PALETTE`에 `{ id: 'teal', bg: '#0e6878', ... }`가 정의되어 있으므로 헤더 색이 구분된다.
-- `isView: true` 필드도 함께 설정되어 VIEW 뱃지 렌더링의 조건도 충족된다.
-
-### 1-4. DDL 메모장 V2
-
-**판정: PASS (경미 이슈 1건)**
-
-- `_buildViewNotes()`가 DDL이 있는 뷰(`if (!v.ddl) return`)에 대해 `NoteV2` 객체를 생성한다. 필수 필드(`id, x, y, w, h, title, text, color, pinned, tags, createdAt`) 모두 존재하며 `makeNoteV2Id()`를 올바르게 사용한다.
-- `color: 'ocean'`이 `NOTE_V2_THEMES`에 정의된 유효한 키다.
-- **경미 이슈**: `_buildViewNotes(views, entities, entityIdMap)` 시그니처에서 `entities`와 `entityIdMap` 파라미터를 받지만 함수 본문에서 전혀 사용하지 않는다. 현재는 불필요한 파라미터이나, 향후 VIEW 엔티티 위치 옆에 메모를 배치하는 기능 확장을 위해 예약해 둔 것으로 보인다. 실제 배치는 `OFFSET_X = 60 + 5 * 220 + 60` 고정값으로 계산되므로 엔티티 개수가 5열을 초과하면 메모가 엔티티와 겹칠 수 있다.
+**execute.js:16 — 이스케이프 문자(`\\`) 처리 불완전 (SQL 파서 edge case)**
+- `splitSql`에서 백슬래시 이스케이프를 `sql[i-1] !== '\\'` 조건으로 검사하고 있음.
+- `i === 0`일 때 `sql[-1]`은 `undefined`이므로 조건은 `undefined !== '\\'` → `true`가 되어 의도치 않게 첫 문자가 이스케이프로 처리될 수 있음 (실제로 첫 문자가 `'`나 `"`인 경우).
+- 또한 연속 백슬래시(`\\`)를 인식하지 못해 `SELECT '\\'` 같은 쿼리에서 파서가 잘못 동작할 수 있음.
+- **수정 방안:** `i > 0 && sql[i-1] === '\\'` 조건으로 변경하거나, 상태 기반 이스케이프 추적 변수 도입.
 
 ---
 
-## 2. 엣지 케이스 처리
+### 경미 (개선 권장)
 
-**판정: PASS (경미 이슈 2건)**
+**config.js:31 — JSON 파싱 오류 미처리**
+- `JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))`가 try-catch 없이 호출됨. config.json이 손상된 경우 uncaught exception으로 서버 전체가 중단될 수 있음.
+- **개선 방안:** `loadRawStore()` 내부에 try-catch를 추가하고 파싱 실패 시 `null` 또는 에러 응답 반환.
 
-- `tables`/`views`/`fks`가 빈 배열일 경우: `forEach`/`for...of` 루프는 빈 배열에서 정상 동작하고, `entities = []`, `relations = []`, `viewNotes = []`를 반환한다. `loadDiagramIntoWorkspace()`도 빈 배열 처리가 state.js에 명확히 구현되어 있다.
-- `fks`에서 `entityIdMap`에 없는 테이블 참조: `if (from && to)` 가드가 있어 안전하다.
-- `v.ddl`이 null/빈문자열: `if (!v.ddl) return`으로 보호된다.
-- `c.columns`가 없는 경우: `(tbl.columns || []).map(...)` 방어 코드가 있다.
-- **경미 이슈 1**: `document.querySelector('input[name="reMode"]:checked')?.value`의 옵셔널 체이닝 결과가 `null`인 경우 `'new'`로 폴백하는 로직은 올바르나, 이는 HTML에 `checked` 기본값이 있어 실제로 null이 될 상황은 없다.
-- **경미 이슈 2**: `_buildEntitiesFromSchema()`에서 엔티티 ID 생성 시 `Date.now().toString(36)`을 루프 내에서 반복 호출한다. 동일 밀리초 내에 루프가 수백 개를 처리하면 이론상 ID 충돌이 발생할 수 있다. 실용적으로는 `idx` 접미사로 충분히 방지되어 있으므로 실질 위험도는 낮다.
+**config.js:212 — 프로파일 이름 path traversal 가능성 (저위험)**
+- `DELETE /config/profiles/:name`에서 `req.params.name`을 받아 profile 이름으로 사용함.
+- 현재는 파일 시스템에 직접 사용하지 않고(JSON 내 배열 필터링에만 사용) path traversal 위험은 없음.
+- 다만 이름에 특수문자(`../`, `<script>` 등)가 들어갈 경우 JSON 출력에 그대로 포함되어 로그나 클라이언트에 노출될 수 있음.
+- **개선 방안:** 프로파일 이름 정규식 검증 추가 (예: `/^[a-zA-Z0-9가-힣 _-]{1,50}$/`).
 
----
+**config.js:122-149 — `POST /config` 에서 store.active가 null/빈 문자열인 경우**
+- `store = { profiles: [], active: '기본' }`으로 초기화 후, `findIndex`가 -1이면 push하므로 기능상 동작함.
+- 그러나 `store.active`가 빈 문자열(`""`)인 경우 의도치 않은 이름으로 프로파일이 생성될 수 있음.
+- **개선 방안:** `activeName`이 유효한 문자열인지 확인 후 기본값('기본') 대체 처리.
 
-## 3. Canvas 렌더링 — VIEW 뱃지
-
-**판정: PASS with 주의**
-
-canvas.js 919~932행:
+**auditLogger.js:전체 — `writeAuditLog` 실패 시 예외 전파 위험**
+- `fs.appendFileSync`나 `rotateIfNeeded`의 `fs.renameSync` 등이 실패(권한 오류, 디스크 풀 등)하면 예외가 호출부(execute.js)로 전파됨.
+- execute.js는 `writeAuditLog`를 try-catch 없이 호출하므로 감사 로그 실패가 요청 처리 실패로 이어질 수 있음.
+- **개선 방안:** `writeAuditLog` 내부를 try-catch로 감싸거나, execute.js 호출부에 개별 try-catch 추가.
 
 ```js
-if (e.isView) {
-  ctx.save();
-  ctx.font = 'bold 9px Segoe UI';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = 'rgba(137,220,235,0.25)';
-  ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(x + 4, y + 3, 28, 13, 3) : ctx.rect(x + 4, y + 3, 28, 13);
-  ctx.fill();
-  ctx.fillStyle = '#89dceb';
-  ctx.fillText('VIEW', x + 6, y + 5);
-  ctx.restore();
+// auditLogger.js 권장 수정
+function writeAuditLog(tag, sql, result) {
+  try {
+    if (!fs.existsSync(AUDIT_DIR)) fs.mkdirSync(AUDIT_DIR, { recursive: true });
+    rotateIfNeeded();
+    // ... 기존 로직
+  } catch (err) {
+    console.error('[AuditLogger] 로그 기록 실패:', err.message);
+  }
 }
 ```
 
-- `ctx.save()`/`ctx.restore()`로 컨텍스트 상태를 올바르게 격리한다.
-- `ctx.roundRect`의 존재 여부를 체크하여 구형 브라우저에서도 `ctx.rect`로 폴백한다.
-- **잠재적 렌더링 이슈**: 뱃지 배경 박스 너비가 28px, 'VIEW' 텍스트 시작 X가 `x+6`(배경 시작 `x+4`에서 2px 안쪽)이다. 9px 폰트에서 'VIEW' 텍스트는 약 22~25px이므로 배경에서 오른쪽이 약 1~5px 잘릴 수 있다. 실용상 허용 범위이나 폰트 렌더링 환경에 따라 잘릴 수 있으므로 배경 너비를 32px로 늘리는 것을 권장한다.
-- **오버랩 문제**: 볼륨 레이블(`if (vol.label)`) 뱃지도 동일 위치(`x+4, y+3`)에 그려지므로 `isView`이면서 볼륨 레이블이 있을 경우 두 뱃지가 겹친다. 리버스 엔지니어링으로 생성된 엔티티에는 볼륨 레이블이 없으므로 현재 사용 시나리오에서 문제없지만, 사용자가 나중에 rowCount를 설정하면 겹침이 발생할 수 있다.
+**health.js:전체 — HTTP 상태코드 불일치**
+- DB 연결 실패 시 `res.json({ ok: false, ... })`으로 200 OK를 반환함.
+- health check 용도이므로 연결 실패 시 503 Service Unavailable을 반환하는 것이 표준적이며, 모니터링 도구가 이를 올바르게 감지할 수 있음.
+- **개선 방안:** `res.status(503).json({ ok: false, db: { connected: false, error: err.message } })`.
+
+**install-watchdog.ps1:전체 — ExePath 존재 여부 미검증**
+- `$ExePath` 파라미터로 받은 경로가 실제로 존재하는지 확인하지 않고 Task를 등록함.
+- 경로가 잘못되면 태스크는 등록되지만 실행 시 오류가 발생하여 사용자가 원인을 파악하기 어려움.
+- **개선 방안:** 스크립트 상단에 `if (-not (Test-Path $ExePath)) { throw "실행 파일을 찾을 수 없습니다: $ExePath" }` 추가.
+
+**crypto.js:11 — LEGACY_KEY 하드코딩 (31바이트 실제 사용)**
+- `'uxermanager-local-secret-key-32b'`는 UTF-8로 31바이트임 (aes-256-gcm은 정확히 32바이트 필요).
+- Node.js의 `createDecipheriv`는 키 길이 불일치 시 에러를 던지므로, 레거시 데이터를 복호화할 때 런타임 오류가 발생할 수 있음.
+- **확인 필요:** `Buffer.byteLength('uxermanager-local-secret-key-32b', 'utf8')`가 32인지 실제 테스트 필요 (ASCII만 사용 시 31바이트).
+- **개선 방안:** 실제 32바이트 확보(`'uxermanager-local-secret-key-32b!'`) 또는 `Buffer.alloc(32)` 패딩 처리.
 
 ---
 
-## 4. 보안 — XSS 취약점
+## 최종 권고
 
-**판정: PASS**
+전체적으로 설계 의도가 명확하고 구조가 잘 분리되어 있음. 심각 등급 4개 중 `invalidateCache` 이중 호출은 현재 버그로 이어지지 않지만 잠재적 위험이 있으며, `auditLogger` 예외 전파와 `crypto.js` 레거시 키 길이 문제는 실제 운영 환경에서 장애를 유발할 수 있으므로 우선 수정을 권고함.
 
-- `reverse_engineer.js`의 모달 HTML은 하드코딩된 UI 요소로 구성되며, 사용자 입력을 `innerHTML`에 직접 삽입하는 코드가 없다.
-- `errEl.textContent = e.message`로 에러 메시지를 `textContent`로 설정하여 XSS 위험이 없다.
-- 토스트 메시지 `showToast(...)`에 사용되는 문자열은 서버 응답의 `tables.length`, `views.length`, `relations.length` (숫자 값)와 하드코딩 문자열만 포함하여 위험하지 않다.
-- NoteV2 카드 렌더링(`_createNoteV2Card`, `_updateNoteV2Card`)이 `textContent`를 사용하므로 VIEW DDL이 스크립트를 포함해도 실행되지 않는다.
-- `schema.js` 서버 사이드: SQL 쿼리는 사용자 입력을 파라미터화하지 않지만, 입력값 없이 `information_schema` 시스템 테이블만 직접 조회하는 정적 쿼리이므로 SQL Injection 위험이 없다.
+**즉시 수정 권고 (우선순위 순):**
+1. `auditLogger.js` — `writeAuditLog` 전체를 try-catch로 감싸 예외 전파 차단
+2. `crypto.js` — LEGACY_KEY 길이(32바이트 여부) 검증 및 패딩 보정
+3. `execute.js:16` — `splitSql` 이스케이프 처리 `i > 0` 조건 추가
+4. `config.js:246` — `activate` 핸들러 불필요한 `invalidateCache()` 제거
 
----
-
-## 5. 코드 패턴 일치
-
-**판정: PASS**
-
-- 모달 패턴: `_render*Modal()` → `document.getElementById`로 중복 생성 방지 → `classList.add('active')`는 `db_connect.js`, `join_explorer.js`, `normalize.js`와 동일한 패턴이다.
-- 오버레이 닫기: `overlayClose(event, id)` 함수 사용, `onmousedown.stop` HTML 속성 사용이 기존 패턴과 일치한다.
-- 엔티티/관계 객체 구조: `{ from, to, card: '1:N' }`이 `entities.js`, `import.js`의 기존 패턴과 일치한다.
-- `AbortSignal.timeout(30000)`: `db_connect.js`의 2000ms와 대비하여 30초 타임아웃은 대형 DB 스키마 처리에 합리적이다.
-- `makeNoteV2Id()` 함수를 직접 재사용하여 ID 생성 방식이 일관적이다.
-
----
-
-## 6. 불필요한 변경 포함 여부
-
-**판정: PASS**
-
-- `state.js`의 `migrateEntity()`에 `if (e.isView === undefined) e.isView = false;` (185행)가 추가되어 리버스 엔지니어링으로 생성된 `isView` 필드가 구버전 엔티티 로드 시에도 올바르게 기본값 처리된다. 이 변경은 필요하고 적절하다.
-- `canvas.js`의 VIEW 뱃지 코드(919~932행)는 신규 추가이며 기존 렌더링 흐름에 미치는 영향이 최소화되어 있다.
-- `reverse_engineer.js`, `schema.js`는 신규 파일로 기존 코드에 부수효과가 없다.
-
----
-
-## 종합 이슈 목록
-
-| 심각도 | 위치 | 내용 |
-|--------|------|------|
-| 버그 (중) | reverse_engineer.js L142 | 덮어쓰기 반복 실행 시 VIEW DDL 메모 중복 누적 |
-| 경미 | schema.js L111 | `viewSet` 미사용 변수 |
-| 경미 | reverse_engineer.js L227 | `_buildViewNotes` 파라미터 `entities`, `entityIdMap` 미사용 |
-| 경미 | canvas.js L927 | VIEW 뱃지 배경 너비 28px가 텍스트에 비해 약간 부족할 수 있음 (32px 권장) |
-| 경미 | canvas.js L919~949 | `isView`+볼륨레이블 동시 존재 시 뱃지 오버랩 가능성 |
-| 정보 | schema.js L121 | MSSQL `is_nullable`은 bit(0/1)로 `==='YES'` 분기 불일치, `===1` 분기로 정상 처리됨 |
-
----
-
-## 최종 평가: PASS (조건부)
-
-핵심 기능(ERD 자동생성, 새다이어그램/덮어쓰기, VIEW 색상구분, DDL 메모장V2) 모두 올바르게 구현되었다. XSS 보안 이슈 없음. 기존 코드 패턴 준수. 불필요한 변경 없음.
-
-단, **"덮어쓰기 반복 실행 시 VIEW DDL 메모 중복 누적" 버그**가 실사용 시 사용자 혼란을 유발할 수 있어 배포 전 수정을 권장한다. 나머지 경미 이슈는 운영 중 개선 가능한 수준이다.
+**개선 권고:**
+- `config.js:31` — `loadRawStore()` JSON 파싱 try-catch 추가
+- `health.js` — 연결 실패 시 503 반환
+- `install-watchdog.ps1` — ExePath 존재 검증 추가
+- 프로파일 이름 입력값 정규식 검증 추가

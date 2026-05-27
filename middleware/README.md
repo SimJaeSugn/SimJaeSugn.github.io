@@ -37,7 +37,7 @@ npm start
 
 | 항목 | 설명 |
 |------|------|
-| UXERManager v1.0.0 | 버전 정보 (클릭 불가) |
+| UXERManager v{버전} | 버전 정보 — package.json 기준 동적 표시 (클릭 불가) |
 | 포트 3737에서 실행 중 | 실행 상태 (클릭 불가) |
 | 종료 | 미들웨어 프로세스 종료 |
 
@@ -60,13 +60,15 @@ npm start
 
 **응답**
 ```json
-{ "ok": true, "version": "1.0.0", "port": 3737 }
+{ "ok": true, "version": "1.2.0", "port": 3737 }
 ```
+> `version` 값은 `package.json`의 버전을 그대로 반환한다.
 
 ---
 
 ### POST /config
-DB 접속정보 저장. 비밀번호는 AES-256-GCM으로 암호화 후 `~/.uxermanager/config.json`에 저장.
+DB 접속정보 저장. 비밀번호는 AES-256-GCM으로 암호화 후 `~/.uxermanager/config.json`에 저장.  
+저장 시 기존 DB 커넥션 풀을 모두 닫고 설정 캐시를 초기화한다.
 
 **요청 Body**
 ```json
@@ -121,6 +123,93 @@ DB 접속정보 저장. 비밀번호는 AES-256-GCM으로 암호화 후 `~/.uxer
 **응답 (실패)**
 ```json
 { "ok": false, "error": "Connection refused" }
+```
+
+---
+
+### GET /health
+DB 연결 상태를 실시간으로 확인. 접속정보가 없거나 DB 연결에 실패해도 200으로 응답하며 `ok` 필드로 구분한다.
+
+**응답 (연결 성공)**
+```json
+{ "ok": true, "db": { "connected": true, "latencyMs": 3 } }
+```
+
+**응답 (접속정보 없음)**
+```json
+{ "ok": false, "db": { "connected": false, "error": "접속정보 없음" } }
+```
+
+**응답 (DB 연결 실패)**
+```json
+{ "ok": false, "db": { "connected": false, "error": "Connection refused" } }
+```
+
+---
+
+### GET /config/profiles
+저장된 전체 프로파일 목록 조회. 비밀번호는 `••••••••`로 마스킹.
+
+**응답**
+```json
+{
+  "active": "기본",
+  "profiles": [
+    {
+      "name": "기본",
+      "dbType": "postgres",
+      "host": "localhost",
+      "port": 5432,
+      "database": "mydb",
+      "username": "postgres",
+      "password": "••••••••",
+      "updatedAt": "2026-05-27T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### POST /config/profiles
+새 프로파일 추가. 중복 이름은 거부(409).
+
+**요청 Body** — `/config` POST와 동일하며 `name` 필드 추가
+```json
+{
+  "name":     "운영서버",
+  "dbType":   "postgres",
+  "host":     "db.example.com",
+  "port":     5432,
+  "database": "prod",
+  "username": "admin",
+  "password": "secret"
+}
+```
+
+**응답**
+```json
+{ "ok": true, "message": "프로파일 '운영서버'이 추가되었습니다." }
+```
+
+---
+
+### DELETE /config/profiles/:name
+프로파일 삭제. 활성 프로파일이거나 마지막 프로파일이면 거부(400).
+
+**응답**
+```json
+{ "ok": true, "message": "프로파일 '운영서버'이 삭제되었습니다." }
+```
+
+---
+
+### POST /config/profiles/:name/activate
+다른 프로파일로 전환. 전환 시 기존 DB 커넥션 풀을 모두 닫고 설정 캐시를 초기화한다.
+
+**응답**
+```json
+{ "ok": true, "message": "'운영서버' 프로파일로 전환되었습니다." }
 ```
 
 ---
@@ -214,14 +303,18 @@ DB 접속정보 저장. 비밀번호는 AES-256-GCM으로 암호화 후 `~/.uxer
     "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)",
     "CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT)",
     "ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id)"
-  ]
+  ],
+  "stopOnError": true
 }
 ```
+
+> `stopOnError: true` 를 설정하면 SQL 실행 중 오류 발생 시 즉시 중단하고 `done` 이벤트를 전송한다. 기본값은 `false` (오류 무시 후 계속 실행).
 
 **요청 Body — 문자열 방식 (세미콜론+줄바꿈으로 분리)**
 ```json
 {
-  "sql": "CREATE TABLE users (...);\nCREATE TABLE orders (...);"
+  "sql": "CREATE TABLE users (...);\nCREATE TABLE orders (...);",
+  "stopOnError": false
 }
 ```
 
@@ -303,7 +396,7 @@ async function executeWithStream(sqls, onProgress, onError, onDone) {
 https://simjaesugn.github.io
 http://localhost (모든 포트)
 http://127.0.0.1
-null  (file:// 로컬 실행)
+'null' 문자열  (file:// 또는 Electron 로컬 실행 시 브라우저가 origin을 'null'로 전달)
 ```
 
 ---
@@ -317,19 +410,24 @@ middleware/
 │   ├── tray.js               시스템 트레이 아이콘 등록
 │   ├── tray_win_bin.js       tray 헬퍼 바이너리 (base64 임베드)
 │   ├── routes/
-│   │   ├── config.js         POST/GET /config, POST /config/test
-│   │   ├── execute.js        POST /execute, POST /execute/stream
+│   │   ├── config.js         GET/POST /config, POST /config/test, 프로파일 CRUD
+│   │   ├── execute.js        POST /execute, POST /execute/stream (감사 로그 포함)
+│   │   ├── health.js         GET /health (DB 연결 상태 확인)
 │   │   └── schema.js         GET /schema (리버스 엔지니어링)
 │   ├── db/
-│   │   ├── connector.js      dbType → 어댑터 라우팅
+│   │   ├── connector.js      dbType → 어댑터 라우팅, 전체 풀 종료
 │   │   └── adapters/
-│   │       ├── postgres.js   pg 드라이버
-│   │       ├── mysql.js      mysql2 드라이버
-│   │       └── mssql.js      mssql(tedious) 드라이버
+│   │       ├── postgres.js   pg Pool 드라이버 (커넥션 풀링)
+│   │       ├── mysql.js      mysql2 Pool 드라이버 (커넥션 풀링)
+│   │       └── mssql.js      mssql ConnectionPool 드라이버 (커넥션 풀링)
 │   └── utils/
-│       └── crypto.js         AES-256-GCM 암호화/복호화
+│       ├── crypto.js         AES-256-GCM 암호화/복호화 (레거시 마이그레이션 포함)
+│       ├── keystore.js       ~/.uxermanager/key 기반 암호화 키 생성·로드
+│       └── auditLogger.js    SQL 실행 감사 로그 기록 (로테이션 10 MB)
 ├── scripts/
-│   └── run-iscc.js           Inno Setup 경로 탐색 헬퍼
+│   ├── run-iscc.js           Inno Setup 경로 탐색 헬퍼
+│   ├── install-watchdog.ps1  Windows Task Scheduler Watchdog 등록
+│   └── uninstall-watchdog.ps1 Watchdog 작업 제거
 ├── dist/
 │   ├── uxermanager.exe               배포용 단일 실행파일
 │   └── UXERManager_Setup_{ver}.exe   인스톨러
@@ -350,3 +448,47 @@ middleware/
 | Linux   | `/home/{username}/.uxermanager/config.json`    |
 
 비밀번호는 AES-256-GCM으로 암호화 저장. 평문 노출 없음.
+
+암호화 키는 `~/.uxermanager/key` 파일에 hex로 저장되며, 최초 실행 시 자동 생성된다.  
+기존 고정 키(`uxermanager-local-secret-key-32b`)로 암호화된 설정은 최초 로드 시 자동으로 새 키로 마이그레이션된다.
+
+### 감사 로그 (audit.log)
+
+SQL 실행 이력은 `~/.uxermanager/audit.log`에 기록된다.
+
+| OS      | 경로                                         |
+|---------|----------------------------------------------|
+| Windows | `C:\Users\{username}\.uxermanager\audit.log` |
+| macOS   | `/Users/{username}/.uxermanager/audit.log`   |
+| Linux   | `/home/{username}/.uxermanager/audit.log`    |
+
+- 파일 크기가 10 MB를 초과하면 `audit.log.1`로 롤오버(기존 `.1` 삭제 후 이름 변경).
+- 로그 형식: `{ISO timestamp} [{태그}] {SQL 최대 200자} ({소요시간}ms, {행 수} rows | ERROR: {오류})`
+
+---
+
+## Watchdog 설치 (Windows)
+
+미들웨어 exe를 로그온 시 자동 실행하고, 비정상 종료 시 최대 3회 재시작하도록 Windows 작업 스케줄러에 등록한다.
+
+### 등록
+
+관리자 권한 PowerShell에서 실행:
+
+```powershell
+.\scripts\install-watchdog.ps1 -ExePath "C:\Program Files\UXERManager\uxermanager.exe"
+```
+
+등록 후 즉시 시작:
+
+```powershell
+Start-ScheduledTask -TaskName "UXERManager-Middleware"
+```
+
+### 제거
+
+```powershell
+.\scripts\uninstall-watchdog.ps1
+```
+
+> 작업 이름: `UXERManager-Middleware` / 트리거: 로그온 시 / 재시작: 실패 후 1분 간격으로 최대 3회

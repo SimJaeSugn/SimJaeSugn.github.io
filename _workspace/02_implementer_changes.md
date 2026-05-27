@@ -1,21 +1,17 @@
 ## 변경 파일 목록
-
-- middleware/src/routes/schema.js: GET /schema 엔드포인트 신규 생성 (PG/MySQL/MSSQL 스키마 조회)
-- middleware/src/index.js: schemaRouter import 및 app.use('/schema') 등록
-- js/reverse_engineer.js: 리버스 엔지니어링 모달·ERD 생성 함수 신규 생성
-- js/state.js: migrateEntity()에 `if (e.isView === undefined) e.isView = false;` 추가
-- js/canvas.js: drawEntity() 헤더 렌더링에 isView 'VIEW' 뱃지 표시 추가
-- index.html: 리버스엔지니어링 메뉴 항목 disabled 제거 + onclick 연결, reverse_engineer.js 스크립트 태그 추가
-- middleware/README.md: GET /schema 엔드포인트 문서 추가, 파일 구조 업데이트
+- src/routes/config.js: 다중 프로파일 지원으로 전체 재작성 — loadRawStore/saveStore 추가, _storeCache/_activeConfigCache 이중 캐시, 구버전 단일 객체 자동 마이그레이션, GET/POST /config 기존 호환 유지, 프로파일 CRUD 5개 엔드포인트 신규 추가
+- src/utils/auditLogger.js: 신규 생성 — SQL 실행 감사 로그 기록 (writeAuditLog), 10 MB 로테이션
+- src/routes/execute.js: auditLogger import 추가, POST /execute 성공·실패 분기에 writeAuditLog 호출, POST /execute/stream 성공·실패 분기에 writeAuditLog 호출, duration 변수 분리로 중복 계산 제거
+- src/routes/health.js: 신규 생성 — GET /health (DB 연결 상태 확인, latencyMs 반환)
+- src/index.js: healthRouter require 추가, app.use('/health', healthRouter) 등록
+- scripts/install-watchdog.ps1: 신규 생성 — Windows Task Scheduler Watchdog 등록 스크립트
+- scripts/uninstall-watchdog.ps1: 신규 생성 — Watchdog 작업 제거 스크립트
+- middleware/README.md: /health, 프로파일 CRUD API 섹션 추가; 파일 구조 다이어그램 갱신; 감사 로그 경로 및 형식 추가; Watchdog 설치 섹션 추가
 
 ## 주요 결정 사항
-
-- 계획에서 엔티티 ID 생성 시 `Date.now().toString(36) + '_' + Math.random()...` 형식 사용했으나, 루프 내에서 같은 밀리초에 동일한 Date.now()가 발생할 수 있어 `_${idx}` suffix를 추가해 중복 방지
-- VIEW DDL 메모를 엔티티 격자 오른쪽 영역(x=1240~)에 배치해 엔티티와 시각적으로 분리
-- `overlayClose(event,'reDbCfgNotice')` 패턴 사용 — 기존 모달과 동일한 배경 클릭 닫기 패턴 적용
-- `_buildViewNotes`에서 ddl이 빈 문자열인 뷰는 건너뜀(메모 생성 스킵)
-- `makeNoteV2Id()`는 ui.js에 정의되어 있으므로 재정의 없이 직접 호출
+- config.js의 loadRawStore 내부에서 saveStore를 호출하면 재귀적 캐시 무효화가 발생할 수 있으므로, 마이그레이션 후 _storeCache를 직접 할당하여 파일 재읽기 없이 반환했다.
+- 레거시 암호화 마이그레이션(decryptLegacy → encrypt)은 loadConfig 내부에서 loadRawStore를 재호출해 최신 store를 얻은 후 인덱스를 찾아 갱신하는 방식으로, 캐시 상태와의 일관성을 유지했다.
+- CORS allowedHeaders에 'DELETE' 메서드가 없어 DELETE /config/profiles/:name이 CORS 차단될 수 있으나, 이는 index.js CORS 설정 범위이므로 요청 범위(config.js 재작성)에 포함되지 않아 수정하지 않았다. (추후 별도 수정 권장)
 
 ## 미완료 항목
-
 - 없음 (계획의 모든 항목 구현 완료)

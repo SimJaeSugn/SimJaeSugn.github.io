@@ -10,4 +10,10 @@ function getAdapter(dbType) {
   return adapter;
 }
 
-module.exports = { getAdapter };
+async function closeAllPools() {
+  for (const adapter of Object.values(adapters)) {
+    if (typeof adapter.closePool === 'function') await adapter.closePool();
+  }
+}
+
+module.exports = { getAdapter, closeAllPools };

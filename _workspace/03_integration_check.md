@@ -1,163 +1,91 @@
-# 통합 검사 보고서 — UXERManager 리버스 엔지니어링 기능
+## 단축키 동기화
+- 상태: N/A (미들웨어 전용 변경)
 
-검사일: 2026-05-27  
-검사자: 통합 검사 에이전트  
+## 백업 통합 (export/import/ui)
+- export.js: N/A
+- import.js: N/A
+- ui.js: N/A
 
----
+## 상태 저장/로드
+- 상태: N/A
 
-## 1. 단축키 동기화 [최우선]
-
-### 검사 결과: PASS
-
-**근거:**
-- `shortcuts.js`의 `SC_DEFAULTS` 객체: `addEnt`, `addRel`, `fitAll`, `undo`, `redo`, `save`, `saveAll`, `search`, `copy`, `paste`, `dup`, `selAll`, `del` — 총 13개. 리버스 엔지니어링 관련 단축키 없음.
-- `main.js` keydown 핸들러: `matchSC()` 호출 목록이 SC_DEFAULTS와 1:1 대응. 신규 `matchSC` 호출 없음.
-- `index.html #shortcutsTableBody`: `data-sc-id` 속성이 있는 `.sc-row`가 SC_DEFAULTS 키와 일치. 리버스 엔지니어링 행 없음 (메뉴 진입점은 `openReverseEngineerModal()` 클릭으로만).
-- 결론: 단축키 추가 없음, 3개 위치 완전 일치. 수정 불필요.
+## 렌더링 연동
+- 상태: N/A
 
 ---
 
-## 2. 백업 통합 [최우선]
+## 미들웨어 특화 검사
 
-### 검사 결과: PASS
+### A. 모듈 연결 일관성
 
-**근거:**
-- `isView` 필드는 엔티티 객체 내부 필드 (`entity.isView`). `saveState()`는 `diagrams` 배열 전체를 JSON.stringify하므로 isView 자동 직렬화.
-- `ui.js`의 `_BK_GROUPS` 배열: `diagrams`, `snapshots`, `templates`, `uiSettings`, `aiKey` 5개 그룹. isView를 위한 신규 최상위 localStorage 키 없음 → `_BK_GROUPS` 변경 불필요. 확인 완료.
-- `export.js`: `_doExportWithGroups`에서 `diagrams` 그룹 선택 시 `data.main = { diagrams, ... }`로 직렬화 → isView 자동 포함.
-- `import.js`: `_doImportWithGroups`에서 diagrams 복원 시 `migrateEntity()`를 통과 → isView 기본값 보장.
-- 신규 최상위 localStorage 키 없음. 확인 완료.
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| auditLogger.js 존재 | OK | `~/.uxermanager/audit.log` 기록, 10MB 로테이션 |
+| auditLogger.js `writeAuditLog` export | OK | `module.exports = { writeAuditLog }` |
+| health.js 존재 | OK | |
+| health.js `loadConfig` import | OK | `require('./config')` |
+| health.js `getAdapter` import | OK | `require('../db/connector')` |
+| health.js `GET /` 라우터 구현 | OK | DB 연결 테스트 후 latencyMs 반환 |
+| execute.js `auditLogger` import | OK | `require('../utils/auditLogger')` |
+| execute.js `writeAuditLog` 호출 (POST /execute 성공) | OK | `writeAuditLog('EXECUTE', sql, { durationMs, rowCount })` |
+| execute.js `writeAuditLog` 호출 (POST /execute 실패) | OK | `writeAuditLog('EXECUTE', sql, { error: err.message })` |
+| execute.js `writeAuditLog` 호출 (POST /execute/stream 성공) | OK | `writeAuditLog('STREAM', sql, { durationMs, rowCount })` |
+| execute.js `writeAuditLog` 호출 (POST /execute/stream 실패) | OK | `writeAuditLog('STREAM', sql, { error: err.message })` |
+| config.js 라우터 `GET /profiles` | OK | 비밀번호 마스킹 후 전체 목록 반환 |
+| config.js 라우터 `POST /profiles` | OK | 중복 이름 409 거부 |
+| config.js 라우터 `DELETE /profiles/:name` | OK | 활성/마지막 프로파일 삭제 400 거부 |
+| config.js 라우터 `POST /profiles/:name/activate` | OK | closeAllPools() 호출 후 전환 |
+| config.js `loadConfig` export | OK | `module.exports.loadConfig = loadConfig` |
+| index.js `healthRouter` 등록 | OK | `app.use('/health', healthRouter)` |
+| index.js CORS `methods`에 `DELETE` 포함 | OK | `['GET', 'POST', 'DELETE', 'OPTIONS']` |
 
----
+### B. 다중 프로파일 로직 정확성
 
-## 3. 상태 저장/로드 일관성
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `loadRawStore()` 구버전 단일 객체 마이그레이션 | OK | `if (!raw.profiles)` 체크 후 `{ profiles: [{ name: '기본', ...raw }], active: '기본' }` 형태로 변환 및 파일 재기록 |
+| `loadConfig()` 기존 시그니처 유지 (활성 프로파일 평문 반환) | OK | store에서 active 이름으로 프로파일 조회 후 decrypt 적용, 레거시 키 자동 마이그레이션 포함 |
+| `saveStore()` 호출 후 `invalidateCache()` 실행 | OK | `saveStore()` 내부 마지막에 `invalidateCache()` 호출 |
+| `DELETE /profiles/:name` 활성 프로파일 삭제 거부 | OK | `store.active === name` 시 400 반환 |
+| `DELETE /profiles/:name` 마지막 프로파일 삭제 거부 | OK | `store.profiles.length <= 1` 시 400 반환 |
+| `POST /profiles/:name/activate` `closeAllPools()` 호출 | OK | `saveStore()` → `invalidateCache()` → `await closeAllPools()` 순서 실행 |
 
-### 검사 결과: PASS
+**참고:** `POST /profiles/:name/activate`에서 `saveStore()` 내부의 `invalidateCache()` 호출 이후 라우터 본문에서 `invalidateCache()`를 한 번 더 호출하는 중복이 있으나, 기능 오류는 없음.
 
-**근거 (js/state.js 직접 확인):**
-```js
-function migrateEntity(e) {
-  // ...
-  if (e.isView === undefined) e.isView = false;  // ← 정상 추가됨 (line 185)
-  e.attrs = (e.attrs || []).map(a => migrateAttr(a));
-  return e;
-}
-```
-- `loadState()` 내 3개 경로 모두 `migrateEntity()` 통과:
-  1. v1 호환 경로 (line 153): `d.entities = s.entities.map(migrateEntity)`
-  2. diagrams 배열 경로 (line 162): `d.entities = (d.entities || []).map(migrateEntity)`
-  3. `restoreFromSnapshot()` (line 128): `d.entities = (d.entities || []).map(migrateEntity)`
-- `saveState()`는 별도 처리 불필요 (isView가 엔티티 객체 내부에 있으므로 자동 저장).
-- 수정 불필요.
+### C. 감사 로그 완전성
 
----
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `POST /execute` 성공 시 `writeAuditLog('EXECUTE', ...)` | OK | `{ durationMs, rowCount }` 포함 |
+| `POST /execute` 실패 시 `writeAuditLog('EXECUTE', ...)` | OK | `{ error: err.message }` 포함 |
+| `POST /execute/stream` 각 SQL 성공 시 `writeAuditLog('STREAM', ...)` | OK | `{ durationMs, rowCount }` 포함 |
+| `POST /execute/stream` 각 SQL 실패 시 `writeAuditLog('STREAM', ...)` | OK | `{ error: err.message }` 포함 |
 
-## 4. 렌더링 연동
+### D. Watchdog 스크립트
 
-### 검사 결과: PASS
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `scripts/install-watchdog.ps1` 존재 | OK | |
+| `scripts/uninstall-watchdog.ps1` 존재 | OK | |
 
-**근거 (js/canvas.js 직접 확인):**
-```js
-function drawEntity(e) {
-  // ...헤더 렌더링 후...
-  // ── VIEW 뱃지 (헤더 좌상단) ──  (line 919)
-  if (e.isView) {
-    ctx.save();
-    ctx.font = 'bold 9px Segoe UI';
-    ctx.roundRect ? ctx.roundRect(x + 4, y + 3, 28, 13, 3) : ctx.rect(x + 4, y + 3, 28, 13);
-    ctx.fill();
-    ctx.fillStyle = '#89dceb';
-    ctx.fillText('VIEW', x + 6, y + 5);
-    ctx.restore();
-  }
-  // ...
-}
-```
-- `render()` 함수 내부: `ENTITIES.forEach(drawEntity)` (line 1765) → drawEntity가 render 사이클에 자동 포함됨.
-- `js/reverse_engineer.js`에서 ERD 생성 완료 후 `render()` 명시적 호출 확인 (line 135, 144).
-- 접힌 엔티티(isCollapsed) 경로에서도 `drawEntity` 내 VIEW 뱃지 코드가 접히기 전 헤더 영역에서 실행됨 (isCollapsed 분기 전에 배치됨, line 919 vs return at line 982).
+### E. README 동기화
 
-**잠재적 이슈 확인:** VIEW 뱃지(좌상단)와 볼륨 레이블(우상단)이 동일한 위치(x+4, y+3)를 사용하는 것처럼 보이나, 볼륨 레이블은 우측 정렬(`x + 4`는 왼쪽이지만 볼륨은 `x + 7`, 텍스트가 짧음)이므로 실제로는 겹치지 않음. 양쪽 모두 isView=true AND rowCount가 있는 엔티티에서 동시 표시 가능하나 기능상 문제없음.
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `/health` API 섹션 | OK | `GET /health` 섹션에 응답 예시 3가지(성공/접속정보없음/연결실패) 기술 |
+| `/config/profiles` 관련 API 섹션 | OK | GET/POST/DELETE/activate 4개 엔드포인트 모두 기술 |
+| 감사 로그(`audit.log`) 경로 및 설명 | OK | `## 접속정보 저장 위치` 하단 `### 감사 로그 (audit.log)` 섹션에 OS별 경로·형식·로테이션 설명 포함 |
+| Watchdog 설치 섹션 | OK | `## Watchdog 설치 (Windows)` 섹션에 등록/제거 명령어 포함 |
+| 파일 구조에 `health.js` 반영 | OK | `routes/health.js` 기술됨 |
+| 파일 구조에 `auditLogger.js` 반영 | OK | `utils/auditLogger.js` 기술됨 |
+| 파일 구조에 `scripts/` 반영 | OK | `install-watchdog.ps1`, `uninstall-watchdog.ps1` 모두 기술됨 |
 
----
-
-## 5. 구현 코드 실제 확인
-
-### 5-1. js/reverse_engineer.js
-
-**상태: PASS**
-
-| 항목 | 확인 내용 |
-|------|----------|
-| `openReverseEngineerModal()` | `_mwPing()` → `_mwGetConfig()` 순서로 사전 검증 후 모달 진입 |
-| `runReverseEngineering()` | `fetch(${MW_URL}/schema)` — 30초 타임아웃 |
-| 응답 구조 | `{ tables, views, fks }` 구조분해 |
-| 새 다이어그램 모드 | `createEmptyDiagram()` → `loadDiagramIntoWorkspace()` → `render()` → `saveState()` |
-| 덮어쓰기 모드 | `getActiveDiagram()` → `loadDiagramIntoWorkspace()` → `render()` → `saveState()` |
-| `_buildEntitiesFromSchema()` | `isView: false` (tables), `isView: true` (views), `colorTag: 'teal'` (views) |
-| `makeNoteV2Id()` | `ui.js` line 791에 정의됨 — `reverse_engineer.js` 로드 전 `ui.js`가 먼저 로드됨(line 967 vs 981) → 의존성 충족 |
-| `createEmptyDiagram()` | `state.js` line 53에 정의 — `reverse_engineer.js` 로드 전 `state.js`(line 959) 먼저 로드 → 의존성 충족 |
-| `_mwPing`, `_mwGetConfig`, `_showMwNotRunning`, `MW_URL` | `db_connect.js` line 6, 112, 121, 131에 정의 — `reverse_engineer.js` 로드 전 `db_connect.js`(line 980) 먼저 로드 → 의존성 충족 |
-
-### 5-2. middleware/src/routes/schema.js
-
-**상태: PASS**
-
-| 항목 | 확인 내용 |
-|------|----------|
-| GET `/` 라우터 | `router.get('/', ...)` — `/schema`로 마운트됨 → 클라이언트의 `fetch(${MW_URL}/schema)` 와 일치 |
-| DB 타입 지원 | `postgres`, `mysql`, `mssql` 3종 |
-| 응답 구조 | `{ tables, views, fks }` — 클라이언트 구조분해와 일치 |
-| `views` 배열 | `{ viewName, columns, ddl }` — `_buildEntitiesFromSchema()`의 `v.viewName`, `v.columns`, `_buildViewNotes()`의 `v.ddl` 참조와 일치 |
-| `tables` 배열 | `{ tableName, columns }` — `_buildEntitiesFromSchema()`의 `t.tableName`, `t.columns` 참조와 일치 |
-| `fks` 배열 | `{ fromTable, fromCol, toTable, toCol }` — `_buildRelationsFromFks()`의 `fk.fromTable`, `fk.toTable` 참조와 일치 |
-| 에러 처리 | config 없을 때 400, DB 오류 시 400 |
-
-### 5-3. middleware/src/index.js
-
-**상태: PASS**
-
-```js
-const schemaRouter = require('./routes/schema');   // line 5
-app.use('/schema', schemaRouter);                  // line 38
-```
-`schemaRouter` 정상 등록 확인.
-
-### 5-4. js/state.js — migrateEntity()
-
-**상태: PASS**
-
-line 185: `if (e.isView === undefined) e.isView = false;` 정상 추가됨.
-
-### 5-5. js/canvas.js — drawEntity/VIEW 뱃지
-
-**상태: PASS**
-
-line 919-932: VIEW 뱃지 코드 정상 구현. `render()` 사이클의 `ENTITIES.forEach(drawEntity)` (line 1765)에 자동 포함.
-
-### 5-6. index.html — 메뉴 항목 및 script 태그
-
-**상태: PASS**
-
-- 메뉴 항목 (line 118): `onclick="mbClose();openReverseEngineerModal()"` — Remote 그룹 하단에 위치
-- script 태그 (line 981): `<script src="js/reverse_engineer.js"></script>` — `db_connect.js`(980) 다음, `main.js`(982) 이전으로 적절한 순서
-
----
-
-## 누락/수정 사항
-
-**수정된 항목: 없음**
-
-모든 검사 항목이 구현 코드에서 정상 확인됨. 직접 수정이 필요한 누락 사항 없음.
+- 상태: OK (수정 불필요)
 
 ---
 
 ## 최종 상태: PASS
 
-| 검사 항목 | 결과 |
-|----------|------|
-| 1. 단축키 동기화 | PASS — 신규 단축키 없음, 3개 위치 일치 |
-| 2. 백업 통합 | PASS — isView 자동 직렬화, _BK_GROUPS 변경 불필요 |
-| 3. 상태 저장/로드 일관성 | PASS — migrateEntity()에 isView 기본값 정상 추가 |
-| 4. 렌더링 연동 | PASS — drawEntity()가 render() 사이클에 자동 포함 |
-| 5. 구현 코드 실제 확인 | PASS — 모든 의존성, API 계약, 로드 순서 정상 |
+모든 검사 항목이 정상 확인됨. 미해결 이슈 없음.
+
+> **참고 (비기능적 중복):** `config.js`의 `POST /profiles/:name/activate` 라우터에서 `saveStore()` 내부와 라우터 본문 양쪽에서 `invalidateCache()`가 호출되는 중복이 존재하나, 동작 오류는 없음. 향후 정리 대상.
