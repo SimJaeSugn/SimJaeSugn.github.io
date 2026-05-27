@@ -73,6 +73,14 @@ function _renderReverseEngineerModal() {
         </div>
       </div>
 
+      <div class="form-row">
+        <label class="form-label">명칭 대문자 변환</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px">
+          <input type="checkbox" id="reToUpper">
+          <span style="font-size:13px">테이블명·컬럼명을 모두 대문자로 변환</span>
+        </label>
+      </div>
+
       <div class="form-row" id="reNewNameRow">
         <label class="form-label">다이어그램 이름</label>
         <input class="form-input" id="reNewDiagName" type="text" placeholder="DB 스키마 ERD" value="DB 스키마 ERD">
@@ -112,7 +120,8 @@ async function runReverseEngineering() {
     }
     const { tables, views, fks } = await res.json();
 
-    const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views);
+    const toUpper = document.getElementById('reToUpper')?.checked ?? false;
+    const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views, toUpper);
     const relations = _buildRelationsFromFks(fks, entityIdMap);
     const viewNotes = _buildViewNotes(views, entities, entityIdMap);
 
@@ -158,7 +167,8 @@ async function runReverseEngineering() {
 }
 
 // ── 엔티티 객체 배열 생성 ─────────────────────────────────────────
-function _buildEntitiesFromSchema(tables, views) {
+function _buildEntitiesFromSchema(tables, views, toUpper = false) {
+  const n = s => toUpper ? s.toUpperCase() : s;
   const all = [
     ...tables.map(t => ({ ...t, isView: false })),
     ...views.map(v => ({ tableName: v.viewName, columns: v.columns, isView: true }))
@@ -179,8 +189,8 @@ function _buildEntitiesFromSchema(tables, views) {
     const id = 'entity_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 5) + '_' + idx;
 
     const attrs = (tbl.columns || []).map(c => ({
-      logicalName:   c.columnName,
-      physicalName:  c.columnName,
+      logicalName:   n(c.columnName),
+      physicalName:  n(c.columnName),
       type:          c.dataType || '',
       kind:          c.isPk ? 'pk' : 'normal',
       notNull:       !c.isNullable,
@@ -193,8 +203,8 @@ function _buildEntitiesFromSchema(tables, views) {
 
     entities.push({
       id,
-      logicalName:  tbl.tableName,
-      physicalName: tbl.tableName,
+      logicalName:  n(tbl.tableName),
+      physicalName: n(tbl.tableName),
       description:  '',
       colorTag:     tbl.isView ? 'teal' : null,
       isView:       tbl.isView,
