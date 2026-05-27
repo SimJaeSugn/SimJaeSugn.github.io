@@ -916,6 +916,21 @@ function drawEntity(e) {
   ctx.textAlign = 'center';
   ctx.fillText(entDisplayName(e), x + W / 2, y + HEADER_H / 2);
 
+  // ── VIEW 뱃지 (헤더 좌상단) ──
+  if (e.isView) {
+    ctx.save();
+    ctx.font = 'bold 9px Segoe UI';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(137,220,235,0.25)';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x + 4, y + 3, 28, 13, 3) : ctx.rect(x + 4, y + 3, 28, 13);
+    ctx.fill();
+    ctx.fillStyle = '#89dceb';
+    ctx.fillText('VIEW', x + 6, y + 5);
+    ctx.restore();
+  }
+
   // ── 볼륨 레이블 (우상단 헤더) ──
   if (vol.label) {
     ctx.save();

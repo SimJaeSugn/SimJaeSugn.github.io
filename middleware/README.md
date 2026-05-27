@@ -102,6 +102,59 @@ DB 접속정보 저장. 비밀번호는 AES-256-GCM으로 암호화 후 `~/.uxer
 
 ---
 
+### GET /schema
+저장된 접속정보로 DB 스키마(테이블·뷰·FK)를 한 번에 조회. 리버스 엔지니어링 기능에서 사용.
+
+**응답**
+```json
+{
+  "tables": [
+    {
+      "tableName": "users",
+      "isView": false,
+      "columns": [
+        {
+          "columnName":   "id",
+          "dataType":     "integer",
+          "isPk":         true,
+          "isNullable":   false,
+          "defaultValue": "nextval('users_id_seq'::regclass)"
+        },
+        {
+          "columnName":   "name",
+          "dataType":     "text",
+          "isPk":         false,
+          "isNullable":   true,
+          "defaultValue": null
+        }
+      ]
+    }
+  ],
+  "views": [
+    {
+      "viewName": "active_users",
+      "columns":  [ /* 컬럼 목록 */ ],
+      "ddl":      "SELECT id, name FROM users WHERE active = true"
+    }
+  ],
+  "fks": [
+    {
+      "fromTable": "orders",
+      "fromCol":   "user_id",
+      "toTable":   "users",
+      "toCol":     "id"
+    }
+  ]
+}
+```
+
+**오류 응답**
+```json
+{ "error": "접속정보가 설정되지 않았습니다." }
+```
+
+---
+
 ### POST /execute
 저장된 접속정보로 단일 SQL 실행. 결과를 JSON으로 반환.
 
@@ -240,7 +293,8 @@ middleware/
 │   ├── index.js              Express 서버 진입점 (port 3737)
 │   ├── routes/
 │   │   ├── config.js         POST/GET /config, POST /config/test
-│   │   └── execute.js        POST /execute, POST /execute/stream
+│   │   ├── execute.js        POST /execute, POST /execute/stream
+│   │   └── schema.js         GET /schema (리버스 엔지니어링)
 │   ├── db/
 │   │   ├── connector.js      dbType → 어댑터 라우팅
 │   │   └── adapters/

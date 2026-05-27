@@ -1,30 +1,40 @@
-## 요청 요약
-Node.js REST API 미들웨어 구현 - DB 접속정보 로컬 암호화 저장, SSE 실시간 진행률, pkg exe 빌드, ERD 공유 메뉴에 DB 연결 설정 UI 추가
+# 리버스 엔지니어링 기능 구현 계획
 
-## 탐색한 파일
-- index.html: 공유 메뉴 구조, 모달 패턴, script 태그 순서
-- js/share.js: 기존 공유 기능 패턴
+## 개요
+DB 스키마를 읽어 ERD를 자동 생성하는 리버스 엔지니어링 기능을 구현한다.
 
-## 영향 분석
-- 단축키 변경: 없음
-- 새 localStorage 키: 없음 (접속정보는 미들웨어 로컬 파일에 저장)
-- 새 데이터 배열/상태 변수: 없음
-- 기타 파급 효과: 공유 메뉴에 항목 추가, db_connect.js 신규 파일
+## 변경 파일 목록
 
-## 구현 계획
-### 파일: middleware/ (신규)
-- package.json, .gitignore
-- src/index.js: Express 서버 port 3737
-- src/routes/config.js: POST/GET /config, POST /config/test
-- src/routes/execute.js: POST /execute, POST /execute/stream (SSE)
-- src/db/connector.js: 어댑터 라우터
-- src/db/adapters/postgres.js, mysql.js, mssql.js
-- src/utils/crypto.js: AES-256-GCM
+### 1. middleware/src/routes/schema.js (신규 생성)
+GET /schema 엔드포인트 — DB 타입별 테이블·뷰·FK 정보를 한 번에 반환
+- loadConfig()로 접속정보 가져오기
+- PostgreSQL / MySQL / MSSQL 별 SQL 실행
+- 응답 형식: { tables: [{tableName, columns:[{columnName,dataType,isPk,isNullable,defaultValue}]}], views: [{viewName, ddl}], fks: [{fromTable,fromCol,toTable,toCol}] }
 
-### 파일: js/db_connect.js (신규)
-- openDbConnectModal(), saveDbConfig(), testDbConfig()
-- _mwPing() 미들웨어 실행 확인
+### 2. middleware/src/index.js 수정
+schemaRouter 등록:
+```js
+const schemaRouter = require('./routes/schema');
+app.use('/schema', schemaRouter);
+```
 
-### 파일: index.html
-- 공유 메뉴에 "DB 연결 설정" 항목 추가
-- db_connect.js 스크립트 태그 추가
+### 3. js/reverse_engineer.js (신규 생성)
+주요 함수:
+- `openReverseEngineerModal()`: _mwPing() 확인, _mwGetConfig() 확인, 모달 표시
+- 모달: 새 다이어그램명 입력, "새 다이어그램" vs "현재 덮어쓰기" 라디오
+- `runReverseEngineering()`: GET /schema 호출, ERD 구성, 다이어그램 적용
+- `_buildEntitiesFromSchema(tables, views)`: 엔티티 객체 배열 생성 (격자 배치)
+- `_buildRelationsFromFks(fks, entityIdMap)`: 관계 객체 배열 생성
+
+### 4. js/state.js 수정
+migrateEntity() 함수에서 `if (e.isView === undefined) e.isView = false;` 추가
+
+### 5. js/canvas.js 수정
+엔티티 헤더 렌더링 부분에서 isView 뱃지 표시
+
+### 6. index.html 수정
+- 리버스엔지니어링 메뉴 항목 disabled 제거, onclick 추가
+- reverse_engineer.js 스크립트 태그 추가
+
+### 7. middleware/README.md 수정
+GET /schema 엔드포인트 섹션 추가

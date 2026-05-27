@@ -82,6 +82,7 @@
 .mb-item:hover { background: var(--bg-surface); }
 .mb-item.danger { color: var(--ac-r); }
 .mb-item.danger:hover { background: var(--danger-bg); }
+.mb-item.disabled { opacity: 0.4; cursor: default; pointer-events: none; }
 .mb-ico  { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
 .mb-chk  { width: 16px; text-align: center; font-size: 12px; flex-shrink: 0; color: var(--ac); font-weight: bold; }
 .mb-text { flex: 1; }

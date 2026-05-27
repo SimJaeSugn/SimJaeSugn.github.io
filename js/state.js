@@ -182,6 +182,7 @@ function migrateEntity(e) {
   }
   if (!e.description) e.description = '';
   if (!e.indexes) e.indexes = [];
+  if (e.isView === undefined) e.isView = false;
   e.attrs = (e.attrs || []).map(a => migrateAttr(a));
   return e;
 }
