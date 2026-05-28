@@ -1,15 +1,11 @@
 ## 변경 파일 목록
-- js/profile_manager.js: 신규 생성 — DB 접속 프로파일 관리 모달 전체 로직 (openProfileManagerModal, closeProfileManagerModal, _loadProfiles, _renderProfileManagerModal, _renderProfileList, _activateProfile, _deleteProfile, _refreshProfileList, _openAddProfileForm, _closeAddProfileForm, _submitAddProfile, _pmErrShow, _pmErrClear, _pmOnDbTypeChange, _pmEsc)
-- index.html: 공유 메뉴에 "DB 프로파일 관리" 항목 추가, db_connect.js 다음에 profile_manager.js 스크립트 태그 추가
+- `css/modal.css`: 파일 말미 `.bk-footer` 블록 뒤에 `.pm-layout`, `.pm-left`, `.pm-right`, `.pm-list-body`, `.pm-list-footer`, `.pm-profile-item`, `.pm-active-badge`, `.pm-item-actions`, `.pm-empty-hint`, `.pm-detail-*`, `.pm-section-title`, 스크롤바 스타일 등 Profile Manager 전용 CSS 클래스 추가
+- `js/profile_manager.js`: 2단 레이아웃으로 전면 개편 — 모달 골격(880px), 상태 변수, 신규 함수 3개, 기존 함수 6개 재작성, `_pmEditId()` 제거
 
 ## 주요 결정 사항
-
-1. **`MW_URL` 재선언 없음**: `db_connect.js`에서 이미 전역 선언된 `MW_URL`, `_mwPing()`, `_showMwNotRunning()`를 그대로 사용. 파일 최상단 주석에 의존 명시.
-2. **`<h3>` 패턴 사용**: 초기에 `modal-header`/`modal-body`/`modal-close` 클래스를 사용했으나 해당 클래스가 CSS에 미정의임을 확인 후 `db_connect.js` 패턴인 `<h3>` 태그로 수정.
-3. **`overlayClose(event,'pmOverlay')` 연동**: 기존 overlay 닫기 패턴(배경 클릭 시 닫기)을 그대로 사용.
-4. **XSS 방지**: 프로파일 이름/호스트 등 사용자 입력이 innerHTML에 삽입되므로 `_pmEsc()` 헬퍼로 이스케이프. onclick 속성에도 이스케이프된 값 사용.
-5. **폼 토글 버튼 숨김**: `_openAddProfileForm()` 시 토글 버튼을 숨기고, `_closeAddProfileForm()` 시 복원. 폼 닫기 시 입력값 초기화.
-6. **삭제 버튼 비활성화 조건**: 활성 프로파일이거나, 프로파일이 1개(마지막)인 경우 `disabled`. 미들웨어 서버도 동일 규칙 적용.
+- 계획과 동일하게 구현. 특이 사항 없음.
+- `_submitAddProfile()`의 `finally` 블록(버튼 복원)은 계획에서 변경 없음으로 명시되어 기존 코드 그대로 유지.
+- `_openAddProfileForm()` 내 `_pmErrClear('pmAddErr')` 호출은 계획 코드에 포함되어 있으나, 이 시점에 `pmAddErr` 엘리먼트가 아직 DOM에 없으므로 `_pmErrClear`의 null 가드(`if (el)`)에 의해 무해하게 처리됨.
 
 ## 미완료 항목
-- 없음
+- 없음. 계획의 모든 항목 완료.

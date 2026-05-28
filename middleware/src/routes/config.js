@@ -109,13 +109,14 @@ router.get('/', (req, res) => {
     database: config.database,
     username: config.username,
     schema: config.schema || '',
+    clientLibDir: config.clientLibDir || '',
     password: '••••••••'
   });
 });
 
 // ---- POST /config — 활성 프로파일 덮어쓰기 (기존 요청 구조 유지) ----
 router.post('/', async (req, res) => {
-  const { dbType, host, port, database, username, password, schema } = req.body;
+  const { dbType, host, port, database, username, password, schema, clientLibDir } = req.body;
   if (!dbType || !host || !database || !username || !password) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
   }
@@ -136,6 +137,7 @@ router.post('/', async (req, res) => {
     username,
     password: encrypt(password),
     schema: schema || '',
+    clientLibDir: (dbType === 'oracle' && clientLibDir) ? clientLibDir : '',
     updatedAt: new Date().toISOString()
   };
 
@@ -152,13 +154,13 @@ router.post('/', async (req, res) => {
 
 // ---- POST /config/test — 변경 없음 ----
 router.post('/test', async (req, res) => {
-  const { dbType, host, port, database, username, password } = req.body;
+  const { dbType, host, port, database, username, password, clientLibDir } = req.body;
   if (!dbType || !host || !database || !username || !password) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
   }
   try {
     const adapter = getAdapter(dbType);
-    await adapter.test({ dbType, host, port: port || getDefaultPort(dbType), database, username, password });
+    await adapter.test({ dbType, host, port: port || getDefaultPort(dbType), database, username, password, clientLibDir: (dbType === 'oracle' && clientLibDir) ? clientLibDir : undefined });
     res.json({ ok: true, message: '연결 성공' });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
@@ -180,7 +182,7 @@ router.get('/profiles', (req, res) => {
 
 // ---- POST /config/profiles — 새 프로파일 추가 ----
 router.post('/profiles', (req, res) => {
-  const { name, dbType, host, port, database, username, password, schema } = req.body;
+  const { name, dbType, host, port, database, username, password, schema, clientLibDir } = req.body;
   if (!name || !dbType || !host || !database || !username || !password) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
   }
@@ -203,6 +205,7 @@ router.post('/profiles', (req, res) => {
     username,
     password: encrypt(password),
     schema: schema || '',
+    clientLibDir: (dbType === 'oracle' && clientLibDir) ? clientLibDir : '',
     updatedAt: new Date().toISOString()
   });
 
@@ -236,7 +239,7 @@ router.delete('/profiles/:name', (req, res) => {
 // ---- PUT /config/profiles/:name — 프로파일 수정 ----
 router.put('/profiles/:name', async (req, res) => {
   const { name } = req.params;
-  const { dbType, host, port, database, username, password, schema } = req.body;
+  const { dbType, host, port, database, username, password, schema, clientLibDir } = req.body;
 
   if (!dbType || !host || !database || !username) {
     return res.status(400).json({ error: '필수 항목을 모두 입력하세요.' });
@@ -257,6 +260,10 @@ router.put('/profiles/:name', async (req, res) => {
     database,
     username,
     schema: schema !== undefined ? schema : (existing.schema || ''),
+    clientLibDir: (() => {
+      if (clientLibDir === undefined) return existing.clientLibDir || '';
+      return (dbType === 'oracle' && clientLibDir) ? clientLibDir : '';
+    })(),
     updatedAt: new Date().toISOString()
   };
   if (password) updated.password = encrypt(password);

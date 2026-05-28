@@ -1632,6 +1632,8 @@ function overlayClose(e, overlayId) {
     if (overlayId === 'ddlOverlay')      closeDDLModal();
     if (overlayId === 'copyDiagOverlay') closeCopyDiagModal();
     if (overlayId === 'newDiagOverlay')  closeNewDiagModal();
+    if (overlayId === 'pmOverlay')       closeProfileManagerModal();
+    if (overlayId === 'mwNotRunningOverlay') document.getElementById('mwNotRunningOverlay')?.classList.remove('active');
   }
 }
 

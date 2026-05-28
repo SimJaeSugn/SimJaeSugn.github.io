@@ -64,7 +64,10 @@
       "Bash(findstr _workspace)",
       "Bash(New-Item -ItemType File -Path \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\\\\_workspace\\\\01_analyst_plan.md\" -Force)",
       "Bash(Out-Null)",
-      "Bash(Test-Path *)"
+      "Bash(Test-Path *)",
+      "Bash(Move-Item \"_workspace\" \"_workspace_prev\" -Force)",
+      "Bash(dir \"D:\\\\instantclient-basic-windows.x64-23.26.1.0.0\\\\instantclient_23_0\")",
+      "Bash(reg query *)"
     ]
   }
 }

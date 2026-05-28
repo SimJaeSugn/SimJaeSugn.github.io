@@ -3,6 +3,21 @@ const oracledb = require('oracledb');
 
 let _pool = null;
 let _poolConfig = null;
+let _thickInitDone = false;
+
+// Thick 모드 초기화 (Oracle Instant Client 필요).
+// Thin 모드는 Oracle DB 12.1+ 만 지원하므로, 구버전 DB 연결 시 Thick 모드가 필요하다.
+// initOracleClient 는 프로세스당 한 번만 호출 가능하므로 플래그로 보호한다.
+// Windows에서 libDir 파라미터는 DLL 로딩 방식 차이로 불안정하므로 시스템 PATH에 등록된 경로를 사용한다.
+function initThickMode() {
+  if (_thickInitDone) return;
+  _thickInitDone = true;
+  try {
+    oracledb.initOracleClient();
+  } catch (_) {
+    // Oracle Instant Client가 시스템 PATH에 없음 → Thin 모드 유지 (Oracle DB 12.1+ 만 가능)
+  }
+}
 
 function configKey(config) {
   return JSON.stringify({
@@ -14,6 +29,7 @@ function configKey(config) {
 }
 
 async function getPool(config) {
+  initThickMode();
   const key = configKey(config);
   if (_pool && _poolConfig === key) return _pool;
   if (_pool) { try { await _pool.close(0); } catch (_) {} }

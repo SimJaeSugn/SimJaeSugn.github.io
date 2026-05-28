@@ -31,7 +31,7 @@ async function openReverseEngineerModal() {
           </p>
           <div class="modal-actions">
             <button class="btn-cancel-m" onclick="document.getElementById('reDbCfgNotice').classList.remove('active')">닫기</button>
-            <button class="btn-primary" onclick="document.getElementById('reDbCfgNotice').classList.remove('active');openDbConnectModal()">DB 연결 설정</button>
+            <button class="btn-primary" onclick="document.getElementById('reDbCfgNotice').classList.remove('active');openProfileManagerModal()">DB 연결 설정</button>
           </div>
         </div>`;
       document.body.appendChild(errOverlay);
