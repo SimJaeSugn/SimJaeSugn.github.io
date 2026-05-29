@@ -19,7 +19,8 @@ function buildTypeOptions(dbType, selectedValue = '') {
   });
   // 기존 값이 목록에 없으면 맨 위에 추가
   if (!found && selectedValue) {
-    html = `<option value="${selectedValue}" selected>${selectedValue}</option>` + html;
+    const sv = escHtml(selectedValue);
+    html = `<option value="${sv}" selected>${sv}</option>` + html;
   }
   return html;
 }
@@ -32,6 +33,7 @@ function onDbTypeChange(dbType) {
     const cur = sel.value;
     sel.innerHTML = buildTypeOptions(dbType, cur);
   });
+  saveState();
 }
 
 function openAddEntityModal() {
@@ -225,17 +227,19 @@ function onRefEntityChange(sel) {
 
 function syncFKReferences(entityId, oldAttrs, newAttrs) {
   // position-based rename map: old physicalName → new physicalName
+  // 길이가 같을 때만 rename 매핑 수행 (삽입/삭제 상황에서는 비활성화)
   const renameMap = {};
-  oldAttrs.forEach((oldA, i) => {
-    const newA = newAttrs[i];
-    if (!newA) return;
-    const oldKey = oldA.physicalName || oldA.logicalName;
-    const newKey = newA.physicalName || newA.logicalName;
-    if (oldKey) renameMap[oldKey] = newKey;
-  });
+  if (oldAttrs.length === newAttrs.length) {
+    oldAttrs.forEach((oldA, i) => {
+      const newA = newAttrs[i];
+      if (!newA) return;
+      const oldKey = oldA.physicalName || oldA.logicalName;
+      const newKey = newA.physicalName || newA.logicalName;
+      if (oldKey) renameMap[oldKey] = newKey;
+    });
+  }
 
   ENTITIES.forEach(ent => {
-    let changed = false;
     ent.attrs.forEach(attr => {
       if (attr.kind !== 'fk' || attr.ref?.entity !== entityId) return;
       const oldRef = attr.ref.attr;
@@ -244,16 +248,13 @@ function syncFKReferences(entityId, oldAttrs, newAttrs) {
       if (newRef !== oldRef) {
         attr.ref = { ...attr.ref, attr: newRef };
         attr.physicalName = newRef;
-        changed = true;
       }
       // sync type from referenced attr
       const refAttr = newAttrs.find(a => (a.physicalName || a.logicalName) === attr.ref.attr);
       if (refAttr && refAttr.type && refAttr.type !== attr.type) {
         attr.type = refAttr.type;
-        changed = true;
       }
     });
-    return changed;
   });
 }
 
@@ -304,6 +305,9 @@ function saveEntity() {
     targetEntityId = editingEntity.id;
     syncFKReferences(editingEntity.id, oldAttrs, attrs);
   } else {
+    if (idRaw && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(idRaw)) {
+      showErr('entIdErr', 'ID는 영문/숫자/밑줄만 사용하며 숫자로 시작할 수 없습니다.'); return;
+    }
     const newId = idRaw || 'entity_' + Date.now().toString(36);
     if (ENTITIES.find(e => e.id === newId)) {
       showErr('entIdErr', '이미 사용 중인 ID입니다.'); return;
@@ -314,12 +318,16 @@ function saveEntity() {
     targetEntityId = newId;
   }
 
+  // autoFK 관계 재동기화: 기존 autoFK 관계 제거 후 현재 FK attrs 기준 재생성
+  for (let i = RELATIONS.length - 1; i >= 0; i--) {
+    if (RELATIONS[i].to === targetEntityId && RELATIONS[i].autoFK) RELATIONS.splice(i, 1);
+  }
   attrs.filter(a => a.kind === 'fk' && a.ref?.entity).forEach(attr => {
     const from = attr.ref.entity, to = targetEntityId;
     const exists = RELATIONS.some(r =>
       (r.from === from && r.to === to) || (r.from === to && r.to === from)
     );
-    if (!exists && from !== to) RELATIONS.push({ from, to, card: '1:N' });
+    if (!exists && from !== to) RELATIONS.push({ from, to, card: '1:N', autoFK: true });
   });
 
   closeEntModal(); render(); saveState(); renderEntityTree();
@@ -329,6 +337,7 @@ function deleteEntity(entity, save = true) {
   const idx = ENTITIES.indexOf(entity);
   if (idx >= 0) ENTITIES.splice(idx, 1);
   expandedEntities.delete(entity.id);
+  collapsedEntities.delete(entity.id);
   for (let i = RELATIONS.length - 1; i >= 0; i--) {
     if (RELATIONS[i].from === entity.id || RELATIONS[i].to === entity.id) RELATIONS.splice(i, 1);
   }
