@@ -1,9 +1,10 @@
 ## 변경 파일 목록
-- js/ui.js: `fitAll` 함수 바로 다음에 `centerOnEntities()` 함수 추가 (배율 유지 + quickbar 오프셋 반영)
-- js/layout.js: `_runAutoOptimizeRelations` 및 `_v2FinishUp` 내 `fitAll()` 호출 2곳을 `centerOnEntities()`로 교체
+- js/canvas.js: _viewportBounds() 헬퍼 추가, 엔티티 컬링, 관계선 컬링 구현
 
 ## 주요 결정 사항
-- 계획과 동일하게 구현함. `fitAll()` 자체는 변경하지 않고 새 함수만 추가.
+- 관계선 컬링에서 entityMap() 재사용: getRelationPath() 내부도 entityMap()을 매 rel마다 호출하는 구조이므로, drawRelations() 시작 시 한 번만 생성한 _relEM을 컬링 판단에 사용해 중복 생성을 줄임
+- isActive || isConnected 조건 시 컬링 완전 면제: hover/drag/selected 관계선과 선택 엔티티 연결 관계선은 컬링 검사 자체를 건너뜀
+- aOut && bOut (AND 조건)만 스킵: 한쪽 엔티티라도 뷰포트 안에 있으면 선이 가로질러 그려질 수 있으므로 OR 조건 사용하지 않음
 
 ## 미완료 항목
-- 없음
+- 없음 (변경 4 debounce는 계획에서 이미 추가 구현 불필요로 확인됨)

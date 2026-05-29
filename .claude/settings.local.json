@@ -69,7 +69,11 @@
       "Bash(dir \"D:\\\\instantclient-basic-windows.x64-23.26.1.0.0\\\\instantclient_23_0\")",
       "Bash(reg query *)",
       "Bash(git -C \"e:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" diff --name-only HEAD -- middleware/)",
-      "Bash(git -C \"e:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" status --short middleware/)"
+      "Bash(git -C \"e:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" status --short middleware/)",
+      "Bash(cat > *)"
+    ],
+    "additionalDirectories": [
+      "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
     ]
   }
 }
