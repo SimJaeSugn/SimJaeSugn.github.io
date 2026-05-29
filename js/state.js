@@ -75,6 +75,9 @@ function loadDiagramIntoWorkspace(d) {
   NOTES_V2.length = 0;  (d.notesV2  || []).forEach(n => NOTES_V2.push(JSON.parse(JSON.stringify(n))));
   collapsedEntities = new Set(d.collapsed || []);
   selectedSection = null; selectedSections = new Set();
+  // 엔티티 선택 상태도 다이어그램별 휘발성 — 전환/import 시 이전 선택 잔상 방지
+  if (typeof selectedEntities !== 'undefined' && selectedEntities) selectedEntities.clear();
+  if (typeof selectedEntity !== 'undefined') selectedEntity = null;
   vx = d.vx ?? 40; vy = d.vy ?? 40; scale = d.scale ?? 1;
   // 정규화 진단 배지는 다이어그램별 휘발성 상태 — 다이어그램 전환/undo·redo 시 누수 방지를 위해 초기화
   if (typeof _normActive !== 'undefined') { _normActive = false; _normWarnings = {}; }

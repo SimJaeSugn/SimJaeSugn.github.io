@@ -26,6 +26,10 @@ function handleFullBackupImport(e) {
       e.target.value = '';
     }
   };
+  reader.onerror = () => {
+    alert('파일을 읽는 중 오류가 발생했습니다.\n파일을 다시 선택해 주세요.');
+    e.target.value = '';
+  };
   reader.readAsText(file);
 }
 
@@ -99,6 +103,8 @@ function _doImportWithGroups(data, groups) {
         try { localStorage.setItem('_shortcuts', s.shortcuts); } catch {}
         if (typeof loadShortcuts === 'function') loadShortcuts();
       }
+      // diagrams 그룹이 함께 처리되지 않으면 자체 render()가 없으므로 UI 갱신을 한 번 보장
+      if (!groups.includes('diagrams') && typeof render === 'function') render();
     }
     if (groups.includes('aiKey') && data.settings?.aiKey) {
       try { localStorage.setItem(AI_KEY_STORAGE, data.settings.aiKey); } catch {}
@@ -142,6 +148,10 @@ function handleImportFile(e) {
     } catch {
       alert('파일을 읽는 중 오류가 발생했습니다.\n올바른 JSON 파일인지 확인하세요.');
     }
+  };
+  reader.onerror = () => {
+    alert('파일을 읽는 중 오류가 발생했습니다.\n파일을 다시 선택해 주세요.');
+    e.target.value = '';
   };
   reader.readAsText(file);
 }
@@ -249,14 +259,45 @@ function unquoteIdent(s) {
   return s.replace(/^[`"\[]|[`"\]]$/g, '').trim();
 }
 
+// 여는 괄호(openIdx 위치)부터 균형이 맞는 닫는 괄호까지의 본문을 추출.
+// 문자열 리터럴('"`) 안의 괄호/세미콜론과 중첩 괄호를 올바르게 건너뛴다.
+// 반환: { body, end } — end는 닫는 괄호 다음 인덱스. 매칭 실패 시 null.
+function _extractBalancedBody(sql, openIdx) {
+  let depth = 0, inStr = false, strCh = '';
+  for (let i = openIdx; i < sql.length; i++) {
+    const ch = sql[i];
+    if (inStr) {
+      if (ch === '\\') { i++; continue; }       // 이스케이프 문자 건너뜀
+      if (ch === strCh) {
+        // 작은/큰따옴표는 연속 2개로 이스케이프('') 가능 — 다음 문자가 동일하면 리터럴 내 유지
+        if ((strCh === "'" || strCh === '"') && sql[i + 1] === strCh) { i++; continue; }
+        inStr = false;
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') { inStr = true; strCh = ch; continue; }
+    if (ch === '(') depth++;
+    else if (ch === ')') {
+      depth--;
+      if (depth === 0) return { body: sql.slice(openIdx + 1, i), end: i + 1 };
+    }
+  }
+  return null;
+}
+
 function parseDDL(sql) {
   const entities = [];
   const relations = [];
-  const createRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"\[]?\w+[`"\]]?)\s*\(([^;]*)\)/gis;
+  // 본문은 괄호 균형 기반으로 별도 추출하므로 여는 괄호 직전까지만 매칭한다.
+  const createRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"\[]?\w+[`"\]]?)\s*\(/gis;
   let m;
   while ((m = createRe.exec(sql)) !== null) {
     const tableName = unquoteIdent(m[1]);
-    const body = m[2];
+    const openIdx = m.index + m[0].length - 1; // m[0] 끝의 '(' 위치
+    const extracted = _extractBalancedBody(sql, openIdx);
+    if (!extracted) continue;                  // 짝이 안 맞는 괄호 — 해당 CREATE 건너뜀
+    const body = extracted.body;
+    createRe.lastIndex = extracted.end;        // 다음 CREATE는 본문 이후부터 탐색
     const id = tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
     const entity = {
       id,
@@ -386,7 +427,9 @@ function applyDDLImport() {
     if (idRemap[r.from]) r.from = idRemap[r.from];
     if (idRemap[r.to])   r.to   = idRemap[r.to];
   });
-  const baseY = ENTITIES.length ? Math.max(...ENTITIES.map(e => e.y + entityHeight(e))) + 80 : 80;
+  // collapsed 엔티티는 entityHeight가 HEADER_H만 반환하므로, 펼친 높이 기준으로 baseY 계산해 겹침 방지
+  const _expandedH = e => HEADER_H + (e.attrs ? e.attrs.length : 0) * ROW_H;
+  const baseY = ENTITIES.length ? Math.max(...ENTITIES.map(e => e.y + _expandedH(e))) + 80 : 80;
   entities.forEach((e, i) => {
     e.x = 60 + (i % 4) * 340;
     e.y = baseY + Math.floor(i / 4) * 320;
@@ -403,6 +446,8 @@ function applyDDLImport() {
 }
 
 // ── AI 스키마 자동 생성 ──────────────────────────────────────
+let _aiAbortController = null;
+
 function openAISchemaModal() {
   const saved = localStorage.getItem(AI_KEY_STORAGE) || '';
   document.getElementById('aiApiKey').value = saved;
@@ -415,6 +460,8 @@ function openAISchemaModal() {
 }
 
 function closeAISchemaModal() {
+  // 진행 중인 생성 요청이 있으면 취소 (모달 닫은 뒤 늦은 응답/유령 토스트 방지)
+  if (_aiAbortController) { _aiAbortController.abort(); _aiAbortController = null; }
   document.getElementById('aiSchemaOverlay').classList.remove('active');
 }
 
@@ -432,9 +479,11 @@ async function runAISchemaGen() {
   const systemPrompt = `Respond with valid JSON only (no markdown, no explanation):
 {"entities":[{"id":"snake_case_id","logicalName":"한글명","physicalName":"TABLE_NAME","attrs":[{"logicalName":"한글명","physicalName":"COL_NAME","type":"VARCHAR(100)","kind":"pk|fk|normal","notNull":true}]}],"relations":[{"from":"entity_id","to":"entity_id","name":"관계명","card":"1:N"}]}
 Rules: id must be snake_case English. physicalName must be UPPER_SNAKE_CASE. logicalName must be Korean. kind is exactly one of: pk, fk, normal. card is one of: 1:1, 1:N, N:M. Include at least one pk attr per entity. Generate realistic Korean ERD schema.`;
+  _aiAbortController = new AbortController();
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: _aiAbortController.signal,
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
@@ -463,9 +512,12 @@ Rules: id must be snake_case English. physicalName must be UPPER_SNAKE_CASE. log
     closeAISchemaModal();
     showToast(`AI 스키마 적용 완료 (${(parsed.entities||[]).length}개 엔티티)`);
   } catch (err) {
+    // 사용자가 모달을 닫아 요청이 취소된 경우는 오류로 표시하지 않음
+    if (err.name === 'AbortError') return;
     errorEl.textContent = '오류: ' + err.message;
     errorEl.style.display = 'block';
   } finally {
+    _aiAbortController = null;
     loadingEl.style.display = 'none'; genBtn.disabled = false;
   }
 }
@@ -495,6 +547,11 @@ function applyAISchema(parsed) {
   if (mode === 'replace') {
     ENTITIES.length = 0; RELATIONS.length = 0;
   }
+  // add 모드에서 기존 엔티티 아래에 배치 (collapsed 엔티티는 entityHeight가 HEADER_H만 반환하므로 펼친 높이 기준으로 baseY 계산)
+  const _expandedH = e => HEADER_H + (e.attrs ? e.attrs.length : 0) * ROW_H;
+  const addBaseY = (mode === 'add' && ENTITIES.length)
+    ? Math.max(...ENTITIES.map(e => e.y + _expandedH(e))) + 80 - 60
+    : 0;
   const existingIds = new Set(ENTITIES.map(e => e.id));
   const idRemap = {};
   entities.forEach(e => {
@@ -503,7 +560,7 @@ function applyAISchema(parsed) {
     while (existingIds.has(newId)) { newId = e.id + '_' + suffix++; }
     e.id = newId; existingIds.add(newId);
     idRemap[origId] = newId;
-    if (mode === 'add') { e.x += ENTITIES.length ? 20 : 0; e.y += ENTITIES.length ? 20 : 0; }
+    if (mode === 'add') e.y += addBaseY;
     ENTITIES.push(e);
   });
   relations.forEach(r => {
