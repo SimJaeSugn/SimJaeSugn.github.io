@@ -1,91 +1,106 @@
 ## 요청 요약
+리버스 엔지니어링 결과 적용 옵션에 세 번째 모드 "현재 다이어그램에 추가" 추가.
+기존 "새 다이어그램 생성"(new) / "현재 다이어그램 덮어쓰기"(overwrite)에 더해, 파싱된
+엔티티·관계선을 현재 활성 다이어그램의 기존 내용에 병합(append)하는 mode="append" 구현.
 
-다이어그램 간 엔티티 복사 개선 — 두 가지 작업:
-
-1. **다중 선택 다이어그램 간 복사**: 현재 `openCopyDiagModal(entity)`는 엔티티 1개만 받아 다른 다이어그램으로 복사한다. `selectedEntities`(Set)에 담긴 여러 엔티티를 한 번에 다른 다이어그램으로 복사할 수 있도록 변경.
-2. **다이어그램 전환 후 붙여넣기 유지**: Ctrl+C 후 다이어그램을 전환해도 `_clipboard`가 유지되어 Ctrl+V로 붙여넣기 가능해야 한다.
-
----
+핵심 과제:
+- 엔티티 id 충돌 회피 + 관계선 from/to id 재매핑
+- 위치 충돌 회피 (기존 엔티티 아래쪽으로 오프셋 배치)
+- VIEW DDL 메모도 함께 추가
 
 ## 탐색한 파일
-
-- `js/entities.js`: `_clipboard`(450행), `copyEntity`/`pasteEntity`(453~511행), 다이어그램 간 복사 로직 `openCopyDiagModal`/`closeCopyDiagModal`/`confirmCopyToDiag`(513~539행) 정의 위치.
-- `js/ui.js`: 컨텍스트 메뉴 액션 디스패치 — `copyToDiag` → `openCopyDiagModal(ctxTargetEntity)` 호출 지점(1550행). 유일한 진입점 확인.
-- `js/main.js`: 메인 키보드 단축키 — Ctrl+C(`copy`, 62행) → `copyEntity()`, Ctrl+V(`paste`, 63~84행) → `pasteEntity()`. `_clipboard` 초기화 코드 없음 확인.
-- `js/diagrams.js`: `switchDiagram`(33~42행), `confirmNewDiag`(19~31행). 전환 시 `flushCurrentState` + `loadDiagramIntoWorkspace`만 호출, `_clipboard` 미접근 확인.
-- `js/state.js`: `flushCurrentState`(58행), `loadDiagramIntoWorkspace`(70~80행). 전역 작업배열(ENTITIES/RELATIONS/SECTIONS/NOTES/NOTES_V2)만 교체, `_clipboard` 미접근 확인.
-- `index.html`: 컨텍스트 메뉴 항목 `#ctx-copy-diag`(279행), `copyDiagOverlay` 모달/`#copyDiagList`(493~500행) 마크업 확인.
-
-진입점 결론: **다이어그램 간 복사의 유일한 진입점은 우클릭 컨텍스트 메뉴 항목 `다이어그램으로 복사`(index.html 279행 → ui.js 1550행)**. 별도 툴바 버튼/커맨드 팔레트 항목 없음.
-
----
+- js/reverse_engineer.js: 리버스 엔지니어링 전체 구현 (모달 렌더링·실행·엔티티/관계/메모 빌드). 모든 변경이 이 파일에 집중됨.
+- index.html: 리버스엔지니어링 진입점은 메뉴 버튼 한 줄(line 118)뿐, 모달 마크업은 reverse_engineer.js가 동적 생성 → index.html 변경 불필요.
+- js/state.js: createEmptyDiagram / getActiveDiagram / loadDiagramIntoWorkspace / flushCurrentState / saveState 동작 확인. 엔티티/관계는 다이어그램 객체의 entities·relations 배열, relations는 entity.id를 from/to로 참조.
+- js/import.js (applyDDLImport line 361-394, applyAISchema line 464-501): "현재 다이어그램에 추가" 패턴의 기존 레퍼런스. id 충돌 처리(`while(existingIds.has(newId)) newId = e.id+'_'+suffix++`)와 baseY 오프셋 배치 패턴 확인.
+- js/canvas.js (entityHeight line 56): 엔티티 높이 계산 함수 — append 시 baseY 산출에 활용.
+- js/entities.js: entity id 생성 패턴(`'entity_'+Date.now().toString(36)`) 확인.
 
 ## 영향 분석
-
-- **단축키 변경**: 없음.
-  - 작업(1) 다이어그램 간 복사는 컨텍스트 메뉴 전용으로 단축키 없음.
-  - 작업(2)는 기존 Ctrl+C/Ctrl+V 동작 보강이며 키 조합 추가 없음. 단, index.html `#shortcutsTableBody`에 "Ctrl+C/V로 다이어그램 간 복사·붙여넣기" 설명을 보강할지는 **확인 필요**(integration-checker: 단축키 표 동기화 규칙 검토). 신규 키가 없으므로 표 변경은 선택 사항.
-- **새 localStorage 키**: 없음. `_clipboard`는 의도적으로 in-memory(세션 한정)이며 영속화 대상 아님. STORAGE_KEY 스냅샷 구조 변경 없음.
-- **새 데이터 배열/상태 변수**: 없음. 기존 `_clipboard`, `_copyDiagEntity` 재사용. 작업(1)에서 `_copyDiagEntity`(단일) → `_copyDiagEntities`(배열)로 의미 확장 권장.
-- **export/import 영향**: 없음. `_clipboard`는 백업/내보내기 대상이 아니며 `flushCurrentState`/`saveState`에 포함되지 않음.
-- **기타 파급 효과**:
-  - 작업(2) **핵심 발견**: `_clipboard`는 이미 다이어그램 전환 시 초기화되지 않는다(switchDiagram/confirmNewDiag/loadDiagramIntoWorkspace 어디서도 미접근). 따라서 "전환 후 Ctrl+V 붙여넣기"는 **현재 코드에서도 대부분 동작**한다. `pasteEntity`는 전역 `ENTITIES`(전환 후 활성 다이어그램의 배열)에 push하므로 대상도 올바르다.
-    - 단, `pasteCount`(붙여넣기 누적 오프셋)는 다이어그램 전환과 무관하게 유지되어, 다른 다이어그램에서 첫 붙여넣기 시 오프셋이 과도하게 커질 수 있음 → **확인 필요/개선 포인트**.
-    - 따라서 작업(2)는 "신규 구현"보다 **동작 검증 + 미세 보정**(전환 시 `pasteCount` 리셋) 성격. verify 단계에서 실제 전환 후 Ctrl+V 동작을 반드시 확인.
-  - `confirmCopyToDiag`의 id 충돌 처리(`copy.id += '_copy'`)는 다중 복사 시 동일 id가 여러 개일 경우 충돌 가능 → 다중 처리 시 고유 id 재발급 방식으로 보강 필요(아래 구현 계획 참조).
-
----
+- 단축키 변경: 없음 — 모달 내 라디오 옵션만 추가, 단축키 미사용.
+- 새 localStorage 키: 없음 — 기존 saveState() 경로(STORAGE_KEY) 그대로 사용. 데이터 구조 변경 없음.
+- 새 데이터 배열/상태 변수: 없음 — 엔티티/관계/notesV2 구조 동일, 기존 활성 다이어그램 배열에 push만 함.
+- export/import 영향: 없음 — 생성되는 엔티티/관계/메모 객체 형태가 기존 new/overwrite 모드와 100% 동일하므로 export/import는 무영향.
+- 협업(webrtc/broadcast) 영향: 확인 필요 — saveState() 후 다른 협업 동기화 트리거가 별도로 필요한지. 단, 기존 overwrite 모드도 saveState()만 호출하고 별도 broadcast를 하지 않으므로 동일 패턴 따르면 추가 영향 없음(현 구현 일관성 유지).
+- 핵심 주의점(integration-checker용): 관계선 from/to는 _buildEntitiesFromSchema가 생성한 entityIdMap 기반 id를 가리킨다. append 시 id 충돌로 entity.id를 변경하면 relations·notesV2의 참조도 함께 갱신해야 한다. 단, 현재 entity id는 `Date.now()+random+idx`로 생성되어 기존 엔티티와 충돌 가능성이 사실상 0이지만, 안전을 위해 충돌 검사·재매핑 로직을 포함한다. → 확인 필요(재매핑 누락 시 관계선 끊김).
 
 ## 구현 계획
 
-### 파일: js/entities.js — 작업(1) 다이어그램 간 다중 복사
+### 파일: js/reverse_engineer.js
 
-- **위치**: `openCopyDiagModal`(515행), `confirmCopyToDiag`(528행), 모듈 변수 `_copyDiagEntity`(514행).
-- **변경 내용**:
-  1. `let _copyDiagEntity = null;` → `let _copyDiagEntities = [];`로 교체(배열로 보관).
-  2. `openCopyDiagModal(entity)` 시그니처를 인자 없이 또는 선택적 인자로 변경하여 **선택 집합 우선** 로직 적용. `copyEntity`(455~457행)의 우선순위 패턴을 그대로 따른다:
+#### 1) 모달에 세 번째 라디오 옵션 추가
+- 위치: `_renderReverseEngineerModal()` 내부, 적용 방식 라디오 그룹 (line 90-100 div).
+- 변경 내용: "현재 다이어그램 덮어쓰기" 라디오 다음에 세 번째 라디오 추가.
+  ```html
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+    <input type="radio" name="reMode" value="append" id="reModeAppend">
+    <span style="font-size:13px">현재 다이어그램에 추가</span>
+  </label>
+  ```
+  세 옵션이 한 줄에 좁으면 flex-wrap 또는 gap 조정 검토(확인 필요 — 모달 width 480px에 3개 라디오 배치 시 줄바꿈 여부).
+- 이유: 사용자가 append 모드를 선택할 UI 진입점.
+- 참고: 기존 라디오 change 핸들러(line 134-139)는 value==='new'일 때만 reNewNameRow를 표시하므로 append 선택 시 자동으로 이름 행이 숨겨짐 → 별도 수정 불필요.
+
+#### 2) _runReverseEngineerStep2()에 append 분기 추가
+- 위치: line 238-275, `const mode = ...` 이후의 if(new)/else(overwrite) 분기.
+- 변경 내용: `else if (mode === 'append')` 분기를 overwrite 분기 앞 또는 사이에 추가. 로직:
+  1. `const d = getActiveDiagram();`
+  2. id 충돌 회피 + 재매핑:
+     ```js
+     const existingIds = new Set((d.entities || []).map(e => e.id));
+     const idRemap = {};               // oldId → newId
+     entities.forEach(e => {
+       let newId = e.id, suffix = 2;
+       while (existingIds.has(newId)) { newId = e.id + '_' + suffix++; }
+       if (newId !== e.id) idRemap[e.id] = newId;
+       e.id = newId;
+       existingIds.add(newId);
+     });
+     // 관계선 from/to 재매핑
+     relations.forEach(r => {
+       if (idRemap[r.from]) r.from = idRemap[r.from];
+       if (idRemap[r.to])   r.to   = idRemap[r.to];
+     });
      ```
-     const entIds = selectedEntities.size > 0
-       ? [...selectedEntities]
-       : (entity ? [entity.id] : (selectedEntity ? [selectedEntity.id] : []));
-     _copyDiagEntities = entIds.map(id => ENTITIES.find(e => e.id === id)).filter(Boolean);
-     if (!_copyDiagEntities.length) { showToast('복사할 엔티티가 없습니다.'); return; }
+     (viewNotes는 entity.id를 참조하지 않으므로 재매핑 불필요 — _buildViewNotes 확인 결과 id 미참조.)
+  3. 위치 충돌 회피 — 기존 엔티티 최하단 아래로 전체 오프셋:
+     ```js
+     const baseY = (d.entities && d.entities.length)
+       ? Math.max(...d.entities.map(e => e.y + entityHeight(e))) + 80
+       : 0;
+     if (baseY) entities.forEach(e => { e.y += baseY; });
      ```
-     (ctxTargetEntity가 다중 선택에 포함되지 않은 단일 우클릭 케이스도 보존하기 위해 entity 인자는 fallback으로 유지.)
-  3. 모달 헤더/리스트의 엔티티 개수 표기를 다중 기준으로 갱신(예: `${_copyDiagEntities.length}개 엔티티를 복사`).
-  4. `confirmCopyToDiag(diagId)`를 다중 처리로 변경:
-     - `_copyDiagEntities`를 순회하며 deep copy, `attrs`의 `ref:null` 처리, `x/y += 30` 오프셋 적용.
-     - **id 충돌 회피**: 기존 `_copy` 접미사 대신 `pasteEntity` 패턴(`'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5)`)으로 신규 id 재발급 — 다중 복사 시 중복 방지. (관계선은 미복사이므로 ref 정합성 영향 없음.)
-     - `target.entities.push(copy)`를 각 엔티티에 대해 수행.
-     - 완료 토스트를 다중 기준으로: `${n}개 엔티티 → '${target.name}' 복사 완료`.
-     - `closeCopyDiagModal(); saveState();`는 기존대로 유지.
-- **이유**: `copyEntity`/`pasteEntity`의 다중 선택 처리 패턴과 일관성 유지. 신규 id 재발급로 다중 복사 시 충돌 제거.
+     import.js의 baseY 패턴 재사용. _buildEntitiesFromSchema가 이미 격자(OFFSET_Y=60 기준) 배치를 해 두므로, 전체 y에 baseY를 더해 기존 다이어그램 아래로 통째로 내림. (개별 좌표 겹침 대신 블록 단위 오프셋 — 신규 엔티티끼리의 격자 레이아웃 보존)
+     viewNotes의 y도 동일 baseY만큼 이동 권장:
+     ```js
+     if (baseY) viewNotes.forEach(n => { n.y += baseY; });
+     ```
+     주의: entityHeight(e)는 attrs 기반 계산 함수(canvas.js). reverse_engineer가 만드는 엔티티에 attrs가 있으므로 호출 가능. 단 collapsed 상태 등 의존성은 확인 필요 — 기존 import.js가 동일 호출을 쓰므로 안전.
+  4. 병합:
+     ```js
+     d.entities = [...(d.entities || []), ...entities];
+     // 관계선 중복 방지(import.js 패턴)
+     const merged = [...(d.relations || [])];
+     relations.forEach(r => {
+       if (!merged.find(x => x.from === r.from && x.to === r.to)) merged.push(r);
+     });
+     d.relations = merged;
+     // VIEW 메모 추가 (덮어쓰기와 달리 기존 메모 보존)
+     d.notesV2 = [...(d.notesV2 || []), ...viewNotes];
+     ```
+  5. 워크스페이스 반영(overwrite 분기와 동일):
+     ```js
+     loadDiagramIntoWorkspace(d);
+     render();
+     saveState();
+     ```
+- 이유: 파싱 결과를 기존 다이어그램에 비파괴적으로 병합. id/위치 충돌을 모두 처리.
 
-### 파일: js/ui.js — 작업(1) 컨텍스트 메뉴 호출부
+#### 3) (선택) 토스트 메시지 mode별 문구
+- 위치: line 278 showToast 호출.
+- 변경 내용: append 시 "ERD 추가 완료 (...)" 등 문구 분기 — 선택 사항, 기능엔 영향 없음.
 
-- **위치**: 1550행 `if (action === 'copyToDiag') { if (ctxTargetEntity) openCopyDiagModal(ctxTargetEntity); }`.
-- **변경 내용**: 그대로 `openCopyDiagModal(ctxTargetEntity)` 호출 유지 가능(엔티티 인자는 fallback). 다중 선택 상태에서 우클릭 시 selectedEntities가 우선되도록 entities.js 로직이 처리하므로 호출부 수정 불필요. (선택) 다중 선택 시 메뉴 라벨을 "N개 다이어그램으로 복사"로 동적 표기하려면 ui.js의 컨텍스트 메뉴 표시 시점에서 라벨 갱신 추가 — 선택 사항.
-- **이유**: 진입점은 단일하며 호출 시그니처 호환을 유지해 회귀 최소화.
-
-### 파일: index.html — 작업(1) 모달 텍스트(선택)
-
-- **위치**: 495~497행 `copyDiagOverlay` 모달 제목/설명.
-- **변경 내용**: 설명 문구를 다중 복사 의미로 다듬기(예: "선택한 엔티티를 복사할 대상 다이어그램을 선택하세요."). 기능 동작에는 영향 없는 문구 개선.
-- **이유**: 다중 복사 UX 명확화.
-
-### 파일: js/diagrams.js — 작업(2) 전환 시 클립보드 유지 보정
-
-- **위치**: `switchDiagram`(33~42행), `confirmNewDiag`(19~31행).
-- **변경 내용**:
-  - `_clipboard` 유지는 이미 보장됨(코드 추가 불필요). **추가 초기화 코드를 넣지 말 것**이 핵심(회귀 방지).
-  - **보정**: 다이어그램 전환 시 `pasteEntity`의 누적 오프셋이 새 다이어그램에서 과도해지지 않도록, `switchDiagram` 내 `loadDiagramIntoWorkspace` 호출 직후 `pasteCount = 0;`으로 리셋. (단, `_clipboard`는 절대 건드리지 않음.)
-    - 주의: `pasteCount`는 entities.js의 모듈 스코프 변수. diagrams.js에서 직접 접근 가능 여부(스크립트 로드 순서/전역 스코프)를 **확인 필요**. 동일 전역(window) 스코프라면 직접 대입 가능. 불가 시 entities.js에 `function resetPasteCount(){ pasteCount = 0; }`를 추가하고 switchDiagram에서 호출.
-- **이유**: 클립보드는 세션 유지(요구사항), 오프셋만 다이어그램 경계에서 초기화하여 붙여넣기 위치가 자연스럽게 유지.
-
-### 검증 포인트 (verify / integration-checker 전달)
-
-- 다중 엔티티 선택 → 우클릭 → 다이어그램으로 복사 → 대상 다이어그램에 모든 선택 엔티티가 복제되는지(개수, id 중복 없음).
-- 단일 우클릭(선택 없음)도 기존처럼 동작하는지(회귀).
-- Ctrl+C → 다이어그램 전환 → Ctrl+V 시 활성(전환된) 다이어그램에 붙여넣어지는지, `_clipboard`가 유지되는지.
-- `pasteCount` 접근 스코프(전역 vs 모듈) — **확인 필요**.
-- index.html `#shortcutsTableBody` 단축키 표: 신규 키 없음 → 표 변경 불필요하나, 동기화 규칙상 검토 대상.
+## 구현 시 implementer 주의사항
+- overwrite 분기는 `posMap`으로 physicalName 기준 기존 위치를 보존하는데, append는 그와 달리 "기존+신규 공존"이므로 위치 보존이 아니라 신규 블록을 아래로 내리는 방식이 맞다(같은 테이블이 중복 생성될 수 있음은 의도된 동작 — 사용자가 "추가"를 선택했으므로). 중복 테이블 dedup은 이번 범위에서 제외(요청에 없음).
+- relations 재매핑은 entityIdMap이 아니라 entities 배열의 실제 e.id 변경을 추적해야 한다(_buildRelationsFromFks가 이미 entityIdMap 기반으로 from/to를 채워 두므로, 그 값과 idRemap을 매칭). → 위 코드의 idRemap 방식이 정확.
+- 현재 코드 기준 id 충돌 가능성은 극히 낮지만(타임스탬프+random), 동일 세션 내 빠른 연속 실행 시 Date.now() 동일 가능 → 충돌 검사 유지 권장.

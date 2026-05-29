@@ -1,45 +1,23 @@
 ## 단축키 동기화
 - 상태: N/A
-- 상세: 신규 단축키 없음 (모달 내 라디오 옵션 변경만 해당)
+- 상세: 새 단축키 추가 없음. 기존 Ctrl+C(copy)/Ctrl+V(paste) 동작만 내부 수정. main.js 키 바인딩·index.html #shortcutsTableBody·shortcuts.js 변경 불필요.
 
 ## 백업 통합 (export/import/ui)
-- export.js: N/A
-- import.js: N/A
-- ui.js (_BK_GROUPS): N/A
-- 상세: 새 localStorage 키 없음. 엔티티/관계/notesV2 구조 동일하며 기존 saveState() 경로 그대로 사용.
+- export.js: N/A — 신규 키/배열 없음. 복사된 관계선은 RELATIONS(기존 배열)에 push되며, flushCurrentState()가 RELATIONS를 diagram.relations로 직렬화 → export 자동 포함(export.js:321에서 RELATIONS 순회 확인).
+- import.js: N/A — diagram.relations(import.js:133,193,212)로 이미 처리. 신규 처리 불필요.
+- ui.js (_BK_GROUPS): N/A — 신규 백업 그룹 없음.
+- 상세: _clipboard는 메모리 전용 변수로 localStorage에 저장되지 않음. 영속 데이터는 기존 RELATIONS 배열뿐이며 이미 백업 파이프라인에 포함됨.
 
 ## 상태 저장/로드
 - 상태: N/A
-- 상세: 새 상태 변수 없음.
+- 상세: state.js에 새 전역 변수 추가 없음. _clipboard/pasteCount는 entities.js 내 기존 모듈 변수. saveState()는 pasteEntity() 말미에서 기존대로 호출됨.
 
 ## 렌더링 연동
-- 상태: N/A
-- 상세: 캔버스에 신규 시각 요소 없음. append 분기에서 loadDiagramIntoWorkspace(d) → render() 순서로 기존 render 경로 그대로 호출.
-
-## 코드 정확성 검사
-
-### a) 모달 라디오 옵션 (value="append")
 - 상태: OK
-- 상세: reverse_engineer.js line 99-102에 value="append" id="reModeAppend" 라디오가 overwrite 다음에 정상 추가됨.
+- 상세: 새 시각 요소 없음. 붙여넣은 관계선은 RELATIONS에 추가되어 drawRelations()(canvas.js)가 기존대로 렌더링. pasteEntity()에서 render() 호출 유지됨.
 
-### b) append/overwrite 분기 구조
-- 상태: OK
-- 상세: line 260 `else if (mode === 'append')`, line 295 `else`(overwrite fallback). overwrite가 기본 else로 유지됨.
-
-### c) relations from/to id 재매핑
-- 상태: OK
-- 상세: line 272-275에서 idRemap 기반으로 r.from, r.to를 갱신. 관계선 끊김 없음.
-
-### d) baseY 계산 기준 (기존 엔티티 d.entities)
-- 상태: OK
-- 상세: line 277-279에서 `d.entities.map(e => e.y + entityHeight(e))`로 append 전 기존 엔티티 기준 계산. 신규 entities 배열 혼용 없음.
-
-### e) viewNotes Y 오프셋 적용
-- 상태: OK
-- 상세: line 282 `viewNotes.forEach(n => { n.y += baseY; })` 존재. VIEW DDL 메모도 기존 다이어그램 아래로 내려감.
-
-### f) 관계선 중복 방지
-- 상태: OK
-- 상세: line 287-290에서 from+to 기준 find 후 미존재 시만 push. 중복 관계선 방지됨.
+## 검증 메모
+- toWorld/_qbLeftOff/entityHeight/panelOpen/PANEL_W 모두 전역 스코프이며 entities.js에서 호출 가능. typeof 가드로 방어 처리됨.
+- 관계선 영속 waypoints 미존재 확인 → 좌표 보정 불필요(analyst 확인 필요 항목 해소).
 
 ## 최종 상태: PASS
