@@ -87,6 +87,29 @@ function syncToolDropdownLabels() {
 function loadToolboxState() {}
 function toggleToolbox() {}
 
+// ── 툴바 드롭다운 ─────────────────────────────────────────────
+let _tbOpenId = null;
+function tbToggle(e, id) {
+  e.stopPropagation();
+  const menu = document.getElementById(id);
+  if (!menu) return;
+  if (_tbOpenId && _tbOpenId !== id) tbClose(_tbOpenId);
+  const isOpen = menu.classList.contains('open');
+  if (isOpen) { tbClose(id); return; }
+  const btn = e.currentTarget;
+  const r = btn.getBoundingClientRect();
+  menu.style.top  = r.bottom + 'px';
+  menu.style.left = r.left   + 'px';
+  menu.classList.add('open');
+  _tbOpenId = id;
+}
+function tbClose(id) {
+  const menu = document.getElementById(id);
+  if (menu) menu.classList.remove('open');
+  if (_tbOpenId === id) _tbOpenId = null;
+}
+document.addEventListener('click', () => { if (_tbOpenId) tbClose(_tbOpenId); });
+
 // ── 빠른 실행 도구 모음 ───────────────────────────────────────
 let _quickbarOpen = true;
 let _qbLarge = false;
