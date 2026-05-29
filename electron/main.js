@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -38,7 +38,11 @@ function startSidecar() {
 
 function stopSidecar() {
   if (sidecarProcess && !sidecarProcess.killed) {
-    sidecarProcess.kill('SIGTERM');
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/F', '/T', '/PID', String(sidecarProcess.pid)], { stdio: 'ignore' });
+    } else {
+      sidecarProcess.kill('SIGTERM');
+    }
     sidecarProcess = null;
   }
 }
