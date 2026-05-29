@@ -1,78 +1,107 @@
 ## 요청 요약
-
-**요청 1 — 컨텍스트 메뉴 포워드 엔지니어링의 다중 선택 지원**
-우클릭 컨텍스트 메뉴에서 "포워드 엔지니어링" 선택 시, 현재는 우클릭 대상(`ctxTargetEntity`) 단일 엔티티만 처리한다. `selectedEntities`(Set, 엔티티 ID 보관)에 2개 이상 선택돼 있으면 선택 집합 전체를 포워드 엔지니어링 대상으로 넘긴다. 우선순위: `selectedEntities.size > 1` 이면 선택 집합, 아니면 기존대로 `ctxTargetEntity`.
-
-**요청 2 — SQL 미리보기 창의 이전 값 유지 버그 수정**
-포워드 엔지니어링 모달을 다시 열 때, 이전에 생성한 SQL이 `#fePreviewSql`에 남아 보이는 경우가 있다. 모달 재오픈 시 미리보기 영역을 항상 초기화/숨김 처리하여, 새로 "미리보기" 또는 "실행"을 누를 때만 최신 SQL이 보이도록 한다.
+DDL 생성 모달(`ddlOverlay`)을 좌우 2단 레이아웃으로 재구성한다.
+- 좌측 패널: 엔티티 목록 (기본 전체 체크). 항상 표시.
+- 우측 패널: Dialect 선택, FK/INDEX/COMMENT 토글, DDL 미리보기(`ddlContent`), 복사 버튼.
+- 모달 너비 680px → 약 960px.
+- 전체/선택 라디오 버튼 제거. 체크된 엔티티만 DDL에 반영.
 
 ## 탐색한 파일
-- `js/forward_engineer.js`: 포워드 엔지니어링 전체 구현. `openForwardEngineerForEntity()`, `_feShowStep2(restrictEntityId)`, `_feResetToStep1()`, `_fePreview()` 등.
-- `js/ui.js` (1531~1574 `ctxFn`): 컨텍스트 메뉴 액션 디스패치. line 1553에서 `forwardEng` → `openForwardEngineerForEntity(ctxTargetEntity.id)` 호출.
-- `js/canvas.js` (line 29, 2450): `selectedEntities = new Set()` 전역 선언, contextmenu 핸들러가 `ctxTargetEntity` 세팅.
-- `js/state.js`: `selectedEntities` 미정의(상태는 canvas.js에 위치). → state.js 변경 불필요.
+- `index.html` (478~504행): `ddlOverlay` 모달 HTML 전체 구조 파악.
+- `js/export.js` (387~437행): `openDDLModal`, `closeDDLModal`, `renderDDLEntityList`, `onDDLEntityModeChange` 함수 파악.
+- `js/export.js` (698~711행): `generateDDL` 함수 — 엔티티 필터 로직 파악.
+- `js/export.js` (61행): `_ddlEntityIds` 전역 Set 선언 위치 확인.
 
 ## 영향 분석
-- **단축키 변경**: 없음 — 컨텍스트 메뉴 동작만 변경. `index.html`의 `#shortcutsTableBody` 영향 없음.
-- **새 localStorage 키**: 없음 — 영구 저장 데이터 구조 변경 없음.
-- **새 데이터 배열/상태 변수**: 없음 — 기존 전역 `selectedEntities`(Set), `ENTITIES`, 모듈 스코프 `_fe*` 상태 재사용.
-- **export/import 파급**: 없음 — 백업 직렬화 대상(엔티티/관계/다이어그램) 구조 미변경.
-- **기타 파급 효과**:
-  - 요청 1은 `_feShowStep2`가 받는 "대상 엔티티 한정" 인자를 단일 ID → 복수 ID 집합도 받도록 일반화해야 함. 기존 단일 진입(`openForwardEngineerForEntity`)과 호환 유지 필요.
-  - `toggleForwardEngineerAll` 전체선택 버튼은 단일 제한 모드에서 숨겨져 있음(line 315). 다중 선택 모드에서는 표시해도 무방하나, 현재 "제한된 목록 내 전체 선택"이 자연스러우므로 버튼 표시 정책 결정 필요 — **구현 시 다중 모드에서는 버튼 표시 권장**(목록이 2개 이상이므로 의미 있음).
+- **단축키 변경**: 없음.
+- **새 localStorage 키**: 없음.
+- **새 데이터 배열/상태 변수**: 없음. 기존 `_ddlEntityIds`(Set) 그대로 사용.
+- **유지 ID**: `#ddlEntityList`, `#ddlEntityListWrap`, `#ddlOptFK`, `#ddlOptIndex`, `#ddlOptComment`, `#ddlContent`, `#ddlDialect`, `#ddlOverlay` 모두 유지.
+- **제거 요소**: `input[name="ddlEntMode"]` 라디오 2개, `onDDLEntityModeChange()` 함수.
+- **핵심 파급 효과 (확인 필요 → 반드시 반영)**: `generateDDL`(705~707행)은 현재 `mode === 'sel'`일 때만 `_ddlEntityIds`로 필터한다. 라디오를 제거하면 `mode`가 항상 `'all'`로 떨어져 체크박스가 무시된다. **`generateDDL`을 항상 `_ddlEntityIds` 기준으로 필터하도록 수정해야 한다.** (요청서엔 export.js 3개 함수만 언급되었으나 generateDDL 수정이 필수다.)
+- `_ddlEntityIds` 초기화는 `openDDLModal`에서 `new Set(ENTITIES.map(e=>e.id))`로 이미 전체 체크 상태를 만든다 → 유지.
 
 ## 구현 계획
 
-### 파일: js/forward_engineer.js
+### 파일: index.html
+- **위치**: 479~503행 (`ddlOverlay` 내부 `.modal` div 전체).
+- **변경 내용**: 모달 폭을 960px로 변경하고 내부를 2단 flex로 재구성. 라디오 제거. 좌측 패널에 `ddlEntityListWrap`/`ddlEntityList` 이동(인라인 `display:none` 제거하여 항상 표시), 우측 패널에 dialect/옵션/미리보기/복사 배치. 교체안:
 
-**1) `_feShowStep2(restrictEntityId = null)` 시그니처를 복수 대상 지원으로 일반화**
-- 위치: line 254 `async function _feShowStep2(restrictEntityId = null)` 및 내부 line 284~286, 315.
-- 변경 내용:
-  - 인자를 `restrictEntityIds = null`(배열 또는 null)로 받도록 변경하되, 하위호환을 위해 단일 문자열도 허용: 함수 진입부에서 `const restrictIds = restrictEntityId == null ? null : (Array.isArray(restrictEntityId) ? restrictEntityId : [restrictEntityId]);` 형태로 정규화.
-  - 엔티티 필터: `const entsToRender = restrictIds ? ENTITIES.filter(ent => restrictIds.includes(ent.id)) : ENTITIES;` (기존 line 284~286 대체).
-  - 전체선택 버튼 가시성(line 315): 제한 대상이 2개 이상이면 표시, 1개면 숨김. 예: `feSelectAllBtn.style.display = (restrictIds && restrictIds.length <= 1) ? 'none' : '';`
-- 이유: 단일/복수 제한 목록을 동일 경로로 처리해 코드 중복 방지, 기존 단일 진입 호환 유지.
+```html
+<div class="modal-overlay" id="ddlOverlay" onmousedown="overlayClose(event,'ddlOverlay')">
+  <div class="modal" style="width:960px;max-height:80vh" onmousedown.stop>
+    <h3>DDL 생성 (물리 모델 기준)</h3>
+    <div style="display:flex;gap:16px;align-items:stretch">
+      <!-- 좌측: 엔티티 목록 -->
+      <div id="ddlEntityListWrap" style="width:240px;flex-shrink:0;display:flex;flex-direction:column">
+        <div style="font-size:13px;color:#cdd6f4;margin-bottom:8px">엔티티 (체크된 항목만 생성)</div>
+        <div id="ddlEntityList" style="display:flex;flex-direction:column;gap:5px;flex:1;overflow:auto;padding:8px;background:#181825;border:1px solid #313244;border-radius:8px;max-height:60vh"></div>
+      </div>
+      <!-- 우측: 옵션 + 미리보기 -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px">
+          <select class="form-select" id="ddlDialect" style="width:160px" onchange="generateDDL(this.value)">
+            <option value="mysql">MySQL / MariaDB</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="oracle">Oracle</option>
+            <option value="mssql">SQL Server</option>
+          </select>
+          <button class="btn" onclick="copyDDL()">&#x1F4CB; 복사</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:13px;color:#cdd6f4">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptFK" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> FK 포함</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptIndex" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> INDEX 포함</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptComment" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> COMMENT 포함</label>
+        </div>
+        <pre id="ddlContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:14px;color:#a6e3a1;font-family:Consolas,monospace;font-size:12px;overflow:auto;flex:1;max-height:60vh;white-space:pre;line-height:1.6"></pre>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeDDLModal()">닫기</button></div>
+  </div>
+</div>
+```
+- **이유**: 2단 flex로 좌측 목록 고정폭(240px), 우측 가변폭. `ddlEntityListWrap`의 `display:none` 제거로 항상 표시. 라디오/구분선 제거.
 
-**2) `openForwardEngineerForEntity(entityId)`를 복수 대상도 받도록 확장**
-- 위치: line 67 `async function openForwardEngineerForEntity(entityId)` ~ line 116.
-- 변경 내용:
-  - 시그니처를 `openForwardEngineerForEntity(entityIdOrIds)`로 하고, 진입부에서 배열 정규화: `const ids = Array.isArray(entityIdOrIds) ? entityIdOrIds : [entityIdOrIds];` 후 `const targets = ids.map(id => ENTITIES.find(e => e.id === id)).filter(Boolean); if (!targets.length) return;` (기존 line 68~69 단일 `target` 가드 대체).
-  - 마지막 호출(line 115)을 `await _feShowStep2(targets.map(t => t.id));`로 변경.
-- 이유: 컨텍스트 메뉴에서 단일/복수 모두 이 함수로 진입하도록 단일화.
-- **확인 필요**: line 78~98의 `feDbCfgNotice` 오버레이 생성 블록은 `openForwardEngineerModal`(line 29~49)과 완전 중복임. reviewer가 이전 run에서 지적(`_workspace/04_review.md` 항목 1). 이번 변경 범위 밖이나, 가능하면 헬퍼(`_feEnsureMwReady()`)로 추출 권장 — 미적용 시 중복 유지.
+### 파일: js/export.js
+#### (1) openDDLModal — 392~395행 제거
+- **위치**: `openDDLModal` 함수 본문.
+- **변경 내용**: 라디오 초기화 및 wrap 숨김 코드 제거 후 항상 목록 렌더하도록 변경.
+```js
+function openDDLModal() {
+  ['ddlOptFK', 'ddlOptIndex', 'ddlOptComment'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = true;
+  });
+  _ddlEntityIds = new Set(ENTITIES.map(e => e.id)); // 기본 전체 체크
+  renderDDLEntityList();                            // 좌측 패널 항상 렌더
+  generateDDL(document.getElementById('ddlDialect').value);
+  document.getElementById('ddlOverlay').classList.add('active');
+}
+```
+- **이유**: 라디오(`allRadio`)와 `wrap.style.display='none'` 제거. 목록을 항상 렌더.
 
-**3) SQL 미리보기 초기화 (요청 2)**
-- 위치: `_feResetToStep1()` (line 224~241). 이 함수는 신규 오픈(`_feRenderStep1Modal` 끝, line 221)과 재오픈(line 128)에서 모두 호출됨 → 미리보기 초기화의 단일 지점으로 적합.
-- 변경 내용: `_feResetToStep1()` 내부에 아래 초기화 추가.
-  - `const previewWrap = document.getElementById('fePreviewWrap'); if (previewWrap) previewWrap.style.display = 'none';`
-  - `const previewSql = document.getElementById('fePreviewSql'); if (previewSql) previewSql.textContent = '';`
-  - (선택) 진행률 바도 함께 초기화 권장: `feProgress` display 'none', `feProgressBar` width '0%'. 이전 실행 후 재오픈 시 잔상 방지.
-- 이유: 모달을 다시 열 때(`_feRenderStep1Modal`이 기존 오버레이를 재사용하는 경로 포함) 항상 미리보기를 비우고 숨겨, 이전 SQL 잔상 제거. `_fePreview()`/`_feRun()` 시점에만 `fePreviewWrap`을 다시 표시하고 `textContent`를 새로 채우므로 항상 최신값 보장.
-- **확인 필요**: `_feShowStep2`도 진입 시 미리보기 영역을 명시적으로 숨기는지 점검. 현재는 step2 진입 시 `fePreviewWrap`을 건드리지 않음 — `_feResetToStep1`이 항상 step2보다 먼저 호출되므로(오픈 경로상) 충분하나, 방어적으로 `_feShowStep2` 진입부에서도 `fePreviewWrap` 숨김을 추가해도 좋음(integration-checker 판단).
+#### (2) onDDLEntityModeChange — 425~437행 전체 삭제
+- **위치**: 함수 정의 + index.html 내 호출부(라디오 onchange)는 위 HTML 교체로 이미 제거됨.
+- **변경 내용**: `onDDLEntityModeChange` 함수 완전 삭제.
+- **이유**: 모드 개념 제거. 호출처 없음.
 
-### 파일: js/ui.js
+#### (3) renderDDLEntityList — 403~423행 (수정 최소)
+- **위치**: `renderDDLEntityList` 함수.
+- **변경 내용**: 로직 변경 불필요. 기존 그대로 동작(체크박스 toggle → `_ddlEntityIds` 갱신 → `generateDDL()`). 함수 내부는 유지.
+- **이유**: ID 유지 방침에 따라 그대로 재사용.
 
-**4) `ctxFn`의 `forwardEng` 분기에서 다중 선택 우선 처리 (요청 1)**
-- 위치: line 1553.
-- 변경 전: `if (action === 'forwardEng') { if (ctxTargetEntity) openForwardEngineerForEntity(ctxTargetEntity.id); return; }`
-- 변경 후(권장 로직):
-  ```js
-  if (action === 'forwardEng') {
-    if (typeof selectedEntities !== 'undefined' && selectedEntities.size > 1) {
-      openForwardEngineerForEntity([...selectedEntities]);
-    } else if (ctxTargetEntity) {
-      openForwardEngineerForEntity(ctxTargetEntity.id);
-    }
-    return;
-  }
-  ```
-- 이유: `selectedEntities`는 canvas.js 전역이므로 ui.js에서 직접 접근 가능. `size > 1` 이면 선택 집합(ID 배열) 전달, 아니면 기존 단일 동작 유지. `typeof` 가드는 다른 모듈(ui.js line 17에서도 동일 패턴 사용)과 일관.
-- **확인 필요**: 우클릭 시 canvas.js의 contextmenu 핸들러(line 2450)는 `ctxTargetEntity`만 세팅하고 `selectedEntities`를 변경하지 않음. 즉 다중 선택 상태에서 선택된 엔티티 중 하나를 우클릭하면 `selectedEntities`가 유지됨 → 의도대로 동작. 단, 선택되지 않은 다른 엔티티를 우클릭한 경우에도 `selectedEntities.size > 1`이면 선택 집합이 우선됨(우클릭 대상이 집합에 없을 수 있음). 요청 우선순위 정의("size>1이면 선택집합")에 부합하므로 그대로 진행하되, reviewer가 UX 관점에서 재확인 권장.
+#### (4) generateDDL — 705~707행 (필수 수정)
+- **위치**: `generateDDL` 함수 내 mode 분기.
+- **변경 내용**: mode 판별 제거하고 항상 `_ddlEntityIds`로 필터.
+```js
+// 기존
+const mode = document.querySelector('input[name="ddlEntMode"]:checked')?.value || 'all';
+let target = ENTITIES;
+if (mode === 'sel') target = ENTITIES.filter(e => _ddlEntityIds.has(e.id));
+// 변경
+let target = ENTITIES.filter(e => _ddlEntityIds.has(e.id));
+```
+- **이유**: 라디오 제거 후 체크된 엔티티만 반영하려면 항상 `_ddlEntityIds` 필터가 필요. 이 수정 없으면 좌측 체크박스가 DDL에 반영되지 않음.
 
-### 파일: js/state.js
-- 변경 없음. `selectedEntities`는 canvas.js 소유.
-
-## 구현 순서 요약
-1. `js/forward_engineer.js`: `_feShowStep2` 인자 일반화(배열/단일) → `openForwardEngineerForEntity` 복수 대상 확장 → `_feResetToStep1`에 미리보기/진행률 초기화 추가.
-2. `js/ui.js`: `ctxFn`의 `forwardEng` 분기에 `selectedEntities.size > 1` 우선 분기 추가.
-3. 통합 점검: 단축키/localStorage/export 영향 없음 확인. 단일 진입 호환성, 미리보기 초기화 단일 지점 확인.
+## integration-checker 주의 사항
+- `generateDDL`의 `_ddlEntityIds` 필터 전환이 누락되면 체크박스가 무동작한다 → 반드시 확인.
+- `onDDLEntityModeChange` 호출부가 HTML 외 다른 곳에 없는지 재확인 (현재 grep상 index.html 라디오 onchange만 존재 → HTML 교체로 해소).
+- 모달 폭 960px가 좁은 화면에서 넘치지 않는지 확인 필요 (`max-width` 또는 반응형은 요청 범위 밖, 필요 시 확인).

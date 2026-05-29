@@ -2261,6 +2261,7 @@ const CMD_LIST = [
   { label: 'DDL 생성',                   category: '파일', icon: '🗄', action: () => openDDLModal() },
   { label: '이미지 내보내기 (섹션 포함)', category: '파일', icon: '🖼', action: () => downloadImage(true) },
   { label: '이미지 내보내기 (섹션 제외)', category: '파일', icon: '🖼', action: () => downloadImage(false) },
+  { label: '이미지 내보내기 (고해상도 2x)', category: '파일', icon: '🖼', action: () => downloadImage(true, true) },
   { label: 'SVG 내보내기',               category: '파일', icon: '⬡', action: () => downloadSVG() },
   { label: 'Markdown 내보내기',          category: '파일', icon: '📄', action: () => exportMarkdown() },
   { label: 'HTML 내보내기',              category: '파일', icon: '🌐', action: () => exportHTML() },

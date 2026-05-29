@@ -48,8 +48,8 @@ function resetExportDir() {
 }
 
 /** 폴백: 구형 브라우저용 <a download> 방식 */
-function _fallbackDownload(filename, text) {
-  const blob = new Blob([text], { type: 'application/json' });
+function _fallbackDownload(filename, data, type = 'application/json') {
+  const blob = data instanceof Blob ? data : new Blob([data], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
@@ -58,6 +58,7 @@ function _fallbackDownload(filename, text) {
 
 // ── JSON 내보내기 ─────────────────────────────────────────────
 let _exportDiagIds = new Set();
+let _ddlEntityIds = new Set();
 
 function exportData() {
   flushCurrentState();
@@ -101,10 +102,8 @@ function closeExportDiagSelectModal() {
 async function doExportSelectedDiag() {
   if (_exportDiagIds.size === 0) { showToast('내보낼 다이어그램을 선택하세요.'); return; }
   closeExportDiagSelectModal();
-  sessionModified = false;
-  const badge = document.getElementById('sessionBadge');
-  if (badge) badge.style.display = 'none';
   const selected = diagrams.filter(d => _exportDiagIds.has(d.id));
+  if (!selected.length) { showToast('선택한 다이어그램을 찾을 수 없습니다.'); return; }
   const exportActiveId = _exportDiagIds.has(activeDiagramId) ? activeDiagramId : selected[0].id;
   const data = { version: 2, diagrams: selected, activeDiagramId: exportActiveId };
   const text = JSON.stringify(data, null, 2);
@@ -175,7 +174,7 @@ async function _doExportWithGroups(groups) {
 }
 
 // ── 이미지 저장 ──────────────────────────────────────────────
-function downloadImage(includeSections = true) {
+async function downloadImage(includeSections = true, hiDPI = false) {
   document.getElementById('imgMenu').style.display = 'none';
   if (!ENTITIES.length) { alert('다이어그램에 엔티티가 없습니다.'); return; }
 
@@ -198,14 +197,17 @@ function downloadImage(includeSections = true) {
     });
   }
 
+  const dpr = hiDPI ? 2 : 1;
   const imgW = Math.max(800, maxX - minX + padding * 2);
   const imgH = Math.max(400, maxY - minY + padding * 2);
   const offCanvas = document.createElement('canvas');
-  offCanvas.width = imgW;
-  offCanvas.height = imgH;
+  offCanvas.width = imgW * dpr;
+  offCanvas.height = imgH * dpr;
 
   const savedCtx = ctx, savedVx = vx, savedVy = vy, savedScale = scale;
   ctx = offCanvas.getContext('2d');
+  // 고해상도: 캔버스를 dpr배로 키우고 전체 컨텍스트를 dpr배 스케일 → 좌표 로직은 논리 크기 기준 유지
+  ctx.scale(dpr, dpr);
   vx = padding - minX; vy = padding - minY; scale = 1;
 
   ctx.fillStyle = '#1e1e2e';
@@ -235,15 +237,18 @@ function downloadImage(includeSections = true) {
   ctx = savedCtx; vx = savedVx; vy = savedVy; scale = savedScale;
   render();
 
-  const suffix = includeSections ? '' : '_no_section';
-  const link = document.createElement('a');
-  link.download = (getActiveDiagram()?.name || 'erd') + suffix + '.png';
-  link.href = offCanvas.toDataURL('image/png');
-  link.click();
+  const suffix = (includeSections ? '' : '_no_section') + (hiDPI ? '@2x' : '');
+  const filename = (getActiveDiagram()?.name || 'erd') + suffix + '.png';
+  offCanvas.toBlob(async (blob) => {
+    if (!blob) { showToast('❌ 이미지 생성 실패 (다이어그램이 너무 큽니다)'); return; }
+    const saved = await _writeExportFile(filename, blob);
+    if (saved) showToast(`💾 ${filename} 저장 완료`);
+    else _fallbackDownload(filename, blob, 'image/png');
+  }, 'image/png');
 }
 
 // ── SVG 내보내기 ──────────────────────────────────────────────
-function downloadSVG() {
+async function downloadSVG() {
   document.getElementById('imgMenu').style.display = 'none';
   if (!ENTITIES.length) { alert('다이어그램에 엔티티가 없습니다.'); return; }
   const pad = 100;
@@ -372,20 +377,64 @@ function downloadSVG() {
   });
 
   svg += '</svg>';
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = (getActiveDiagram()?.name || 'erd') + '.svg'; a.click();
-  URL.revokeObjectURL(url);
+  const filename = (getActiveDiagram()?.name || 'erd') + '.svg';
+  const saved = await _writeExportFile(filename, svg);
+  if (saved) showToast(`💾 ${filename} 저장 완료`);
+  else _fallbackDownload(filename, svg, 'image/svg+xml');
 }
 
 // ── DDL 생성 ─────────────────────────────────────────────────
 function openDDLModal() {
+  // 옵션 초기화: FK/INDEX/COMMENT 모두 포함, 엔티티 전체 선택
+  ['ddlOptFK', 'ddlOptIndex', 'ddlOptComment'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = true;
+  });
+  _ddlEntityIds = new Set(ENTITIES.map(e => e.id));
+  renderDDLEntityList();
   generateDDL(document.getElementById('ddlDialect').value);
   document.getElementById('ddlOverlay').classList.add('active');
 }
 function closeDDLModal() { document.getElementById('ddlOverlay').classList.remove('active'); }
-function copyDDL() { navigator.clipboard.writeText(document.getElementById('ddlContent').textContent); showToast('DDL이 클립보드에 복사되었습니다.'); }
+
+/** DDL 엔티티 선택 목록 렌더링 (export 다이어그램 선택 UI 패턴 모방) */
+function renderDDLEntityList() {
+  const list = document.getElementById('ddlEntityList');
+  if (!list) return;
+  list.innerHTML = '';
+  ENTITIES.forEach(e => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;cursor:pointer;background:#313244;user-select:none;';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox'; chk.value = e.id; chk.checked = _ddlEntityIds.has(e.id);
+    chk.style.cssText = 'width:14px;height:14px;cursor:pointer;accent-color:var(--ac,#89b4fa);flex-shrink:0;';
+    chk.addEventListener('change', () => {
+      if (chk.checked) _ddlEntityIds.add(e.id); else _ddlEntityIds.delete(e.id);
+      generateDDL();
+    });
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = entDisplayName(e) || e.id;
+    nameSpan.style.cssText = 'color:#cdd6f4;font-size:13px;flex:1;';
+    label.appendChild(chk); label.appendChild(nameSpan);
+    list.appendChild(label);
+  });
+}
+
+
+function copyDDL() {
+  const text = document.getElementById('ddlContent').textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => {
+    showToast('DDL이 클립보드에 복사되었습니다.');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); showToast('DDL이 클립보드에 복사되었습니다.'); }
+    catch(e) { showToast('복사 실패: 직접 선택해 복사하세요.'); }
+    document.body.removeChild(ta);
+  });
+}
 
 /**
  * DDL 순수 생성 함수 (DOM 비의존)
@@ -632,14 +681,23 @@ function buildDDL(dialect, entities, opts) {
 window.buildDDL = buildDDL;
 
 function generateDDL(dialect) {
-  const { text } = buildDDL(dialect, ENTITIES, { includeFK: true, includeIndex: true, includeComment: true });
+  if (!dialect) dialect = document.getElementById('ddlDialect').value;
+  const opts = {
+    includeFK:      document.getElementById('ddlOptFK')?.checked      ?? true,
+    includeIndex:   document.getElementById('ddlOptIndex')?.checked   ?? true,
+    includeComment: document.getElementById('ddlOptComment')?.checked ?? true,
+  };
+  let target = ENTITIES.filter(e => _ddlEntityIds.has(e.id));
+  if (!target.length) { document.getElementById('ddlContent').textContent = '-- 선택된 엔티티가 없습니다.'; return; }
+  const { text } = buildDDL(dialect, target, opts);
   document.getElementById('ddlContent').textContent = text;
 }
 
 // ── Markdown 내보내기 ────────────────────────────────────────
-function exportMarkdown() {
+async function exportMarkdown() {
   if (!ENTITIES.length) { alert('다이어그램에 엔티티가 없습니다.'); return; }
   const diagName = getActiveDiagram()?.name || 'ERD';
+  const escapeMdCell = v => String(v||'').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
   const lines = [`# ${diagName}`, ''];
 
   ENTITIES.forEach(ent => {
@@ -653,38 +711,35 @@ function exportMarkdown() {
       const kind = a.kind === 'pk' ? 'PK' : a.kind === 'fk' ? 'FK' : '';
       const nn = (a.notNull || a.kind === 'pk') ? '✓' : '';
       const uq = a.unique ? '✓' : '';
-      const def = a.defaultValue || '';
-      const desc = a.description || '';
-      lines.push(`| ${a.logicalName||''} | ${a.physicalName||''} | ${a.type||''} | ${kind} | ${nn} | ${uq} | ${def} | ${desc} |`);
+      const def = escapeMdCell(a.defaultValue || '');
+      const desc = escapeMdCell(a.description || '');
+      lines.push(`| ${escapeMdCell(a.logicalName||'')} | ${escapeMdCell(a.physicalName||'')} | ${escapeMdCell(a.type||'')} | ${kind} | ${nn} | ${uq} | ${def} | ${desc} |`);
     });
     if ((ent.indexes || []).length) {
       lines.push('', '**인덱스**', '');
       lines.push('| 인덱스명 | 컬럼 | UNIQUE |');
       lines.push('|----------|------|:------:|');
       ent.indexes.forEach(idx => {
-        lines.push(`| ${idx.name||''} | ${(idx.columns||[]).join(', ')} | ${idx.unique?'✓':''} |`);
+        lines.push(`| ${escapeMdCell(idx.name||'')} | ${escapeMdCell((idx.columns||[]).join(', '))} | ${idx.unique?'✓':''} |`);
       });
     }
     lines.push('');
   });
 
-  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (diagName || 'erd') + '.md';
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Markdown 파일이 저장되었습니다.');
+  const text = lines.join('\n');
+  const filename = (diagName || 'erd') + '.md';
+  const saved = await _writeExportFile(filename, text);
+  if (saved) showToast(`💾 ${filename} 저장 완료`);
+  else { _fallbackDownload(filename, text, 'text/markdown'); showToast('Markdown 파일이 저장되었습니다.'); }
 }
 
 // ── HTML / PDF 내보내기 ──────────────────────────────────────
 function exportPDF() { exportHTML(true); }
-function exportHTML(asPdf = false) {
+async function exportHTML(asPdf = false) {
   if (!ENTITIES.length) { alert('다이어그램에 엔티티가 없습니다.'); return; }
   const diagName = getActiveDiagram()?.name || 'ERD';
   const kindLabel = k => k === 'pk' ? '<span style="color:#f38ba8;font-weight:bold">PK</span>' : k === 'fk' ? '<span style="color:#fab387;font-weight:bold">FK</span>' : '';
-  const esc2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
   const toc = ENTITIES.map(e =>
     `<li><a href="#ent_${esc2(e.id)}">${esc2(e.logicalName||e.id)}${e.physicalName?` <span class="pname">(${esc2(e.physicalName)})</span>`:''}</a></li>`
@@ -765,12 +820,10 @@ ${sections}
     if (win) { win.document.write(printHtml); win.document.close(); }
     else showToast('팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.');
   } else {
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = (diagName||'erd') + '.html'; a.click();
-    URL.revokeObjectURL(url);
-    showToast('HTML 문서가 저장되었습니다.');
+    const filename = (diagName||'erd') + '.html';
+    const saved = await _writeExportFile(filename, html);
+    if (saved) showToast(`💾 ${filename} 저장 완료`);
+    else { _fallbackDownload(filename, html, 'text/html'); showToast('HTML 문서가 저장되었습니다.'); }
   }
 }
 

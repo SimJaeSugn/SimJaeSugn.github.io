@@ -1,90 +1,128 @@
+# 01 Analyst Plan — DDL 옵션 UI / 내보내기 폴더 통일 / PNG 고해상도
+
 ## 요청 요약
 
-요청 1 — 붙여넣기(Ctrl+V) 시 엔티티 그룹을 현재 뷰포트(화면) 중앙 좌표에 배치한다.
-- 기존: 원본 좌표 + (30 * pasteCount) 오프셋
-- 변경: 클립보드 엔티티 그룹의 바운딩 박스 중심을 현재 화면 중앙의 월드 좌표로 이동시켜 배치
-
-요청 2 — 복사(Ctrl+C) 시 선택 집합 내에서 from/to 양쪽이 모두 포함된 관계선을 함께 복사하고, 붙여넣기 시 새 엔티티 id로 재매핑하여 RELATIONS에 추가한다.
+1. **기능 1 — DDL 모달 옵션·엔티티 선택 UI**: `buildDDL(dialect, entities, opts)`는 이미 `opts.includeFK/includeIndex/includeComment`와 `entities` 인자를 지원하나, `generateDDL(dialect)`는 항상 `ENTITIES` 전체 + 모든 옵션 true로만 호출한다. DDL 모달(`ddlOverlay`)에 FK/INDEX/COMMENT 토글 체크박스 + 엔티티 전체/선택 UI를 추가하고, 변경 시 미리보기를 실시간 갱신한다.
+2. **기능 2 — SVG/Markdown/HTML 내보내기 폴더 통일**: `downloadSVG`, `exportMarkdown`, `exportHTML`을 async로 바꾸고 `<a download>` 대신 `_writeExportFile` + 폴백 구조로 통일한다.
+3. **기능 3 — PNG `toBlob` + 고해상도(2x)**: `downloadImage(includeSections)`을 async + `toBlob`으로 전환, 2x 스케일 옵션 추가, `_writeExportFile` 연동, 실패 시 토스트.
 
 ## 탐색한 파일
 
-- js/entities.js (448~511): copyEntity()/pasteEntity()/_clipboard/pasteCount 구현. 변경 핵심 파일.
-- js/state.js (11, 31): RELATIONS 배열, vx/vy/scale 전역 뷰포트 변수 선언 위치.
-- js/config.js (107~123): DEFAULT_RELATIONS로 관계선 객체 구조 확인, PANEL_W=240, W=295 상수.
-- js/relations.js (51~98): 관계선 객체 필드 구조와 from/to가 엔티티 id임을 확인.
-- js/canvas.js (1731~1853): _viewportBounds(), toWorld(), _qbLeftOff(), panelOpen/PANEL_W 등 화면→월드 좌표 변환 패턴.
-- js/main.js (62~84): copy/paste 단축키 핸들러. paste는 이미 빈 선택 시 CSV 모드 분기 존재.
+- `js/export.js` (전체) — 내보내기 전 함수의 현재 구현 패턴 파악
+  - `_writeExportFile(filename, text)` (L28-42): 폴더 저장 핵심. 텍스트 기반(`writable.write(text)`). Blob도 그대로 write 가능.
+  - `_fallbackDownload(filename, text)` (L50-57): **type이 `application/json`으로 하드코딩** — SVG/MD/HTML/PNG에 그대로 쓰면 MIME이 부정확. 확인 필요.
+  - `doExportSelectedDiag` (L101-121), `_doExportWithGroups` (L129-173): `_writeExportFile` 성공 시 토스트, 실패 시 `_fallbackDownload` 호출하는 표준 패턴. **이 패턴을 그대로 따른다.**
+  - `openExportDiagSelectModal` (L67-95): 체크박스 목록 생성 + Set 기반 선택 관리 패턴. **기능 1 엔티티 선택 UI의 참고 패턴.**
+  - `downloadImage` (L176-241): `scale=1` 고정, `offCanvas.toDataURL('image/png')` → `<a>` 즉시 다운로드. ctx/vx/vy/scale 전역을 임시 교체 후 render()로 복원하는 구조.
+  - `downloadSVG` (L244-378): 끝부분(L373-377)에서 Blob + `<a download>`.
+  - `openDDLModal/closeDDLModal/copyDDL/generateDDL` (L381-400, 646-649): DDL 모달 제어. `generateDDL`이 미리보기 textContent 설정.
+  - `exportMarkdown` (L652-692): 끝부분 Blob + `<a download>`.
+  - `exportHTML(asPdf)` (L696-788): `asPdf=true`는 `window.open`/print (변경 없음), `else` 분기(L780-787)만 Blob + `<a download>`.
+- `index.html`
+  - 메뉴바 내보내기 그룹 (L28-38): DDL 생성/이미지/SVG/MD/HTML/PDF 항목.
+  - `imgMenu` (L466-472): 섹션 포함/제외/SVG 빠른 메뉴.
+  - DDL 모달 `ddlOverlay` (L475-490): dialect select + 복사 버튼 + `<pre id="ddlContent">` + 닫기.
 
 ## 영향 분석
 
-- 단축키 변경: 없음 — Ctrl+C(copy), Ctrl+V(paste) 동작만 내부 수정. main.js 키 바인딩·index.html #shortcutsTableBody·ui.js 메뉴 변경 불필요.
-- 새 localStorage 키: 없음 — _clipboard는 메모리 전용 변수(저장 안 됨). RELATIONS는 saveState()/flushCurrentState()에서 이미 직렬화되므로 백업·export 영향 없음.
-- 새 데이터 배열/상태 변수: 없음 — _clipboard 객체에 `relations` 속성만 추가(기존 구조 확장). 새 전역 변수 없음.
-- 기타 파급 효과:
-  - 관계선 객체는 **id 필드가 없고** from/to(엔티티 id) 쌍으로 식별됨. card/lineStyle/pathStyle/label/color는 옵션 필드. 복사 시 JSON 깊은 복제 후 from/to만 새 id로 재매핑하면 됨.
-  - pasteEntity()는 현재 FK ref를 null로 제거함(copy.attrs.map(a => ({...a, ref:null}))). 관계선을 함께 복사하더라도 **FK ref와 관계선은 별개**다. 요청 2 범위는 "관계선만" 복사이므로 ref:null 유지(관계선 시각 요소만 복원). FK ref까지 재매핑하는 것은 요청 범위 밖 — 확인 필요(현 계획은 ref:null 유지로 안전하게 진행).
-  - 화면 중앙 월드 좌표 계산은 _qbLeftOff()(좌측 도킹 퀵바)와 panelOpen?PANEL_W:0(우측 패널)을 반영해야 정확함. canvas.js 패턴과 동일하게 처리.
-  - 뷰포트 중앙 배치로 변경되므로 pasteCount 기반 누적 오프셋은 더 이상 좌표 계산에 사용하지 않음(연속 붙여넣기 시 같은 위치 겹침 방지를 위해 소량 누적 오프셋은 선택적으로 유지 가능 — 구현 시 판단).
-
-## 관계선 객체 구조 (확정)
-
-```
-{ from: <entityId>, to: <entityId>, card: '1:N',
-  lineStyle?: 'dashed', pathStyle?: 'curved', label?: string, color?: '#xxxxxx', waypoints?: [...] }
-```
-- id 없음. from/to는 엔티티 id. RELATIONS는 state.js 전역.
-
-## 뷰포트 중앙 월드 좌표 계산 (확정 패턴)
-
-canvas.js 패턴 기반:
-```
-const off = _qbLeftOff();
-const cw  = window.innerWidth - off - (panelOpen ? PANEL_W : 0);
-const ch  = window.innerHeight;
-const centerWorldX = (cw / 2 - off - vx) / scale;   // toWorld(off + cw/2, ch/2) 와 동일
-const centerWorldY = (ch / 2 - vy) / scale;
-```
-주의: toWorld(cx,cy) = ((cx - _qbLeftOff() - vx)/scale, (cy - vy)/scale). 화면 중앙 화면좌표는 cx = off + cw/2, cy = ch/2. → toWorld(off + cw/2, ch/2) 사용이 가장 안전(중복 보정 방지). 구현 시 toWorld() 헬퍼 직접 호출 권장.
+- **단축키 변경: 없음** — 새 단축키 추가 없음. (integration-checker가 `#shortcutsTableBody`·shortcuts.js 동기화 점검 불필요. 단 기능 3에서 메뉴 항목만 추가됨)
+- **새 localStorage 키: 없음** — DDL 옵션/엔티티 선택은 모달 세션 상태로만 유지(영속 저장 불필요). PNG 고해상도 옵션도 영속 저장 불필요.
+- **새 데이터 배열/상태 변수: 있음 (모듈 스코프, 비영속)**
+  - `_ddlEntityIds` (Set) — DDL 엔티티 선택 상태. `_exportDiagIds` 패턴 모방. **localStorage·백업 비포함이므로 export.js/import.js 백업 통합 불필요.**
+- **기타 파급 효과**:
+  - `_fallbackDownload`의 type이 `application/json` 하드코딩 → SVG/MD/HTML/PNG 폴백 시 MIME 부정확. **`type` 인자를 추가(기본값 `application/json`으로 하위호환)하는 것을 권장.** Blob([text]) 대신 text가 Blob일 수도 있게 처리 필요(PNG).
+  - `_writeExportFile`은 `writable.write(text)` — text가 string이든 Blob이든 File System Access API가 처리 가능하므로 PNG Blob도 동일 함수 사용 가능. **확인 필요: 인자명만 text라 혼동 가능 — Blob 전달 시 정상 동작 확인.**
+  - PNG는 `_fallbackDownload`가 string Blob 가정이라 그대로 못 씀 → PNG 전용 폴백(`URL.createObjectURL(blob)` + `<a>`) 인라인 처리 또는 `_fallbackDownload`를 Blob 허용으로 확장. **확인 필요.**
+  - `downloadImage`/`downloadSVG`가 async가 되면 `imgMenu`·메뉴바 onclick은 await 없이 호출해도 동작(파이어앤포겟). 단 함수 시작부 `imgMenu.style.display='none'`은 유지.
+  - 기능 1에서 dialect select의 `onchange="generateDDL(this.value)"`는 유지하되, 옵션/엔티티 변경도 동일 갱신 함수를 호출하도록 통일 필요.
 
 ## 구현 계획
 
-### 파일: js/entities.js
+### 파일: js/export.js
 
-#### copyEntity() (453~469)
-- 위치: _clipboard 객체 생성부.
-- 변경 내용:
-  1. 복사 대상 엔티티 id 집합 `entIds`를 Set으로 확보(이미 있음).
-  2. RELATIONS를 순회하여 `entIds.has(r.from) && entIds.has(r.to)`인 관계선만 추려 깊은 복제 후 `_clipboard.relations`에 저장.
-  3. _clipboard 구조: `{ entities, sections, relations }`.
-  4. 토스트 메시지에 관계선 개수 포함 가능(선택). 예: `${total}개 항목 복사됨` 유지 또는 관계선 수 표기.
-- 이유: 선택 집합 내부 완결 관계선만 복사(한쪽만 선택된 관계선 제외).
+#### (공통) `_fallbackDownload` 확장 — L50-57
+- 변경: 시그니처를 `_fallbackDownload(filename, data, type='application/json')`으로 변경. `const blob = data instanceof Blob ? data : new Blob([data], { type });`로 처리.
+- 이유: SVG(`image/svg+xml`), MD(`text/markdown`), HTML(`text/html`), PNG(Blob 직접) 폴백을 단일 함수로 처리. 기본값 유지로 기존 JSON 호출부 무수정.
 
-#### pasteEntity() (471~511)
-- 위치: 좌표 계산부 + 관계선 붙여넣기 로직 추가.
-- 변경 내용:
-  1. **좌표 재계산(요청 1)**: 클립보드 엔티티들의 바운딩 박스를 계산.
-     - `minX = min(e.x)`, `minY = min(e.y)`, `maxX = max(e.x + W)`, `maxY = max(e.y + entityHeight(e))` (높이 함수는 entityHeight(e) 사용 — canvas.js 전역). 섹션도 포함하려면 섹션 x/y/w/h 반영(엔티티만으로 충분하면 엔티티 기준).
-     - 그룹 중심 `gcx = (minX+maxX)/2`, `gcy = (minY+maxY)/2`.
-     - 화면 중앙 월드좌표 `c = toWorld(_qbLeftOff() + cw/2, window.innerHeight/2)` (cw = window.innerWidth - _qbLeftOff() - (panelOpen?PANEL_W:0)).
-     - 이동량 `dx = c.x - gcx`, `dy = c.y - gcy`.
-     - 연속 붙여넣기 겹침 방지를 위해 pasteCount 기반 소량 오프셋(예: 20*pasteCount)을 dx/dy에 가산(선택, 권장).
-  2. 각 새 엔티티 좌표 = `e.x + dx`, `e.y + dy` (기존 `e.x + offset` 대체). 섹션도 동일 dx/dy 적용.
-  3. **엔티티 id 매핑(요청 2)**: 기존 엔티티 id → 새 엔티티 id 매핑 테이블 `idMap` 구축(newEnts 생성 시 `idMap[origId] = newId`).
-  4. **관계선 붙여넣기(요청 2)**: `_clipboard.relations`(있으면) 순회 → 깊은 복제 후 `from = idMap[r.from]`, `to = idMap[r.to]` 재매핑. 두 매핑이 모두 존재할 때만 RELATIONS.push. waypoints가 있으면 dx/dy만큼 이동(있을 경우만; 좌표 기반 waypoint면 보정, 포트 기반이면 그대로).
-  5. FK ref는 기존대로 null 유지(요청 범위 밖). 확인 필요 표기.
-  6. render(); saveState(); renderEntityTree() 기존 호출 유지.
-- 이유: 화면 중앙 배치 + 내부 완결 관계선 동시 복원.
+#### 기능 1 — DDL 옵션·엔티티 선택
 
-### 파일: js/state.js
-- 변경 없음 — RELATIONS/vx/vy/scale 기존 전역 사용.
+- **`generateDDL(dialect)` 재작성 — L646-649**
+  - 변경: 모달 UI의 체크박스 상태(`#ddlOptFK/#ddlOptIndex/#ddlOptComment` checked)와 엔티티 모드(전체/선택)를 읽어 `opts`와 대상 `entities`를 구성한 뒤 `buildDDL(dialect, targetEntities, opts)` 호출. 선택 모드면 `ENTITIES.filter(e => _ddlEntityIds.has(e.id))`.
+  - dialect 인자 누락 시 `document.getElementById('ddlDialect').value`로 폴백(옵션 체크박스 onchange에서 인자 없이 호출 대비).
+  - 이유: 기존 `buildDDL` 유연성을 UI와 연결.
+- **신규 모듈 스코프 변수**: `let _ddlEntityIds = new Set();` (export.js 상단, `_exportDiagIds` 인근)
+- **신규 함수 `renderDDLEntityList()`**: `openExportDiagSelectModal` 패턴을 모방해 `#ddlEntityList`에 `ENTITIES` 체크박스 생성. 각 체크박스 change → Set 갱신 + `generateDDL()` 재호출. 기본 전체 선택.
+- **신규 함수 `onDDLEntityModeChange()`**: 전체/선택 라디오 변경 시 `#ddlEntityListWrap` 표시/숨김 토글 + (선택 모드 진입 시) `renderDDLEntityList()` + `generateDDL()`.
+- **`openDDLModal()` 수정 — L381-384**: 모달 열 때 옵션 체크박스 3개 모두 checked=true, 엔티티 모드 '전체'로 초기화, `_ddlEntityIds = new Set(ENTITIES.map(e=>e.id))`, 엔티티 목록 영역 숨김 후 `generateDDL(dialect)` 호출.
 
-### 파일: js/canvas.js
-- 변경 없음 — toWorld()/_qbLeftOff()/panelOpen/PANEL_W 기존 헬퍼·전역 그대로 활용. (entities.js에서 toWorld가 전역 함수로 호출 가능한지 확인 필요 — 전역 스코프 함수이므로 호출 가능.)
+#### 기능 2 — SVG/MD/HTML 폴더 통일
 
-## 확인 필요 (integration-checker 주의)
+- **`downloadSVG()` async화 — L244-378**
+  - `function downloadSVG()` → `async function downloadSVG()`.
+  - 끝부분 L373-377의 Blob+`<a>` 블록을 다음으로 교체:
+    ```
+    const filename = (getActiveDiagram()?.name || 'erd') + '.svg';
+    const saved = await _writeExportFile(filename, svg);
+    if (saved) showToast(`💾 ${filename} 저장 완료`);
+    else _fallbackDownload(filename, svg, 'image/svg+xml');
+    ```
+- **`exportMarkdown()` async화 — L652-692**
+  - `async function exportMarkdown()`. 끝부분 L684-691 교체:
+    ```
+    const text = lines.join('\n');
+    const filename = (diagName || 'erd') + '.md';
+    const saved = await _writeExportFile(filename, text);
+    if (saved) showToast(`💾 ${filename} 저장 완료`);
+    else { _fallbackDownload(filename, text, 'text/markdown'); showToast('Markdown 파일이 저장되었습니다.'); }
+    ```
+- **`exportHTML(asPdf)` async화 — L696-788**
+  - `async function exportHTML(asPdf = false)`. `asPdf` 분기(L773-779)는 그대로 유지(window.open/print). `else` 분기(L780-787)만 교체:
+    ```
+    const filename = (diagName||'erd') + '.html';
+    const saved = await _writeExportFile(filename, html);
+    if (saved) showToast(`💾 ${filename} 저장 완료`);
+    else { _fallbackDownload(filename, html, 'text/html'); showToast('HTML 문서가 저장되었습니다.'); }
+    ```
+  - `exportPDF()` (L695)는 변경 없음(여전히 `exportHTML(true)`; await 불필요하나 무방).
 
-1. FK ref 재매핑 여부: 현 계획은 관계선만 복원하고 FK ref는 null 유지. 사용자가 FK 컬럼 참조까지 함께 복원하길 원하는지 범위 재확인 가능(현재 요청 문구는 "관계선" 한정 → ref:null 안전).
-2. waypoints 좌표 보정: 관계선에 waypoints가 dx/dy 절대 월드좌표로 저장되는 경우 이동 보정 필요. 미보정 시 새 위치에서 경로가 틀어질 수 있음 — 보정 로직 포함 권장.
-3. 섹션 바운딩 박스 포함: 섹션만 복사 후 붙여넣을 때도 중앙 배치가 자연스러운지(엔티티 없을 때 분모 0 방지) 엣지케이스 처리 필요.
-4. entityHeight(e) 함수가 entities.js에서 호출 가능한 전역인지 확인(canvas.js 정의, 전역 스코프 → 호출 가능 예상).
-5. _clipboard에 relations 미존재(이전 복사본/구조) 시 옵셔널 처리(`_clipboard.relations || []`).
+#### 기능 3 — PNG toBlob + 고해상도
+
+- **`downloadImage(includeSections, hiDPI)` async화 — L176-241**
+  - 시그니처: `async function downloadImage(includeSections = true, hiDPI = false)`.
+  - `const scale2 = hiDPI ? 2 : 1;` 도입. offCanvas 크기를 `imgW*scale2 × imgH*scale2`로 설정, 렌더링 시 전역 `scale`을 `scale2`로 설정(기존 `vx/vy`는 padding 기반이므로 hiDPI에서는 `vx=(padding-minX)*scale2` 형태로 스케일 반영 필요 — **확인 필요: 좌표/그리드 오프셋 계산이 scale에 곱해지는지 검증**). 단순·안전한 방법으로는 `ctx.scale(scale2, scale2)` 한 번 적용 후 기존 vx/vy/scale=1 로직 유지(그리드 루프 한계는 `imgW`(논리크기)로 두고 캔버스만 2배). **구현자는 그리드가 잘리지 않도록 lu프 한계를 `offCanvas.width/scale2` 기준으로 유지할 것.**
+  - `toDataURL` 즉시 다운로드(L236-240)를 다음으로 교체:
+    ```
+    const suffix = (includeSections ? '' : '_no_section') + (hiDPI ? '@2x' : '');
+    const filename = (getActiveDiagram()?.name || 'erd') + suffix + '.png';
+    offCanvas.toBlob(async (blob) => {
+      if (!blob) { showToast('❌ 이미지 생성 실패 (다이어그램이 너무 큽니다)'); return; }
+      const saved = await _writeExportFile(filename, blob);
+      if (saved) showToast(`💾 ${filename} 저장 완료`);
+      else _fallbackDownload(filename, blob, 'image/png');
+    }, 'image/png');
+    ```
+  - **중요(확인 필요)**: ctx/vx/vy/scale 전역 복원(L233 `ctx=savedCtx...`)과 `render()`는 `toBlob` 콜백 **이전**(동기 구간)에서 수행해야 화면이 깨지지 않음. toBlob은 offCanvas에 대해 비동기로 인코딩하므로, 전역 복원은 콜백 밖(현재 위치)에 두고 toBlob 호출만 그 뒤에 배치한다.
+
+### 파일: index.html
+
+#### 기능 1 — DDL 모달 옵션·엔티티 UI (L478-486 영역 보강)
+- L478-486 `<div style="display:flex...">` (dialect select + 복사 버튼) **아래**, `<pre id="ddlContent">`(L487) **위**에 옵션/엔티티 선택 영역 삽입:
+  - 옵션 체크박스 3개: `#ddlOptFK`, `#ddlOptIndex`, `#ddlOptComment` (checked, `onchange="generateDDL()"`).
+  - 엔티티 모드 라디오: `name="ddlEntMode"` 값 `all`/`sel`, `onchange="onDDLEntityModeChange()"`. 기본 `all` checked.
+  - `<div id="ddlEntityListWrap" style="display:none;...">` 안에 `<div id="ddlEntityList">` (스크롤 가능한 체크박스 컨테이너). `openExportDiagSelectModal`의 label/checkbox 인라인 스타일 재사용.
+- 이유: 기존 모달 폭 680px 내에서 옵션·선택 UI 수용. `generateDDL()` 인자 없이 호출 시 dialect를 DOM에서 읽도록 export.js에서 처리.
+
+#### 기능 3 — PNG 고해상도 메뉴 항목
+- **메뉴바**(L32-33 사이/아래): 기존 두 PNG 항목 유지하고, 고해상도 항목 2개 추가하거나, 간결하게 한 항목 추가:
+  - 예: `<div class="mb-item" onclick="mbClose();downloadImage(true,true)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (고해상도 2x)</span></div>` 를 L33 다음에 삽입.
+- **`imgMenu`**(L466-472): SVG 항목(L471) 위 또는 아래에 고해상도 항목 추가:
+  - `<div class="img-menu-sep"></div>` + `<div class="img-menu-item" onclick="downloadImage(true,true)">🖼&nbsp; 고해상도 2x</div>`
+- 이유: 기존 PNG 호출부와 시그니처 하위호환(`downloadImage(true)` 그대로 동작), 신규 인자 `hiDPI=true`로 고해상도 호출.
+
+## 확인 필요 항목 (integration-checker / implementer 주의)
+
+1. `_fallbackDownload` 시그니처 확장 시 기존 JSON 호출부(`doExportSelectedDiag`, `_doExportWithGroups`)가 2-인자 호출이므로 기본값 `application/json` 유지로 무수정 보장.
+2. `_writeExportFile`에 Blob 전달 시 `writable.write(blob)` 정상 동작(File System Access API는 Blob 허용) — 동작 검증 권장.
+3. PNG 고해상도 시 그리드/좌표 스케일 정합성 — 캔버스만 2배로 키우고 `ctx.scale(2,2)` 적용, 그리드 루프 한계를 논리 크기 기준으로 유지하여 잘림 방지.
+4. `downloadImage` 전역(ctx/vx/vy/scale) 복원은 toBlob 콜백 이전에 동기적으로 수행.
+5. 단축키·localStorage·백업 통합 영향 없음 — 신규 영속 키/배열 없음. integration-checker의 백업 통합 점검은 본 작업에서 추가 작업 불필요(확인만).

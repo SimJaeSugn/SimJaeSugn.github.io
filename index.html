@@ -31,6 +31,7 @@
         <div class="mb-item" onclick="mbClose();openDDLModal()"><span class="mb-ico">🗄</span><span class="mb-text">DDL 생성</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(true)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (섹션 포함)</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(false)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (섹션 제외)</span></div>
+        <div class="mb-item" onclick="mbClose();downloadImage(true,true)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (고해상도 2x)</span></div>
         <div class="mb-item" onclick="mbClose();downloadSVG()"><span class="mb-ico">⬡</span><span class="mb-text">SVG 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportMarkdown()"><span class="mb-ico">📄</span><span class="mb-text">Markdown 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportHTML()"><span class="mb-ico">🌐</span><span class="mb-text">HTML 내보내기</span></div>
@@ -468,23 +469,40 @@
   <div class="img-menu-sep"></div>
   <div class="img-menu-item" onclick="downloadImage(false)">🖼&nbsp; 섹션 제외</div>
   <div class="img-menu-sep"></div>
+  <div class="img-menu-item" onclick="downloadImage(true,true)">🖼&nbsp; 고해상도 2x</div>
+  <div class="img-menu-sep"></div>
   <div class="img-menu-item" onclick="downloadSVG()">&#x2B21;&nbsp; SVG 내보내기</div>
 </div>
 
 <!-- ── DDL Modal ─────────────────────────────── -->
 <div class="modal-overlay" id="ddlOverlay" onmousedown="overlayClose(event,'ddlOverlay')">
-  <div class="modal" style="width:680px;max-height:80vh" onmousedown.stop>
+  <div class="modal" style="width:960px;max-width:97vw;max-height:80vh" onmousedown.stop>
     <h3>DDL 생성 (물리 모델 기준)</h3>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <select class="form-select" id="ddlDialect" style="width:160px" onchange="generateDDL(this.value)">
-        <option value="mysql">MySQL / MariaDB</option>
-        <option value="postgresql">PostgreSQL</option>
-        <option value="oracle">Oracle</option>
-        <option value="mssql">SQL Server</option>
-      </select>
-      <button class="btn" onclick="copyDDL()">&#x1F4CB; 복사</button>
+    <div style="display:flex;gap:16px;align-items:stretch">
+      <!-- 좌측: 엔티티 목록 -->
+      <div id="ddlEntityListWrap" style="width:240px;flex-shrink:0;display:flex;flex-direction:column">
+        <div style="font-size:13px;color:#cdd6f4;margin-bottom:8px">엔티티 (체크된 항목만 생성)</div>
+        <div id="ddlEntityList" style="display:flex;flex-direction:column;gap:5px;flex:1;overflow:auto;padding:8px;background:#181825;border:1px solid #313244;border-radius:8px;max-height:60vh"></div>
+      </div>
+      <!-- 우측: 옵션 + 미리보기 -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px">
+          <select class="form-select" id="ddlDialect" style="width:160px" onchange="generateDDL(this.value)">
+            <option value="mysql">MySQL / MariaDB</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="oracle">Oracle</option>
+            <option value="mssql">SQL Server</option>
+          </select>
+          <button class="btn" onclick="copyDDL()">&#x1F4CB; 복사</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:13px;color:#cdd6f4">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptFK" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> FK 포함</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptIndex" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> INDEX 포함</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptComment" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> COMMENT 포함</label>
+        </div>
+        <pre id="ddlContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:14px;color:#a6e3a1;font-family:Consolas,monospace;font-size:12px;overflow:auto;flex:1;max-height:60vh;white-space:pre;line-height:1.6"></pre>
+      </div>
     </div>
-    <pre id="ddlContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:14px;color:#a6e3a1;font-family:Consolas,monospace;font-size:12px;overflow:auto;max-height:54vh;white-space:pre;line-height:1.6"></pre>
     <div class="modal-actions"><button class="btn-cancel-m" onclick="closeDDLModal()">닫기</button></div>
   </div>
 </div>

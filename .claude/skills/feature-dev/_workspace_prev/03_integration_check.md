@@ -1,23 +1,28 @@
+# 03 Integration Check
+
 ## 단축키 동기화
 - 상태: N/A
-- 상세: 새 단축키 추가 없음. 기존 Ctrl+C(copy)/Ctrl+V(paste) 동작만 내부 수정. main.js 키 바인딩·index.html #shortcutsTableBody·shortcuts.js 변경 불필요.
+- 상세: 새 단축키 추가 없음. 메뉴/명령팔레트 항목만 추가됨(단축키 미할당). `#shortcutsTableBody` 수정 불필요.
 
 ## 백업 통합 (export/import/ui)
-- export.js: N/A — 신규 키/배열 없음. 복사된 관계선은 RELATIONS(기존 배열)에 push되며, flushCurrentState()가 RELATIONS를 diagram.relations로 직렬화 → export 자동 포함(export.js:321에서 RELATIONS 순회 확인).
-- import.js: N/A — diagram.relations(import.js:133,193,212)로 이미 처리. 신규 처리 불필요.
-- ui.js (_BK_GROUPS): N/A — 신규 백업 그룹 없음.
-- 상세: _clipboard는 메모리 전용 변수로 localStorage에 저장되지 않음. 영속 데이터는 기존 RELATIONS 배열뿐이며 이미 백업 파이프라인에 포함됨.
+- export.js: N/A
+- import.js: N/A
+- ui.js (_BK_GROUPS): N/A
+- 상세: 신규 영속 localStorage 키·데이터 배열 없음. DDL 옵션/엔티티 선택 상태(`_ddlEntityIds`)와 PNG 고해상도 옵션은 모달 세션 비영속 상태 → 백업 통합 대상 아님. 단, ui.js 명령 팔레트(L2262 인근)에서 변경된 export 함수를 호출하므로 일관성 차원에서 "이미지 내보내기 (고해상도 2x)" 항목을 추가함(downloadImage(true,true)). async 함수를 await 없이 호출하나 fire-and-forget 이므로 동작 정상.
 
 ## 상태 저장/로드
 - 상태: N/A
-- 상세: state.js에 새 전역 변수 추가 없음. _clipboard/pasteCount는 entities.js 내 기존 모듈 변수. saveState()는 pasteEntity() 말미에서 기존대로 호출됨.
+- 상세: state.js loadState/saveState 변경 없음. 신규 상태 변수는 export.js 모듈 스코프 비영속.
 
 ## 렌더링 연동
-- 상태: OK
-- 상세: 새 시각 요소 없음. 붙여넣은 관계선은 RELATIONS에 추가되어 drawRelations()(canvas.js)가 기존대로 렌더링. pasteEntity()에서 render() 호출 유지됨.
+- 상태: N/A
+- 상세: 캔버스 새 시각 요소 없음. PNG 내보내기는 기존 draw 함수(drawSections/drawRelations/drawEntity)를 off-canvas에 재사용하며 canvas.js render() 사이클 무변경.
 
-## 검증 메모
-- toWorld/_qbLeftOff/entityHeight/panelOpen/PANEL_W 모두 전역 스코프이며 entities.js에서 호출 가능. typeof 가드로 방어 처리됨.
-- 관계선 영속 waypoints 미존재 확인 → 좌표 보정 불필요(analyst 확인 필요 항목 해소).
+## 추가 검증
+- DDL 모달 신규 element ID(ddlOptFK/ddlOptIndex/ddlOptComment/ddlEntMode×2/ddlEntityListWrap/ddlEntityList) 7개 모두 index.html에 존재, export.js 참조와 일치.
+- `entDisplayName` (state.js 정의) renderDDLEntityList에서 사용 — 정의 확인됨.
+- 변경 export 함수 호출부: index.html 메뉴바/imgMenu, ui.js 명령 팔레트 — 모두 반환값 의존 없는 호출. async 전환 영향 없음.
+- `node --check` 통과: js/export.js, js/ui.js (ALL SYNTAX OK).
+- `_fallbackDownload` 기존 2-인자 JSON 호출부(L120, L171) 기본값 유지로 무영향.
 
 ## 최종 상태: PASS
