@@ -73,7 +73,26 @@
       "Bash(cat > *)",
       "Bash(echo \"EXIT:$?\")",
       "Bash(git -C \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" diff HEAD -- js/profile_manager.js)",
-      "Bash(del *)"
+      "Bash(del *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(python -c \"from PIL import Image; print\\('Pillow OK'\\)\" 2>&1)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(python --version)",
+      "PowerShell($p = Start-Process \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\\\\proxy\\\\python\\\\dist\\\\uxer-sidecar.exe\" -ArgumentList \"--port\",\"3738\" -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 3; try { $r = Invoke-WebRequest \"http://127.0.0.1:3738/ping\" -UseBasicParsing -TimeoutSec 3; Write-Host \"ping:\" $r.Content } catch { Write-Host \"ping failed:\" $_ }; $p.Kill\\(\\))",
+      "PowerShell(Test-Path *)",
+      "PowerShell(pip install *)",
+      "PowerShell(Start-Process \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\\\\electron\\\\dist\\\\win-unpacked\\\\UXERManager.exe\")",
+      "PowerShell(Start-Sleep -Seconds 5; try { $r = Invoke-WebRequest \"http://127.0.0.1:3738/ping\" -UseBasicParsing -TimeoutSec 3; Write-Host \"Sidecar ping:\" $r.Content } catch { Write-Host \"Sidecar not responding \\(may not be needed yet\\):\" $_ })",
+      "PowerShell(& \"C:\\\\Program Files\\\\Inno Setup 7\\\\iscc.exe\" \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\\\\electron\\\\installer.iss\" 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Inno Setup 7\\\\iscc.exe\" \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\\\\electron\\\\installer.iss\" 2>&1 | Select-Object -Last 3)",
+      "Bash(New-Item -ItemType Directory -Force \"proxy\")",
+      "PowerShell(robocopy python-sidecar *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(handle python-sidecar *)",
+      "Bash(Select-String \"python-sidecar|proxy\")",
+      "Bash(git *)",
+      "Bash(dir \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\")",
+      "PowerShell(git *)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

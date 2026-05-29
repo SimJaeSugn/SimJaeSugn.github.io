@@ -1,23 +1,44 @@
-﻿# UXERManager 미들웨어
+﻿# UXERManager Web Proxy
 
-ERD 도구(브라우저)와 운영 DB를 연결하는 로컬 프록시 서버.  
+**웹 서비스용 프록시** — 브라우저에서 UXERManager 웹 앱을 사용할 때 운영 DB에 연결하기 위해 설치하는 로컬 프록시 서버.  
 실행하면 `http://127.0.0.1:3737` 에서 대기하며 시스템 트레이에 아이콘이 등록된다.
+
+> Electron 데스크탑 앱 사용자는 Python 프록시가 내장되어 있으므로 별도 설치 불필요.
 
 ---
 
 ## 실행
 
 ### 배포용 — 인스톨러 (권장)
+
+실행 위치: `proxy/nodejs/`
 ```bash
 npm run build:installer
 ```
-빌드 결과물: `dist/UXERManager_Setup_{version}.exe`  
+빌드 결과물: `dist/UXERManager_web_proxy_Setup_{version}.exe`  
 인스톨러를 실행하면 `C:\Program Files\UXERManager\`에 파일이 설치되고 시작 메뉴에 등록된다.  
-언인스톨러 포함. **Inno Setup 6** 이 개발 PC에 설치되어 있어야 한다.
+언인스톨러 포함. **Inno Setup 7** 이 개발 PC에 설치되어 있어야 한다.
 
 > Inno Setup 다운로드: https://jrsoftware.org/isinfo.php
+>
+> **PATH 등록 (빌드 오류 시)** — `iscc`를 찾지 못하면 시스템 PATH에 Inno Setup 경로를 추가한다.
+>
+> **방법 1 — PowerShell (관리자 권한):**
+> ```powershell
+> [System.Environment]::SetEnvironmentVariable(
+>     'Path',
+>     [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';C:\Program Files\Inno Setup 7',
+>     'Machine'
+> )
+> ```
+> 터미널을 재시작한 후 `iscc /?` 로 등록 여부를 확인한다.
+>
+> **방법 2 — GUI:**
+> 시작 메뉴 → "환경 변수 편집" 검색 → **시스템 변수** 목록에서 `Path` 선택 → 편집 → 새로 만들기 → `C:\Program Files\Inno Setup 7` 입력 → 확인
 
 ### 배포용 — exe 단독 (인스톨러 없이 배포 시)
+
+실행 위치: `proxy/nodejs/`
 ```bash
 npm run build:win
 ```
@@ -26,6 +47,8 @@ npm run build:win
 시스템 트레이에 아이콘이 등록되며, 우클릭 → **종료**로 미들웨어를 종료한다.
 
 ### 개발용 (콘솔 직접 실행)
+
+실행 위치: `proxy/nodejs/`
 ```bash
 npm install
 npm start
@@ -486,7 +509,7 @@ http://127.0.0.1
 ## 파일 구조
 
 ```
-middleware/
+proxy/nodejs/
 ├── src/
 │   ├── index.js              Express 서버 진입점 (port 3737)
 │   ├── tray.js               시스템 트레이 아이콘 등록
@@ -513,7 +536,7 @@ middleware/
 │   └── uninstall-watchdog.ps1 Watchdog 작업 제거
 ├── dist/
 │   ├── uxermanager.exe               배포용 단일 실행파일
-│   └── UXERManager_Setup_{ver}.exe   인스톨러
+│   └── UXERManager_web_proxy_Setup_{ver}.exe   인스톨러
 ├── installer.iss             Inno Setup 인스톨러 스크립트
 ├── start.vbs                 콘솔 창 없이 exe 실행하는 런처
 ├── package.json

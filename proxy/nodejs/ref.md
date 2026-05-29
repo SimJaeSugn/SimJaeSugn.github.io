@@ -6,7 +6,7 @@
 
 ## 6. 리버스 엔지니어링 개선 제안
 
-> 검토 파일: `js/reverse_engineer.js`, `middleware/src/routes/schema.js`  
+> 검토 파일: `js/reverse_engineer.js`, `proxy/nodejs/src/routes/schema.js`  
 > 작성일: 2026-05-27
 
 ---
@@ -45,7 +45,7 @@ const rowOffsets = rowMaxH.reduce((acc, h, i) => {
 ---
 
 ### 6-2. 테이블 선택 없이 전체 스키마 일괄 생성 (Medium)
-**파일:** `js/reverse_engineer.js:116`, `middleware/src/routes/schema.js:228`
+**파일:** `js/reverse_engineer.js:116`, `proxy/nodejs/src/routes/schema.js:228`
 
 수백 개 테이블이 있는 DB에서 전체를 한 번에 ERD로 만들면 다이어그램이 너무 복잡해진다. 사용자가 원하는 테이블만 선택할 수 없다.
 
@@ -100,7 +100,7 @@ relations.push({ from, to, card: '1:N' });
 ---
 
 ### 6-5. UNIQUE·AUTO_INCREMENT 정보 미추출 (Low)
-**파일:** `middleware/src/routes/schema.js` (각 DB 쿼리 상수)
+**파일:** `proxy/nodejs/src/routes/schema.js` (각 DB 쿼리 상수)
 
 현재 스키마 쿼리에서 UNIQUE 제약과 자동 증가(AUTO_INCREMENT / SERIAL / IDENTITY) 정보를 가져오지 않아 프론트엔드에서 `unique: false`, `autoIncrement: false`로 하드코딩된다.
 
@@ -114,7 +114,7 @@ relations.push({ from, to, card: '1:N' });
 ---
 
 ### 6-6. PostgreSQL 스키마 'public' 하드코딩 (Medium)
-**파일:** `middleware/src/routes/schema.js:20-22, 39`
+**파일:** `proxy/nodejs/src/routes/schema.js:20-22, 39`
 
 ```sql
 WHERE tc.table_schema = 'public'
@@ -127,7 +127,7 @@ WHERE tc.table_schema = 'public'
 ---
 
 ### 6-7. Oracle `all_` 시스템 뷰 성능 (Low)
-**파일:** `middleware/src/routes/schema.js:109-126`
+**파일:** `proxy/nodejs/src/routes/schema.js:109-126`
 
 `all_tab_columns`, `all_constraints` 등 `all_` 뷰는 현재 사용자가 접근 가능한 모든 스키마 객체를 포함한다. `WHERE owner = CURRENT_SCHEMA` 조건으로 필터링하지만 `all_` 뷰 자체가 크기 때문에 `user_` 뷰보다 느리다.
 

@@ -1,0 +1,51 @@
+{
+  "name": "uxermanager-desktop",
+  "version": "1.0.0",
+  "description": "UXERManager 데스크탑 앱 (Electron)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64 --dir",
+    "build:installer": "npm run build:win"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "kr.co.uxis.uxermanager",
+    "productName": "UXERManager",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraFiles": [
+      {
+        "from": "../index.html",
+        "to": "index.html"
+      },
+      {
+        "from": "../js",
+        "to": "js"
+      },
+      {
+        "from": "../css",
+        "to": "css"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "../proxy/python/dist/uxer-sidecar.exe",
+        "to": "python-sidecar.exe"
+      }
+    ],
+    "win": {
+      "target": "dir",
+      "icon": "resources/icon.ico"
+    }
+  }
+}

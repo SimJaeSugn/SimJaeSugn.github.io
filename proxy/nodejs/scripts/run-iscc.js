@@ -1,34 +1,32 @@
 const { execSync } = require('child_process');
+const path = require('path');
 const fs = require('fs');
 
-const candidates = [
+const ISCC_PATHS = [
+  'iscc',
   'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe',
   'C:\\Program Files\\Inno Setup 6\\ISCC.exe',
+  'C:\\Program Files (x86)\\Inno Setup 7\\ISCC.exe',
+  'C:\\Program Files\\Inno Setup 7\\ISCC.exe',
 ];
 
-function findIscc() {
-  // 1. PATH에서 탐색
-  try {
-    execSync('iscc /?', { stdio: 'ignore' });
-    return 'iscc';
-  } catch (_) {}
+const iss = path.join(__dirname, '..', 'installer.iss');
 
-  // 2. 기본 설치 경로에서 탐색
-  for (const p of candidates) {
-    if (fs.existsSync(p)) return p;
+let iscc = null;
+for (const p of ISCC_PATHS) {
+  try {
+    execSync(`"${p}" /?`, { stdio: 'ignore' });
+    iscc = p;
+    break;
+  } catch (_) {
+    if (p !== 'iscc' && fs.existsSync(p)) { iscc = p; break; }
   }
-  return null;
 }
 
-const iscc = findIscc();
 if (!iscc) {
-  console.error('[오류] Inno Setup이 설치되지 않았습니다.');
-  console.error('  https://jrsoftware.org/isinfo.php 에서 설치 후 다시 실행하세요.');
+  console.error('Inno Setup(iscc)를 찾을 수 없습니다. 설치 후 재시도하세요.');
   process.exit(1);
 }
 
-try {
-  execSync(`"${iscc}" installer.iss`, { stdio: 'inherit' });
-} catch (e) {
-  process.exit(e.status || 1);
-}
+console.log(`iscc: ${iscc}`);
+execSync(`"${iscc}" "${iss}"`, { stdio: 'inherit' });
