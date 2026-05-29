@@ -44,6 +44,7 @@ let resizingSection = null;
 let resizeDir = null;
 let resizeStart = null;
 let _didMove = false; // 실제 이동이 발생했는지 추적 (단순 클릭 제외)
+let _pendingDeselect = false; // 빈 영역 mousedown 후 mouseup 시점에 선택 해제 여부 결정
 let nextSectionColorIdx = 0;
 
 // ── 메모 상태 ────────────────────────────────────────────────────
@@ -2010,9 +2011,8 @@ canvas.addEventListener('mousedown', e => {
     canvas.classList.add('dragging');
     render(); return;
   }
-  selectedEntity = null;
-  selectedRelation = null;
-  if (!e.shiftKey && !e.ctrlKey) selectedEntities.clear();
+  if (!e.shiftKey && !e.ctrlKey) _pendingDeselect = true;
+  _didMove = false;
   if (e.shiftKey) {
     selectionBox = { x: w.x, y: w.y, x2: w.x, y2: w.y };
     canvas.style.cursor = 'crosshair';
@@ -2206,6 +2206,8 @@ canvas.addEventListener('mousemove', e => {
   if (panStart) {
     vx = e.clientX - _qbLeftOff() - panStart.x;
     vy = e.clientY - panStart.y;
+    _didMove = true;
+    _pendingDeselect = false;
     render(); return;
   }
 
@@ -2371,6 +2373,13 @@ canvas.addEventListener('mouseup', e => {
   if (draggingSegment && !_didMove) {
     selectedRelation = draggingSegment.rel;
   }
+  if (_pendingDeselect && !_didMove) {
+    selectedEntity = null;
+    selectedRelation = null;
+    selectedEntities.clear();
+  }
+  _pendingDeselect = false;
+
   // ── 속성 패널 연동: 패널 열기가 canvas 크기를 바꾸므로
   //    draggingEntity = null 이후에 호출해야 drag 오작동을 막는다
   const _ppEnt   = (!wasDragging && !_didMove && draggingEntity && selectedEntities.size <= 1)
@@ -2398,6 +2407,7 @@ canvas.addEventListener('mouseleave', () => {
   draggingRelPort = null; hoveredPort = null;
   resizingSection = null; resizeDir = null; resizeStart = null;
   panStart = null; selectionBox = null;
+  _pendingDeselect = false;
   canvas.classList.remove('dragging');
   hoveredEntity = null; hoveredRelSeg = null; hoveredSection = null;
   canvas.style.cursor = sectionMode ? 'crosshair' : 'default'; render();

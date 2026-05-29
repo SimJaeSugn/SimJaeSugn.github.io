@@ -1,16 +1,10 @@
-# 구현 변경 내역
-
 ## 변경 파일 목록
-
-- js/forward_engineer.js: `_feShowStep2(restrictEntityId = null)` 인자 추가, 단일 엔티티 렌더링 분기 및 전체 선택 버튼 숨기기 처리, `openForwardEngineerForEntity(entityId)` 신규 함수 추가
-- index.html: `#ctxMenu` 내 ctx-sel-related 다음에 ctx-fe-ent 항목 추가
-- js/ui.js: CTX_VISIBILITY entity 모드에 ctx-fe-ent 추가, showCtxMenu 전체 id 배열에 ctx-fe-ent 추가, ctxFn 디스패처에 forwardEng 분기 추가
+- js/profile_manager.js: _pmEscJsAttr 헬퍼 추가, _renderProfileList/edit 블록의 onclick 인자를 _pmEsc → _pmEscJsAttr 결과 변수(jName 등)로 교체
 
 ## 주요 결정 사항
-
-- `_feShowStep2`의 렌더링 분기 시 `data-idx`는 `ENTITIES.indexOf(ent)`로 설정 — 부분 배열 인덱스 사용 안 함
-- `openForwardEngineerForEntity`는 `openForwardEngineerModal`의 가드/초기화 로직을 그대로 복사하고 마지막에 `_feShowStep2(entityId)` 호출
+- 계획대로 구현함. 파일이 CRLF 줄바꿈이라 Edit 도구 대신 Node.js 스크립트로 직접 문자열 교체를 수행함(Edit 도구가 CRLF 포함 old_string을 찾지 못하는 문제 우회).
+- 계획의 (A)~(D) 모두 계획과 동일하게 구현.
+- node --check 문법 검사 통과, eJs/eNameJs 미정의 참조 없음, onclick 컨텍스트의 eName 잔존 없음 확인.
 
 ## 미완료 항목
-
-없음
+- 없음
