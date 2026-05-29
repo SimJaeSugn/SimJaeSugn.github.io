@@ -25,6 +25,9 @@ function confirmNewDiag() {
   activeDiagramId = d.id;
   loadDiagramIntoWorkspace(d);
   pasteCount = 0;
+  selectedEntity = null;
+  if (typeof selectedEntities !== 'undefined') selectedEntities.clear();
+  if (typeof hidePropPanel === 'function') hidePropPanel();
   renderDiagramPanel();
   updateZoomLabel();
   render();
@@ -37,6 +40,9 @@ function switchDiagram(id) {
   activeDiagramId = id;
   loadDiagramIntoWorkspace(getActiveDiagram());
   pasteCount = 0;
+  selectedEntity = null;
+  if (typeof selectedEntities !== 'undefined') selectedEntities.clear();
+  if (typeof hidePropPanel === 'function') hidePropPanel();
   renderDiagramPanel();
   updateZoomLabel();
   render();
@@ -238,8 +244,8 @@ function renderEntityTree() {
         row.className = 'tree-attr';
         const isLast = idx === attrCount - 1;
         const lineChar = isLast ? '└' : '├';
-        const badgeCls = a.pk ? 'tree-badge tree-badge-pk' : (a.fk ? 'tree-badge tree-badge-fk' : 'tree-badge tree-badge-normal');
-        const badgeTxt = a.pk ? 'PK' : (a.fk ? 'FK' : '');
+        const badgeCls = a.kind === 'pk' ? 'tree-badge tree-badge-pk' : (a.kind === 'fk' ? 'tree-badge tree-badge-fk' : 'tree-badge tree-badge-normal');
+        const badgeTxt = a.kind === 'pk' ? 'PK' : (a.kind === 'fk' ? 'FK' : '');
         const aName = escHtml(attrDisplayName(a) || a.logicalName || a.physicalName || '');
         const aType = escHtml(a.type || '');
         row.innerHTML = `

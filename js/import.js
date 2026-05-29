@@ -129,7 +129,7 @@ function handleImportFile(e) {
         // 레거시 형식: entities 직접 포함 → 새 다이어그램으로 추가
         const name = _uniqueDiagName(file.name.replace(/\.json$/i, '') || '불러온 다이어그램');
         const d = createEmptyDiagram(name);
-        d.entities = data.entities;
+        d.entities = (data.entities || []).map(migrateEntity);
         d.relations = data.relations || [];
         if (data.viewport) { d.vx = data.viewport.vx ?? 40; d.vy = data.viewport.vy ?? 40; d.scale = data.viewport.scale ?? 1; }
         flushCurrentState();
@@ -364,18 +364,27 @@ function applyDDLImport() {
   if (!entities.length) { showToast('파싱된 테이블이 없습니다.'); return; }
 
   const existingIds = new Set(ENTITIES.map(e => e.id));
+  // 원래(파싱 시점) id → 최종 id 매핑. 충돌 리네이밍 후 relations/ref 재매핑에 사용
+  const idRemap = {};
   entities.forEach(e => {
+    const origId = e.id;
     let newId = e.id;
     let suffix = 2;
     while (existingIds.has(newId)) { newId = e.id + '_' + suffix++; }
     e.id = newId;
     existingIds.add(newId);
+    idRemap[origId] = newId;
+  });
+  // 모든 엔티티 id 확정 후 FK ref 재매핑 (원래 id 기준)
+  entities.forEach(e => {
     e.attrs.forEach(a => {
-      if (a.ref) {
-        const refEnt = entities.find(x => x.logicalName.toLowerCase().replace(/[^a-z0-9_]/g,'_') === a.ref.entity || x.id === a.ref.entity);
-        if (refEnt) a.ref.entity = refEnt.id;
-      }
+      if (a.ref && idRemap[a.ref.entity]) a.ref.entity = idRemap[a.ref.entity];
     });
+  });
+  // relations from/to 도 동일하게 재매핑
+  relations.forEach(r => {
+    if (idRemap[r.from]) r.from = idRemap[r.from];
+    if (idRemap[r.to])   r.to   = idRemap[r.to];
   });
   const baseY = ENTITIES.length ? Math.max(...ENTITIES.map(e => e.y + entityHeight(e))) + 80 : 80;
   entities.forEach((e, i) => {
@@ -487,15 +496,22 @@ function applyAISchema(parsed) {
     ENTITIES.length = 0; RELATIONS.length = 0;
   }
   const existingIds = new Set(ENTITIES.map(e => e.id));
+  const idRemap = {};
   entities.forEach(e => {
+    const origId = e.id;
     let newId = e.id, suffix = 2;
     while (existingIds.has(newId)) { newId = e.id + '_' + suffix++; }
     e.id = newId; existingIds.add(newId);
+    idRemap[origId] = newId;
     if (mode === 'add') { e.x += ENTITIES.length ? 20 : 0; e.y += ENTITIES.length ? 20 : 0; }
     ENTITIES.push(e);
   });
   relations.forEach(r => {
-    if (!RELATIONS.find(x => x.from === r.from && x.to === r.to)) RELATIONS.push(r);
+    const from = idRemap[r.from] || r.from;
+    const to = idRemap[r.to] || r.to;
+    if (from === to) return;
+    if (!existingIds.has(from) || !existingIds.has(to)) return;
+    if (!RELATIONS.find(x => x.from === from && x.to === to)) RELATIONS.push({ ...r, from, to });
   });
   render(); saveState(); renderEntityTree();
 }

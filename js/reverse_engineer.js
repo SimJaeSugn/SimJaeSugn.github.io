@@ -180,8 +180,8 @@ async function _runReverseEngineerStep1() {
           : '';
         return `
           <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer">
-            <input type="checkbox" class="reTableChk" data-name="${it.name}" data-type="${it.type}" checked>
-            <span>${it.name}</span>${badge}
+            <input type="checkbox" class="reTableChk" data-name="${escHtml(it.name).replace(/"/g,'&quot;')}" data-type="${escHtml(it.type)}" checked>
+            <span>${escHtml(it.name)}</span>${badge}
           </label>`;
       }).join('');
     }
@@ -297,11 +297,12 @@ async function _runReverseEngineerStep2() {
       // 기존 엔티티 위치 보존 (physicalName 기준 매칭)
       const posMap = {};
       (d.entities || []).forEach(e => {
-        posMap[e.physicalName.toLowerCase()] = { x: e.x, y: e.y };
+        const k = (e.physicalName || e.logicalName || '').toLowerCase();
+        if (k) posMap[k] = { x: e.x, y: e.y };
       });
       entities.forEach(e => {
-        const key = e.physicalName.toLowerCase();
-        if (posMap[key]) { e.x = posMap[key].x; e.y = posMap[key].y; }
+        const key = (e.physicalName || e.logicalName || '').toLowerCase();
+        if (key && posMap[key]) { e.x = posMap[key].x; e.y = posMap[key].y; }
       });
       d.entities = entities;
       d.relations = relations;

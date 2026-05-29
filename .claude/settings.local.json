@@ -70,7 +70,10 @@
       "Bash(reg query *)",
       "Bash(git -C \"e:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" diff --name-only HEAD -- middleware/)",
       "Bash(git -C \"e:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" status --short middleware/)",
-      "Bash(cat > *)"
+      "Bash(cat > *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git -C \"E:\\\\04.개발환경\\\\python\\\\98.ETC\\\\SimJaeSugn.github.io\" diff HEAD -- js/profile_manager.js)",
+      "Bash(del *)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

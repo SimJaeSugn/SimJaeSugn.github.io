@@ -76,6 +76,8 @@ function loadDiagramIntoWorkspace(d) {
   collapsedEntities = new Set(d.collapsed || []);
   selectedSection = null; selectedSections = new Set();
   vx = d.vx ?? 40; vy = d.vy ?? 40; scale = d.scale ?? 1;
+  // 정규화 진단 배지는 다이어그램별 휘발성 상태 — 다이어그램 전환/undo·redo 시 누수 방지를 위해 초기화
+  if (typeof _normActive !== 'undefined') { _normActive = false; _normWarnings = {}; }
   renderEntityTree();
 }
 

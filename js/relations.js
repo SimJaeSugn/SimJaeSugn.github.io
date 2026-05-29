@@ -6,7 +6,7 @@ function populateEntitySelects(fromId, toId) {
     const sel = document.getElementById(selId);
     const cur = idx === 0 ? fromId : toId;
     sel.innerHTML = ENTITIES.map(e =>
-      `<option value="${e.id}" ${e.id===cur?'selected':''}>${entDisplayName(e)} (${e.id})</option>`
+      `<option value="${escHtml(e.id)}" ${e.id===cur?'selected':''}>${escHtml(entDisplayName(e))} (${escHtml(e.id)})</option>`
     ).join('');
   });
 }
@@ -80,7 +80,7 @@ function saveRelation() {
       ...(label && { label }), ...(colorVal && { color: colorVal }) });
     if (document.getElementById('relFkAuto')?.checked) autoAddFkColumn(from, to, card);
   }
-  closeRelModal(); render(); saveState();
+  closeRelModal(); render(); saveState(); renderEntityTree();
 }
 
 function deleteRelation(rel) {

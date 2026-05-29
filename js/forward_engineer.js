@@ -314,7 +314,7 @@ async function _feShowStep2(restrictEntityId = null) {
       : '';
     return `
       <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer">
-        <input type="checkbox" class="feEntityChk" data-pname="${escHtml(pname)}" data-idx="${i}" checked>
+        <input type="checkbox" class="feEntityChk" data-pname="${escHtml(pname).replace(/"/g,'&quot;')}" data-idx="${i}" checked>
         <span>${escHtml(pname)}</span>
         <span style="color:var(--tx-sub);font-size:11px">(${escHtml(lname)})</span>
         ${conflictBadge}
@@ -510,7 +510,29 @@ async function _feRun() {
 
   const { sqls } = buildDDL(_feDialect, filteredEntities, opts);
   const preSqls = _feGetPreDDL(selectedPnames);
-  const allSqls = [...preSqls, ...sqls].filter(s => s && s.trim());
+  // MSSQL: SSMS/sqlcmd 전용 배치 구분자 'GO'는 mssql(Tedious) 드라이버의 query()가
+  // 인식하지 못해 'Incorrect syntax near GO' 오류를 낸다. GO 줄을 기준으로 개별
+  // 문장으로 분리하고 GO 줄 자체는 제거한다. (미리보기는 GO 포함이 정상)
+  const splitGo = (list) => {
+    if (_feDialect !== 'mssql') return list;
+    const result = [];
+    list.forEach(stmt => {
+      let buf = [];
+      stmt.split(/\n/).forEach(line => {
+        if (/^\s*GO\s*$/i.test(line)) {
+          const t = buf.join('\n').trim();
+          if (t) result.push(t);
+          buf = [];
+        } else {
+          buf.push(line);
+        }
+      });
+      const tail = buf.join('\n').trim();
+      if (tail) result.push(tail);
+    });
+    return result;
+  };
+  const allSqls = [...splitGo(preSqls), ...splitGo(sqls)].filter(s => s && s.trim());
 
   if (!allSqls.length) {
     showToast('실행할 SQL이 없습니다.');

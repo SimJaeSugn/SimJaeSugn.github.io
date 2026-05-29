@@ -244,6 +244,24 @@ function _pmEsc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// XSS 방지: double-quoted HTML 속성 안의 single-quoted JS 문자열 리터럴 컨텍스트
+// (예: onclick="fn('...')") 에 안전하게 삽입. 1) JS escape → 2) HTML-attr escape 순서.
+//   브라우저는 HTML 속성을 먼저 디코드한 뒤 JS 파서에 넘기므로, JS escape를 먼저 적용해야
+//   디코드 후 JS 파서가 올바른 문자열 리터럴을 받는다.
+function _pmEscJsAttr(str) {
+  return String(str)
+    // 1) JS 문자열 리터럴 escape (이 순서가 중요: 백슬래시 먼저)
+    .replace(/\\/g, '\\\\')   // \  → \\
+    .replace(/'/g, "\\'")     // '  → \'
+    .replace(/\r/g, '\\r')    // CR → \r
+    .replace(/\n/g, '\\n')    // LF → \n
+    // 2) HTML 속성(double-quoted) escape
+    .replace(/&/g, '&amp;')   // &  → &amp;   (먼저 처리해 이중 인코딩 방지)
+    .replace(/"/g, '&quot;')  // "  → &quot;  (속성 종료 방지)
+    .replace(/</g, '&lt;')    // <  → &lt;    (보수적 안전)
+    .replace(/>/g, '&gt;');   // >  → &gt;    (방어 심도 — _pmEsc와 일관)
+}
+
 // ── DOM 렌더 ──────────────────────────────────────────────────────
 
 function _renderProfileManagerModal(data) {
@@ -295,34 +313,40 @@ function _renderProfileList(data) {
   el.innerHTML = profiles.map(p => {
     const isActive = p.name === active;
     const isOnly   = profiles.length === 1;
-    const eName    = _pmEsc(p.name);
+    const eName    = _pmEsc(p.name);                       // 표시용 텍스트
+    const jName     = _pmEscJsAttr(p.name);               // onclick 인자용
+    const jDbType   = _pmEscJsAttr(p.dbType);
+    const jHost     = _pmEscJsAttr(p.host);
+    const jDatabase = _pmEscJsAttr(p.database);
+    const jUsername = _pmEscJsAttr(p.username);
+    const jLibDir   = _pmEscJsAttr(p.clientLibDir || '');
 
     const activeBadge = isActive
       ? `<span class="pm-active-badge">활성</span>` : '';
 
     const switchBtn = `<button class="btn" style="font-size:11px;padding:2px 8px"
-      ${isActive ? 'disabled' : `onclick="event.stopPropagation();_activateProfile('${eName}')"`}>전환</button>`;
+      ${isActive ? 'disabled' : `onclick="event.stopPropagation();_activateProfile('${jName}')"`}>전환</button>`;
 
     const editArgs = [
-      `'${eName}'`,
-      `'${_pmEsc(p.dbType)}'`,
-      `'${_pmEsc(p.host)}'`,
+      `'${jName}'`,
+      `'${jDbType}'`,
+      `'${jHost}'`,
       p.port || 'null',
-      `'${_pmEsc(p.database)}'`,
-      `'${_pmEsc(p.username)}'`,
-      `'${_pmEsc(p.clientLibDir || '')}'`
+      `'${jDatabase}'`,
+      `'${jUsername}'`,
+      `'${jLibDir}'`
     ].join(',');
     const editBtn = `<button class="btn" style="font-size:11px;padding:2px 8px"
       onclick="event.stopPropagation();_openEditProfileForm(${editArgs})">편집</button>`;
 
     const deleteBtn = `<button class="btn-del-m" style="font-size:11px;padding:2px 6px;border-radius:5px"
-      ${(isActive || isOnly) ? 'disabled' : `onclick="event.stopPropagation();_deleteProfile('${eName}')"`}>삭제</button>`;
+      ${(isActive || isOnly) ? 'disabled' : `onclick="event.stopPropagation();_deleteProfile('${jName}')"`}>삭제</button>`;
 
     const isSelected = p.name === _pmSelectedName;
 
     return `
       <div class="pm-profile-item${isSelected ? ' pm-selected' : ''}"
-           onclick="_pmSelectProfile('${eName}')">
+           onclick="_pmSelectProfile('${jName}')">
         <div class="pm-item-badges">${activeBadge}</div>
         <div class="pm-item-name">${eName}</div>
         <div class="pm-item-info">${_pmEsc(p.dbType)} · ${_pmEsc(p.host)}:${p.port || '-'}</div>
@@ -474,6 +498,7 @@ function _renderRightPanel(mode, data) {
   if (mode === 'edit') {
     const p = data;
     const eName = _pmEsc(p.name);
+    const jName  = _pmEscJsAttr(p.name);
     panel.innerHTML = `
       <div class="pm-section-title">'${eName}' 편집</div>
       <div class="form-row">
@@ -532,7 +557,7 @@ function _renderRightPanel(mode, data) {
       <div class="form-err" id="pmEditErr" style="margin-bottom:8px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
         <button class="btn-cancel-m" onclick="_closeEditForms()">취소</button>
-        <button class="btn-save-m" id="pmEditSaveBtn" onclick="_submitEditProfile('${eName}')">저장</button>
+        <button class="btn-save-m" id="pmEditSaveBtn" onclick="_submitEditProfile('${jName}')">저장</button>
       </div>`;
     document.getElementById('pmEditType').value     = p.dbType || 'postgres';
     document.getElementById('pmEditHost').value     = p.host || '';

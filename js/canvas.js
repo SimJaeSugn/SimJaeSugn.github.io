@@ -2276,8 +2276,8 @@ canvas.addEventListener('dblclick', e => {
     e.stopImmediatePropagation();
     if (collapsedEntities.has(hitEnt.id)) collapsedEntities.delete(hitEnt.id);
     else collapsedEntities.add(hitEnt.id);
-    flushCurrentState();
     render();
+    saveState();
   }
 });
 
@@ -2488,4 +2488,12 @@ canvas.addEventListener('touchmove', e => {
   e.preventDefault();
 }, { passive: false });
 
-canvas.addEventListener('touchend', () => { draggingEntity = null; panStart = null; });
+canvas.addEventListener('touchend', () => {
+  const didDrag = !!draggingEntity;
+  if (gridSnap && draggingEntity) {
+    draggingEntity.x = Math.round(draggingEntity.x / GRID) * GRID;
+    draggingEntity.y = Math.round(draggingEntity.y / GRID) * GRID;
+  }
+  draggingEntity = null; panStart = null;
+  if (didDrag) { render(); saveState(); }
+});

@@ -198,7 +198,7 @@ function populateRefEntitySelect(entry, selectedEntityId, selectedAttrName) {
     return;
   }
   entSel.innerHTML = ENTITIES.map(e =>
-    `<option value="${e.id}" ${e.id===selectedEntityId?'selected':''}>${e.logicalName||e.physicalName||e.id} (${e.id})</option>`
+    `<option value="${e.id}" ${e.id===selectedEntityId?'selected':''}>${escHtml(e.logicalName||e.physicalName||e.id)} (${escHtml(e.id)})</option>`
   ).join('');
   const targetId = selectedEntityId || entSel.value;
   populateRefAttrSelect(entry, targetId, selectedAttrName);
@@ -215,7 +215,7 @@ function populateRefAttrSelect(entry, entityId, selectedAttrName) {
   attSel.innerHTML = sorted.map(a => {
     const badge = a.kind === 'pk' ? 'PK' : a.kind === 'fk' ? 'FK' : '일반';
     const pn = a.physicalName || a.logicalName || '';
-    return `<option value="${pn}" ${pn===selectedAttrName?'selected':''}>${a.logicalName||pn} / ${pn} (${badge})</option>`;
+    return `<option value="${escHtml(pn)}" ${pn===selectedAttrName?'selected':''}>${escHtml(a.logicalName||pn)} / ${escHtml(pn)} (${badge})</option>`;
   }).join('');
 }
 
@@ -406,7 +406,7 @@ function doExtractEntity() {
   RELATIONS.push({ from: _extractSource.id, to: newEnt.id, card: '1:N' });
   if (!keep) _extractSource.attrs = _extractSource.attrs.filter((_, i) => !idxs.includes(i));
   closeExtractModal(); closeEntModal();
-  render(); saveState();
+  render(); saveState(); renderEntityTree();
   showToast(`'${logical}'으로 ${extracted.length}개 속성 추출 완료`);
 }
 

@@ -356,7 +356,7 @@ function downloadSVG() {
     svg += `<rect x="${ex}" y="${ey+HEADER_H-8}" width="${W}" height="8" fill="#313244"/>`;
     const dname = entDisplayName(e);
     svg += `<text x="${ex+W/2}" y="${ey+HEADER_H/2+1}" fill="#cdd6f4" font-size="13" font-family="Segoe UI,sans-serif" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${esc(dname)}</text>`;
-    e.attrs.forEach((attr, i) => {
+    if (!collapsedEntities.has(e.id)) e.attrs.forEach((attr, i) => {
       const ry = ey + HEADER_H + i * ROW_H;
       const bg = attr.kind==='pk' ? '#3d1f28' : attr.kind==='fk' ? '#2d2013' : 'transparent';
       if (bg !== 'transparent') svg += `<rect x="${ex+1}" y="${ry}" width="${W-2}" height="${ROW_H}" fill="${bg}"/>`;

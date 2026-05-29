@@ -77,10 +77,19 @@ function _renderRowKeys(row, id) {
   const parts  = _scParts(id);
   const keysEl = row.querySelector('.sc-keys');
   if (!keysEl) return;
-  keysEl.innerHTML = parts.map((p, i) =>
+  const rendered = parts.map((p, i) =>
     `<span class="sc-key${custom ? ' sc-key-custom' : ''}">${p}</span>` +
     (i < parts.length - 1 ? '<span class="sc-key-sep">+</span>' : '')
   ).join('');
+  // redo는 하드코딩 보조 단축키(Ctrl+Shift+Z)가 main.js에 별도로 존재하므로 함께 표시
+  if (id === 'redo') {
+    keysEl.innerHTML = rendered +
+      '&thinsp;<span class="sc-key-sep">/</span>&thinsp;' +
+      '<span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span>' +
+      '<span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">Z</span>';
+  } else {
+    keysEl.innerHTML = rendered;
+  }
 
   let resetBtn = row.querySelector('.sc-reset-btn');
   if (custom) {

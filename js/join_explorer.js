@@ -71,7 +71,7 @@ function runJoinExplorer() {
   const pathHtml = path.map(id => {
     const e = entMap[id];
     return `<span style="background:var(--bg-surface);border:1px solid var(--bd2);border-radius:5px;
-      padding:3px 10px;font-size:12px;white-space:nowrap">${escHtml(e?.logicalName || id)}</span>`;
+      padding:3px 10px;font-size:12px;white-space:nowrap">${escHtml(e?.logicalName || e?.physicalName || id)}</span>`;
   }).join(`<span style="color:var(--tx-sub);margin:0 4px">→</span>`);
 
   const sql = _buildJoinSQL(path, entMap);

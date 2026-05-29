@@ -56,6 +56,9 @@ document.addEventListener('keydown', e => {
   // 입력 필드 포커스 중에는 이하 단축키 무시
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  // 타임라인 미리보기 중에는 ENTITIES/RELATIONS가 임시(비영속) 상태이므로
+  // 데이터를 변경/영속화하는 전역 단축키를 차단한다(HUD의 ←/→/Enter/Esc는 HUD 핸들러가 처리).
+  if (typeof _tlPreviewMode !== 'undefined' && _tlPreviewMode) return;
 
   const ctrl = e.ctrlKey || e.metaKey;
   if (matchSC(e, 'search'))  { e.preventDefault(); openSearch(); return; }
@@ -156,10 +159,6 @@ document.addEventListener('keydown', e => {
       });
       selectedSections.clear(); selectedSection = null;
       render(); saveState(); return;
-    }
-    if (selectedSections.size > 0) {
-      [...selectedSections].forEach(s => deleteSection(s));
-      selectedSections.clear(); render(); saveState(); return;
     }
   }
 });

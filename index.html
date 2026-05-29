@@ -77,8 +77,8 @@
         <div class="mb-item" onclick="mbClose();autoOptimizeRelationsV2()"><span class="mb-ico">⫷</span><span class="mb-text">관계선최적화V2</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">표기법</div>
-        <div class="mb-item" id="mbi-logical" onclick="mbClose();setViewMode('logical')"><span class="mb-chk"></span><span class="mb-text">논리 보기</span></div>
-        <div class="mb-item" id="mbi-physical" onclick="mbClose();setViewMode('physical')"><span class="mb-chk"></span><span class="mb-text">물리 보기</span></div>
+        <div class="mb-item" id="mbi-logical" onclick="mbClose();setViewMode('logical');saveState()"><span class="mb-chk"></span><span class="mb-text">논리 보기</span></div>
+        <div class="mb-item" id="mbi-physical" onclick="mbClose();setViewMode('physical');saveState()"><span class="mb-chk"></span><span class="mb-text">물리 보기</span></div>
         <div class="mb-item" id="mbi-notation" onclick="mbClose();toggleNotation()"><span class="mb-chk"></span><span class="mb-text">크로우풋 표기</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">정렬</div>

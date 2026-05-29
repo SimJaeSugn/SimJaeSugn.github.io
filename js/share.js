@@ -63,6 +63,11 @@ function tryRestoreFromUrl() {
     const json = LZString.decompressFromEncodedURIComponent(encoded);
     if (!json) return false;
     const state = JSON.parse(json);
+    // 복원 가능한 스냅샷인지 먼저 검증 (비어있거나 구버전 포맷이면 복원하지 않고 실패 처리)
+    if (!state || !Array.isArray(state.diagrams) || !state.diagrams.length) {
+      console.warn('[share] 공유 URL에 복원 가능한 다이어그램이 없습니다.');
+      return false;
+    }
     restoreFromSnapshot(state);
     saveState();
     // URL 정리 (?erd= 제거)
