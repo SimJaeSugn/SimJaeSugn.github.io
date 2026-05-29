@@ -309,7 +309,7 @@ function _runAutoOptimizeRelations() {
 
     if (overlaps === 0 || pass >= MAX_PASS) {
       hideLayoutProgress();
-      fitAll();
+      centerOnEntities();
       saveState();
       showToast(overlaps === 0
         ? `관계선 최적화 완료 (${pass}패스)`
@@ -514,7 +514,7 @@ function _v2FinishUp(crossings, overlaps, round) {
       RELATIONS.forEach(rel => _v2SimplifyWpts(rel));
       render();
       hideLayoutProgress();
-      fitAll();
+      centerOnEntities();
       saveState();
       const ok = crossings === 0 && ov === 0;
       showToast(ok

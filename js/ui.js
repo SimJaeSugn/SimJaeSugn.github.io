@@ -640,6 +640,21 @@ function fitAll() {
   saveState();
 }
 
+// ── 엔티티 좌상단 기준 뷰포트 이동 (배율 유지) ──────────────────────────
+function centerOnEntities() {
+  if (!ENTITIES.length) return;
+  const pad = 40;
+  let minX = Infinity, minY = Infinity;
+  ENTITIES.forEach(e => {
+    minX = Math.min(minX, e.x);
+    minY = Math.min(minY, e.y);
+  });
+  const _qlo = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
+  vx = _qlo + pad - minX * scale;
+  vy = pad - minY * scale;
+  render();
+}
+
 // ── 그리드 스냅 토글 ────────────────────────────────────────────
 function toggleGridSnap() {
   gridSnap = !gridSnap;
