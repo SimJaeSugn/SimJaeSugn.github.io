@@ -71,6 +71,13 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /execute/stream | SQL SSE 스트림 |
 | GET | /schema/tables | 테이블·뷰 목록 |
 | GET | /schema | 전체 스키마 (테이블·뷰·FK) |
+| POST | /agent/stream | 자연어 질의 → 응답 SSE 스트림 (meta·token·done·error) — Python 프록시 전용 |
+| GET | /agent/key | OpenAI 키 설정 여부 |
+| POST | /agent/key | OpenAI 키 저장 (AES-256-GCM 암호화) |
+
+> `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
+> `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.
+> OpenAI 키는 DB 비밀번호와 동일한 마스터 키로 암호화되어 `~/.uxermanager/config.json` 의 `aiKey` 필드에 저장된다.
 
 ---
 
@@ -85,7 +92,12 @@ proxy/python/
 │   ├── config.py          ← /config 라우터 (프로파일 CRUD)
 │   ├── execute.py         ← /execute, /execute/stream 라우터
 │   ├── health.py          ← /health 라우터
-│   └── schema.py          ← /schema 라우터
+│   ├── schema.py          ← /schema 라우터
+│   └── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
+├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
+│   ├── graph.py           ← StateGraph 조립 (gate → answer)
+│   ├── nodes/             ← gate.py(의도 분기) · answer.py(직접 응답 스트리밍)
+│   └── common/            ← state · schemas · prompts · llm · keys(OpenAI 키)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅
 │   └── adapters/

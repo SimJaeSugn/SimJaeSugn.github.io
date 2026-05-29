@@ -931,7 +931,8 @@ SimJaeSugn.github.io/
 │       ├── main.py                ← FastAPI 진입점
 │       ├── requirements.txt
 │       ├── build.ps1              ← PyInstaller 빌드
-│       ├── routers/               ← config / execute / health / schema
+│       ├── routers/               ← config / execute / health / schema / agent
+│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common /) — 자연어 ERD 제어
 │       ├── db/adapters/           ← postgres / mysql / mssql / oracle
 │       └── utils/                 ← crypto / keystore / audit_logger
 │

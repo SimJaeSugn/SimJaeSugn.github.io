@@ -3,7 +3,7 @@ import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import config, execute, health, schema
+from routers import agent, config, execute, health, schema
 
 ALLOWED_ORIGINS = [
     "https://simjaesugn.github.io",
@@ -34,6 +34,7 @@ app.include_router(config.router, prefix="/config")
 app.include_router(execute.router, prefix="/execute")
 app.include_router(health.router, prefix="/health")
 app.include_router(schema.router, prefix="/schema")
+app.include_router(agent.router, prefix="/agent")
 
 @app.get("/ping")
 def ping():

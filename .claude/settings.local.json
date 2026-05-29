@@ -92,7 +92,8 @@
       "Bash(Select-String \"python-sidecar|proxy\")",
       "Bash(git *)",
       "Bash(dir \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\")",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(python -m py_compile agent/__init__.py agent/common/__init__.py agent/common/state.py agent/common/schemas.py agent/common/keys.py agent/common/llm.py agent/common/prompts.py agent/nodes/__init__.py agent/nodes/gate.py agent/nodes/answer.py agent/graph.py routers/agent.py main.py)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
