@@ -2394,12 +2394,13 @@ canvas.addEventListener('mouseup', e => {
   if (wasDragging) setTimeout(saveState, 0);
 
   // cleanup 완료 후 패널 조작 (이 시점엔 draggingEntity가 null이므로 안전)
-  // ── [임시 비활성화 2026-05-30] 엔티티 클릭 시 우측 속성 패널 자동 열림 기능 ──
-  //    데드코드 아님. 의도적으로 임시 차단한 것이므로 삭제하지 말 것.
-  //    복원하려면 아래 주석 처리된 showPropPanel(_ppEnt) 호출을 되살린다.
-  //    (_ppEnt 계산은 복원 시 즉시 사용 가능하도록 그대로 유지한다.)
-  // if (_ppEnt && typeof showPropPanel === 'function')     showPropPanel(_ppEnt);
-  if (_ppEmpty && typeof hidePropPanel === 'function') hidePropPanel();
+  // 엔티티 클릭 시 컬럼(속성) 편집기 자동 열림은
+  //   ① 우측 패널이 열려 있고  ② 활성 탭이 '목록'일 때만 동작한다.
+  // (패널이 닫혀 있거나 Agent 탭이 떠 있을 때는 클릭만으로 열지 않는다.)
+  const _listTabActive = !document.getElementById('panelViewList')
+    || document.getElementById('panelViewList').classList.contains('active');
+  if (_ppEnt && panelOpen && _listTabActive && typeof showPropPanel === 'function') showPropPanel(_ppEnt);
+  else if (_ppEmpty && typeof hidePropPanel === 'function') hidePropPanel();
 });
 
 canvas.addEventListener('mouseleave', () => {

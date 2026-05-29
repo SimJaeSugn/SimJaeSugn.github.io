@@ -212,30 +212,62 @@
 <!-- ── Diagram Panel (right) ────────────────── -->
 <div id="diagramPanel" class="collapsed">
   <div id="panelWidthHandle"></div>
-  <div id="panelTop">
-    <div class="panel-hdr">
-      <button class="panel-collapse-btn" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
-      <span class="panel-hdr-title">다이어그램</span>
-      <button class="panel-add-btn" onclick="showNewDiagModal()" title="새 다이어그램 추가">＋</button>
-    </div>
-    <div id="diagramList"></div>
+
+  <!-- 패널 탭 (목록 / Agent) -->
+  <div id="panelTabs">
+    <button class="panel-tab active" data-ptab="list"  onclick="switchPanelTab('list')"><span>📋</span>목록</button>
+    <button class="panel-tab"        data-ptab="agent" onclick="switchPanelTab('agent')"><span>🤖</span>Agent</button>
+    <button class="panel-collapse-btn" style="margin-left:auto" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
   </div>
-  <div id="panelDivider"></div>
-  <div id="panelBottom">
-    <div class="panel-hdr" style="padding: 7px 10px 7px 8px;">
-      <span class="panel-hdr-title" style="font-size:12px;">엔티티 목록</span>
+
+  <!-- 목록 뷰 -->
+  <div id="panelViewList" class="panel-view active">
+    <div id="panelTop">
+      <div class="panel-hdr">
+        <span class="panel-hdr-title">다이어그램</span>
+        <button class="panel-add-btn" onclick="showNewDiagModal()" title="새 다이어그램 추가">＋</button>
+      </div>
+      <div id="diagramList"></div>
     </div>
-    <div id="entityTree"></div>
+    <div id="panelDivider"></div>
+    <div id="panelBottom">
+      <div class="panel-hdr" style="padding: 7px 10px 7px 8px;">
+        <span class="panel-hdr-title" style="font-size:12px;">엔티티 목록</span>
+      </div>
+      <div id="entityTree"></div>
+    </div>
+    <div id="propDivider"></div>
+    <div id="propPanel">
+      <div class="panel-hdr pp-hdr">
+        <span id="ppIcon" class="pp-icon">📋</span>
+        <span class="panel-hdr-title pp-title" id="ppTitle"></span>
+        <button class="diag-btn" id="ppModalBtn" onclick="openPropPanelModal()" title="모달에서 전체 편집 (⤢)">⤢</button>
+        <button class="diag-btn" onclick="hidePropPanel()" title="닫기">✕</button>
+      </div>
+      <div id="ppContent"></div>
+    </div>
   </div>
-  <div id="propDivider"></div>
-  <div id="propPanel">
-    <div class="panel-hdr pp-hdr">
-      <span id="ppIcon" class="pp-icon">📋</span>
-      <span class="panel-hdr-title pp-title" id="ppTitle"></span>
-      <button class="diag-btn" id="ppModalBtn" onclick="openPropPanelModal()" title="모달에서 전체 편집 (⤢)">⤢</button>
-      <button class="diag-btn" onclick="hidePropPanel()" title="닫기">✕</button>
+
+  <!-- Agent 뷰 (채팅) -->
+  <div id="panelViewAgent" class="panel-view">
+    <div id="agentMessages" class="agent-messages">
+      <div class="agent-empty" id="agentEmpty">
+        <div class="agent-empty-ico">🤖</div>
+        <div class="agent-empty-title">무엇을 도와드릴까요?</div>
+        <div class="agent-empty-sub">자연어로 ERD를 만들거나 질문하세요.</div>
+        <div class="agent-suggests">
+          <button class="agent-chip" onclick="agentFillInput(this.textContent)">회원·주문 테이블 만들어줘</button>
+          <button class="agent-chip" onclick="agentFillInput(this.textContent)">PK 없는 테이블 찾아줘</button>
+          <button class="agent-chip" onclick="agentFillInput(this.textContent)">전체 자동 정렬해줘</button>
+        </div>
+      </div>
     </div>
-    <div id="ppContent"></div>
+    <div class="agent-input-area">
+      <textarea id="agentInput" class="agent-input" rows="1"
+                placeholder="메시지를 입력하세요…  (Enter 전송 · Shift+Enter 줄바꿈)"
+                oninput="agentAutoGrow(this)" onkeydown="agentInputKey(event)"></textarea>
+      <button id="agentSendBtn" class="agent-send" onclick="agentSend()" title="전송">➤</button>
+    </div>
   </div>
 </div>
 <div id="panelReopenTab" class="visible" onclick="toggleDiagramPanel()" title="다이어그램 패널 열기">
@@ -1001,6 +1033,7 @@
 <script src="js/profile_manager.js"></script>
 <script src="js/reverse_engineer.js"></script>
 <script src="js/forward_engineer.js"></script>
+<script src="js/agent_panel.js"></script>
 <script src="js/main.js"></script>
 
 <!-- ── Status Bar ───────────────────────────── -->

@@ -1143,6 +1143,12 @@ let _ppTarget = null;  // 현재 표시 대상 (entity or relation object)
 
 function _ensurePanelOpen() {
   if (typeof panelOpen !== 'undefined' && !panelOpen) toggleDiagramPanel();
+  // 속성 패널(#propPanel)은 '목록' 뷰 안에 있으므로, Agent 탭이 떠 있으면
+  // 목록 탭으로 전환해야 속성 편집기가 실제로 보인다.
+  if (typeof switchPanelTab === 'function') {
+    const listView = document.getElementById('panelViewList');
+    if (listView && !listView.classList.contains('active')) switchPanelTab('list');
+  }
 }
 
 function showPropPanel(entity) {
