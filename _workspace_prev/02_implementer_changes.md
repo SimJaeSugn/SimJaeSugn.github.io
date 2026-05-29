@@ -1,17 +1,69 @@
-## 변경 파일 목록
-- src/routes/config.js: 다중 프로파일 지원으로 전체 재작성 — loadRawStore/saveStore 추가, _storeCache/_activeConfigCache 이중 캐시, 구버전 단일 객체 자동 마이그레이션, GET/POST /config 기존 호환 유지, 프로파일 CRUD 5개 엔드포인트 신규 추가
-- src/utils/auditLogger.js: 신규 생성 — SQL 실행 감사 로그 기록 (writeAuditLog), 10 MB 로테이션
-- src/routes/execute.js: auditLogger import 추가, POST /execute 성공·실패 분기에 writeAuditLog 호출, POST /execute/stream 성공·실패 분기에 writeAuditLog 호출, duration 변수 분리로 중복 계산 제거
-- src/routes/health.js: 신규 생성 — GET /health (DB 연결 상태 확인, latencyMs 반환)
-- src/index.js: healthRouter require 추가, app.use('/health', healthRouter) 등록
-- scripts/install-watchdog.ps1: 신규 생성 — Windows Task Scheduler Watchdog 등록 스크립트
-- scripts/uninstall-watchdog.ps1: 신규 생성 — Watchdog 작업 제거 스크립트
-- middleware/README.md: /health, 프로파일 CRUD API 섹션 추가; 파일 구조 다이어그램 갱신; 감사 로그 경로 및 형식 추가; Watchdog 설치 섹션 추가
+# 02_implementer_changes.md
 
-## 주요 결정 사항
-- config.js의 loadRawStore 내부에서 saveStore를 호출하면 재귀적 캐시 무효화가 발생할 수 있으므로, 마이그레이션 후 _storeCache를 직접 할당하여 파일 재읽기 없이 반환했다.
-- 레거시 암호화 마이그레이션(decryptLegacy → encrypt)은 loadConfig 내부에서 loadRawStore를 재호출해 최신 store를 얻은 후 인덱스를 찾아 갱신하는 방식으로, 캐시 상태와의 일관성을 유지했다.
-- CORS allowedHeaders에 'DELETE' 메서드가 없어 DELETE /config/profiles/:name이 CORS 차단될 수 있으나, 이는 index.js CORS 설정 범위이므로 요청 범위(config.js 재작성)에 포함되지 않아 수정하지 않았다. (추후 별도 수정 권장)
+## 구현 완료 — js/layout.js V2 라우터 버그 수정 (2026-05-29)
 
-## 미완료 항목
-- 없음 (계획의 모든 항목 구현 완료)
+### 수정 D — start/goal 노드 blocked 예외 (layout.js:787~791)
+
+**변경 위치:** `_v2AStarRoute` A* 확장 루프 내
+
+| 항목 | 내용 |
+|------|------|
+| 파일 | `js/layout.js` |
+| 원인 | startKey/goalKey가 blocked 집합에 포함될 경우 A*가 즉시 막혀 폴백으로 전락 |
+| 수정 | `blocked.has(nKey)` 조건에 `&& nKey !== startKey && nKey !== goalKey` 예외 추가 |
+| 추가 | 출발 노드(cur.key === startKey)에서 startDir과 불일치하는 방향 확장을 차단하는 가드 추가 |
+
+---
+
+### 수정 C — thinArr 엔티티 경계·포트 anchor must-keep 보존 (layout.js:598~626)
+
+**변경 위치:** `_v2BuildGrid` 내 `thinArr` 함수
+
+| 항목 | 내용 |
+|------|------|
+| 파일 | `js/layout.js` |
+| 원인 | 격자 솎기 시 엔티티 경계 좌표(e.x, e.x+W, e.y, e.y+eh 등)와 포트 anchor가 제거됨 |
+| 수정 | `mustKeepX` / `mustKeepY` Set을 생성해 엔티티 경계 4종(±GAP 포함) 및 포트 anchor 좌표를 등록 |
+| 수정 | `thinArr(arr, limit, mustKeep)` 시그니처에 mustKeep 파라미터 추가, mustKeep.has(v) 이면 항상 유지 |
+
+---
+
+### 수정 B — _v2ClearSpineX/Y 관통 최소 후보 추적 반환 (layout.js:907~945)
+
+**변경 위치:** `_v2ClearSpineX`, `_v2ClearSpineY` 함수
+
+| 항목 | 내용 |
+|------|------|
+| 파일 | `js/layout.js` |
+| 원인 | 12회 루프 실패 시 마지막 이동 좌표를 반환하여 최악의 경로가 선택될 수 있음 |
+| 수정 | `bestX`/`bestY`, `bestCross` 추적 변수 추가 |
+| 수정 | 매 이터레이션마다 현재 교차 수를 집계하여 bestCross보다 낮으면 갱신 |
+| 수정 | 루프 종료 후 best 좌표 반환 (관통 최소 보장) |
+
+---
+
+### 수정 A — `_v2RouteWithFaceCycle` 신규 함수 + runRound 교체 (layout.js:647~706, 447)
+
+**변경 위치:** `_v2AStarRoute` 바로 앞에 신규 함수 삽입, `runRound` toRoute.forEach 교체
+
+| 항목 | 내용 |
+|------|------|
+| 파일 | `js/layout.js` |
+| 원인 | 수렴 루프에서 포트 면을 바꾸지 않고 동일 면 A*만 반복 → 관통이 있어도 면 변경 없음 |
+| 신규 함수 | `_v2RouteWithFaceCycle(rel, grid, usage)` |
+| 로직 | 16조합(fromFace × toFace = 4×4) 생성, 현재 면 0순위·상대 방향 선호 면 우선 정렬 |
+| 로직 | 각 조합마다 `_v2AStarRoute` → `_v2CountCrossings` 재검증 → crossing 0이면 즉시 채택 |
+| 로직 | 전체 관통 > 0이면 최소 crossing 조합의 결과를 최종 채택 |
+| runRound | `toRoute.forEach`에서 `_v2AStarRoute` 직접 호출 → `_v2RouteWithFaceCycle` 호출로 교체 |
+
+---
+
+## 변경된 줄 수 요약
+
+| 수정 | 추가 | 삭제 | 순 추가 |
+|------|------|------|---------|
+| D | +3 | -1 | +2 |
+| C | +17 | -5 | +12 |
+| B | +14 | -8 | +6 |
+| A | +57 | -1 | +56 |
+| **합계** | **+91** | **-15** | **+76** |
