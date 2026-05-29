@@ -1,10 +1,11 @@
 ## 변경 파일 목록
-- js/canvas.js: _viewportBounds() 헬퍼 추가, 엔티티 컬링, 관계선 컬링 구현
+- js/entities.js: `_copyDiagEntity` → `_copyDiagEntities` 배열로 교체, `openCopyDiagModal` 다중 선택 우선순위 처리, `confirmCopyToDiag` 배열 순회 및 id 재발급 방식으로 변경
+- js/diagrams.js: `switchDiagram` 함수 내 `loadDiagramIntoWorkspace` 호출 직후 `pasteCount = 0` 추가
+- index.html: copyDiagOverlay 모달 설명 문구를 "선택한 엔티티를 복사할 대상 다이어그램을 선택하세요."로 변경
 
 ## 주요 결정 사항
-- 관계선 컬링에서 entityMap() 재사용: getRelationPath() 내부도 entityMap()을 매 rel마다 호출하는 구조이므로, drawRelations() 시작 시 한 번만 생성한 _relEM을 컬링 판단에 사용해 중복 생성을 줄임
-- isActive || isConnected 조건 시 컬링 완전 면제: hover/drag/selected 관계선과 선택 엔티티 연결 관계선은 컬링 검사 자체를 건너뜀
-- aOut && bOut (AND 조건)만 스킵: 한쪽 엔티티라도 뷰포트 안에 있으면 선이 가로질러 그려질 수 있으므로 OR 조건 사용하지 않음
+- `pasteCount`가 entities.js의 전역 스코프에 선언되어 있어 diagrams.js에서 직접 대입 가능함 — helper 함수 불필요
+- `confirmCopyToDiag`에서 기존의 `copy.id += '_copy'` 중복 id 처리 방식을 제거하고, 계획대로 항상 신규 id를 발급하는 방식으로 교체
 
 ## 미완료 항목
-- 없음 (변경 4 debounce는 계획에서 이미 추가 구현 불필요로 확인됨)
+- 없음

@@ -96,6 +96,10 @@ function _renderReverseEngineerModal() {
               <input type="radio" name="reMode" value="overwrite" id="reModeOverwrite">
               <span style="font-size:13px">현재 다이어그램 덮어쓰기</span>
             </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="radio" name="reMode" value="append" id="reModeAppend">
+              <span style="font-size:13px">현재 다이어그램에 추가</span>
+            </label>
           </div>
         </div>
 
@@ -251,6 +255,41 @@ async function _runReverseEngineerStep2() {
       loadDiagramIntoWorkspace(d);
       renderDiagramPanel();
       updateZoomLabel();
+      render();
+      saveState();
+    } else if (mode === 'append') {
+      const d = getActiveDiagram();
+      // id 충돌 회피 + 재매핑
+      const existingIds = new Set((d.entities || []).map(e => e.id));
+      const idRemap = {};
+      entities.forEach(e => {
+        let newId = e.id, suffix = 2;
+        while (existingIds.has(newId)) { newId = e.id + '_' + suffix++; }
+        if (newId !== e.id) idRemap[e.id] = newId;
+        e.id = newId;
+        existingIds.add(newId);
+      });
+      relations.forEach(r => {
+        if (idRemap[r.from]) r.from = idRemap[r.from];
+        if (idRemap[r.to])   r.to   = idRemap[r.to];
+      });
+      // 위치 충돌 회피 — 기존 엔티티 최하단 아래로 전체 오프셋
+      const baseY = (d.entities && d.entities.length)
+        ? Math.max(...d.entities.map(e => e.y + entityHeight(e))) + 80
+        : 0;
+      if (baseY) {
+        entities.forEach(e => { e.y += baseY; });
+        viewNotes.forEach(n => { n.y += baseY; });
+      }
+      // 병합
+      d.entities = [...(d.entities || []), ...entities];
+      const merged = [...(d.relations || [])];
+      relations.forEach(r => {
+        if (!merged.find(x => x.from === r.from && x.to === r.to)) merged.push(r);
+      });
+      d.relations = merged;
+      d.notesV2 = [...(d.notesV2 || []), ...viewNotes];
+      loadDiagramIntoWorkspace(d);
       render();
       saveState();
     } else {
