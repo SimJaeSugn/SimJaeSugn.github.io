@@ -446,7 +446,11 @@ function collectIndexes() {
 }
 
 // ── 복사 / 붙여넣기 ──────────────────────────────────────────────
+<<<<<<< HEAD
 // _clipboard: { entities: [...], sections: [...] }
+=======
+// _clipboard: { entities: [...], sections: [...], relations: [...] }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 let _clipboard = null;
 let pasteCount  = 0;
 
@@ -459,6 +463,7 @@ function copyEntity() {
   const sects = [...selectedSections];
   if (!ents.length && !sects.length) return;
 
+<<<<<<< HEAD
   _clipboard = {
     entities: ents.map(e => JSON.parse(JSON.stringify(e))),
     sections: sects.map(s => JSON.parse(JSON.stringify(s))),
@@ -466,11 +471,27 @@ function copyEntity() {
   pasteCount = 0;
   const total = ents.length + sects.length;
   showToast(`${total}개 항목 복사됨`);
+=======
+  // 선택 집합 내에서 from/to 양쪽이 모두 포함된 관계선만 복사
+  const idSet = new Set(ents.map(e => e.id));
+  const rels  = RELATIONS.filter(r => idSet.has(r.from) && idSet.has(r.to));
+
+  _clipboard = {
+    entities: ents.map(e => JSON.parse(JSON.stringify(e))),
+    sections: sects.map(s => JSON.parse(JSON.stringify(s))),
+    relations: rels.map(r => JSON.parse(JSON.stringify(r))),
+  };
+  pasteCount = 0;
+  const total = ents.length + sects.length;
+  const relMsg = rels.length ? ` (관계선 ${rels.length})` : '';
+  showToast(`${total}개 항목 복사됨${relMsg}`);
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 }
 
 function pasteEntity() {
   if (!_clipboard) return;
   pasteCount++;
+<<<<<<< HEAD
   const offset = 30 * pasteCount;
 
   // 엔티티 붙여넣기
@@ -480,6 +501,49 @@ function pasteEntity() {
     copy.x = e.x + offset;
     copy.y = e.y + offset;
     // FK ref 제거 (관계선 미복사)
+=======
+
+  // ── 붙여넣기 위치 계산: 클립보드 그룹 중심을 현재 뷰포트 중앙으로 이동 ──
+  const off = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
+  const cw  = window.innerWidth - off - ((typeof panelOpen !== 'undefined' && panelOpen) ? PANEL_W : 0);
+  const ch  = window.innerHeight;
+  const center = toWorld(off + cw / 2, ch / 2);
+
+  // 클립보드 엔티티/섹션의 바운딩 박스 산출
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  _clipboard.entities.forEach(e => {
+    const eh = (typeof entityHeight === 'function') ? entityHeight(e) : 0;
+    if (e.x < minX) minX = e.x;
+    if (e.y < minY) minY = e.y;
+    if (e.x + W  > maxX) maxX = e.x + W;
+    if (e.y + eh > maxY) maxY = e.y + eh;
+  });
+  (_clipboard.sections || []).forEach(s => {
+    if (s.x < minX) minX = s.x;
+    if (s.y < minY) minY = s.y;
+    if (s.x + (s.w || 0) > maxX) maxX = s.x + (s.w || 0);
+    if (s.y + (s.h || 0) > maxY) maxY = s.y + (s.h || 0);
+  });
+
+  let dx = 0, dy = 0;
+  if (isFinite(minX) && isFinite(minY)) {
+    const gcx = (minX + maxX) / 2, gcy = (minY + maxY) / 2;
+    // 연속 붙여넣기 시 겹침 방지를 위한 소량 누적 오프셋
+    const nudge = 20 * (pasteCount - 1);
+    dx = center.x - gcx + nudge;
+    dy = center.y - gcy + nudge;
+  }
+
+  // 엔티티 붙여넣기 (원본 id → 새 id 매핑 구축)
+  const idMap = {};
+  const newEnts = _clipboard.entities.map(e => {
+    const copy = JSON.parse(JSON.stringify(e));
+    copy.id = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    idMap[e.id] = copy.id;
+    copy.x = e.x + dx;
+    copy.y = e.y + dy;
+    // FK ref 제거 (관계선과 별개; FK 컬럼 참조는 미복사)
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
     return copy;
   });
@@ -488,6 +552,7 @@ function pasteEntity() {
   const newSects = _clipboard.sections.map(s => {
     const copy = JSON.parse(JSON.stringify(s));
     copy.id = makeSectionId();
+<<<<<<< HEAD
     copy.x = s.x + offset;
     copy.y = s.y + offset;
     return copy;
@@ -495,6 +560,26 @@ function pasteEntity() {
 
   newEnts.forEach(e => ENTITIES.push(e));
   newSects.forEach(s => SECTIONS.push(s));
+=======
+    copy.x = s.x + dx;
+    copy.y = s.y + dy;
+    return copy;
+  });
+
+  // 관계선 붙여넣기: from/to 를 새 엔티티 id 로 재매핑
+  const newRels = (_clipboard.relations || []).map(r => {
+    const from = idMap[r.from], to = idMap[r.to];
+    if (!from || !to) return null;
+    const copy = JSON.parse(JSON.stringify(r));
+    copy.from = from;
+    copy.to   = to;
+    return copy;
+  }).filter(Boolean);
+
+  newEnts.forEach(e => ENTITIES.push(e));
+  newSects.forEach(s => SECTIONS.push(s));
+  newRels.forEach(r => RELATIONS.push(r));
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 
   // 선택 상태 갱신
   selectedEntities.clear();
@@ -507,13 +592,27 @@ function pasteEntity() {
   saveState();
   if (typeof renderEntityTree === 'function') renderEntityTree();
   const total = newEnts.length + newSects.length;
+<<<<<<< HEAD
   showToast(`${total}개 항목 붙여넣기 완료`);
+=======
+  const relMsg = newRels.length ? ` (관계선 ${newRels.length})` : '';
+  showToast(`${total}개 항목 붙여넣기 완료${relMsg}`);
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 }
 
 // ── 다이어그램 간 복사 ────────────────────────────────────────────
-let _copyDiagEntity = null;
+let _copyDiagEntities = [];
 function openCopyDiagModal(entity) {
-  _copyDiagEntity = entity;
+  if (selectedEntities.size > 0) {
+    _copyDiagEntities = [...selectedEntities].map(id => ENTITIES.find(e => e.id === id)).filter(Boolean);
+  } else if (entity) {
+    _copyDiagEntities = [entity];
+  } else if (selectedEntity) {
+    _copyDiagEntities = [selectedEntity];
+  } else {
+    _copyDiagEntities = [];
+  }
+  if (!_copyDiagEntities.length) { showToast('복사할 엔티티가 없습니다.'); return; }
   const others = diagrams.filter(d => d.id !== activeDiagramId);
   if (!others.length) { showToast('다른 다이어그램이 없습니다.'); return; }
   const list = document.getElementById('copyDiagList');
@@ -527,15 +626,17 @@ function openCopyDiagModal(entity) {
 function closeCopyDiagModal() { document.getElementById('copyDiagOverlay').classList.remove('active'); }
 function confirmCopyToDiag(diagId) {
   const target = diagrams.find(d => d.id === diagId);
-  if (!target || !_copyDiagEntity) return;
-  const copy = JSON.parse(JSON.stringify(_copyDiagEntity));
-  copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
-  copy.x += 30; copy.y += 30;
-  if (target.entities.find(e => e.id === copy.id)) copy.id += '_copy';
-  target.entities.push(copy);
+  if (!target || !_copyDiagEntities.length) return;
+  _copyDiagEntities.forEach((orig, i) => {
+    const copy = JSON.parse(JSON.stringify(orig));
+    copy.id = 'entity_' + Date.now().toString(36) + i.toString(36) + Math.random().toString(36).slice(2, 5);
+    copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
+    copy.x += 30; copy.y += 30;
+    target.entities.push(copy);
+  });
   closeCopyDiagModal();
   saveState();
-  showToast(`'${entDisplayName(_copyDiagEntity)}' → '${target.name}' 복사 완료`);
+  showToast(`${_copyDiagEntities.length}개 엔티티 → '${target.name}' 복사 완료`);
 }
 
 // ── FK 컬럼 자동 생성 ────────────────────────────────────────────

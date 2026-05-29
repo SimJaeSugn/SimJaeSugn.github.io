@@ -1,0 +1,117 @@
+const zlib = require('zlib');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
+let _appVersion = 'unknown';
+try { _appVersion = require('../package.json').version; } catch (_) {}
+
+// pkg 번들 실행 시 base64 임베드 바이너리를 systray2 캐시 경로로 추출
+// systray2 v2.x 실제 spawn 경로: ~/.cache/node-systray/{version}/tray_windows_release.exe
+function _prepTrayBin() {
+  if (!process.pkg || process.platform !== 'win32') return;
+
+  const binName = 'tray_windows_release.exe';
+
+  let version = '2.1.4'; // fallback
+  try { version = require('systray2/package.json').version; } catch (_) {}
+
+  const dstDir = path.join(os.homedir(), '.cache', 'node-systray', version);
+  const dstBin = path.join(dstDir, binName);
+
+  if (!fs.existsSync(dstBin)) {
+    fs.mkdirSync(dstDir, { recursive: true });
+    fs.writeFileSync(dstBin, Buffer.from(require('./tray_win_bin'), 'base64'));
+  }
+
+  // systray2가 fse.copy로 snapshot→캐시 복사를 시도하면 차단 (이미 추출 완료)
+  try {
+    const fse = require('fs-extra');
+    const orig = fse.copy.bind(fse);
+    fse.copy = (src, dst, opts) => {
+      if (src.includes('node-systray') || (src.includes('systray2') && src.includes('traybin')))
+        return Promise.resolve();
+      return orig(src, dst, opts);
+    };
+  } catch (_) {}
+}
+
+_prepTrayBin();
+const SysTray = require('systray2').default;
+
+// 16x16 PNG 아이콘을 zlib(내장)으로 생성 — 외부 의존성 없음
+function _createIconBuffer() {
+  const W = 16, H = 16;
+
+  function crc32(buf) {
+    const t = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let j = 0; j < 8; j++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      t[i] = c;
+    }
+    let crc = 0xffffffff;
+    for (const b of buf) crc = t[(crc ^ b) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function chunk(type, data) {
+    const len = Buffer.allocUnsafe(4); len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.allocUnsafe(4); crc.writeUInt32BE(crc32(td));
+    return Buffer.concat([len, td, crc]);
+  }
+
+  const rows = [];
+  for (let y = 0; y < H; y++) {
+    const row = Buffer.alloc(1 + W * 3);
+    for (let x = 0; x < W; x++) {
+      // 파란색 #1e6bc8
+      row[1 + x * 3] = 30; row[1 + x * 3 + 1] = 107; row[1 + x * 3 + 2] = 200;
+    }
+    rows.push(row);
+  }
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), // PNG sig
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(Buffer.concat(rows))),
+    chunk('IEND', Buffer.alloc(0))
+  ]);
+}
+
+function setupTray(port) {
+  const iconPath = path.join(os.tmpdir(), 'uxermanager_icon.png');
+  try { fs.writeFileSync(iconPath, _createIconBuffer()); } catch (_) {}
+
+  const tray = new SysTray({
+    menu: {
+      icon: iconPath,
+      title: '',
+      tooltip: `UXERManager 미들웨어`,
+      items: [
+        { title: `UXERManager v${_appVersion}`, tooltip: '', enabled: false, name: 'info' },
+        { title: `포트 ${port}에서 실행 중`, tooltip: '', enabled: false, name: 'port' },
+        SysTray.separator,
+        { title: '종료', tooltip: '미들웨어를 종료합니다', enabled: true, name: 'quit' }
+      ]
+    },
+    debug: false,
+    copyDir: true,
+  });
+
+  tray.onClick(action => {
+    if (action.item.name === 'quit') {
+      tray.kill();
+      process.exit(0);
+    }
+  });
+
+  return tray;
+}
+
+module.exports = { setupTray };

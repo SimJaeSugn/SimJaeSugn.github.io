@@ -916,6 +916,21 @@ function drawEntity(e) {
   ctx.textAlign = 'center';
   ctx.fillText(entDisplayName(e), x + W / 2, y + HEADER_H / 2);
 
+  // ── VIEW 뱃지 (헤더 좌상단) ──
+  if (e.isView) {
+    ctx.save();
+    ctx.font = 'bold 9px Segoe UI';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(137,220,235,0.25)';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x + 4, y + 3, 28, 13, 3) : ctx.rect(x + 4, y + 3, 28, 13);
+    ctx.fill();
+    ctx.fillStyle = '#89dceb';
+    ctx.fillText('VIEW', x + 6, y + 5);
+    ctx.restore();
+  }
+
   // ── 볼륨 레이블 (우상단 헤더) ──
   if (vol.label) {
     ctx.save();
@@ -1122,6 +1137,12 @@ function _drawRelPath(wp, curved) {
 
 function drawRelations() {
   const hasSel = !!selectedEntity;
+<<<<<<< HEAD
+=======
+  const _relVb = _viewportBounds();
+  const _relEM = entityMap();
+  const _relM  = 20;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   RELATIONS.forEach(rel => {
     const path = getRelationPath(rel);
     if (!path) return;
@@ -1130,6 +1151,20 @@ function drawRelations() {
     const [fromCard, toCard] = rel.card.split(':');
     const isActive   = hoveredRelSeg?.rel === rel || draggingSegment?.rel === rel || selectedRelation === rel;
     const isConnected = hasSel && !isActive && (rel.from === selectedEntity.id || rel.to === selectedEntity.id);
+<<<<<<< HEAD
+=======
+    if (!isActive && !isConnected) {
+      const ea = _relEM[rel.from], eb = _relEM[rel.to];
+      if (ea && eb) {
+        const eah = entityHeight(ea), ebh = entityHeight(eb);
+        const aOut = (ea.x + W  + _relM < _relVb.x1) || (ea.x      - _relM > _relVb.x2) ||
+                     (ea.y + eah + _relM < _relVb.y1) || (ea.y      - _relM > _relVb.y2);
+        const bOut = (eb.x + W  + _relM < _relVb.x1) || (eb.x      - _relM > _relVb.x2) ||
+                     (eb.y + ebh + _relM < _relVb.y1) || (eb.y      - _relM > _relVb.y2);
+        if (aOut && bOut) return;
+      }
+    }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     const baseColor  = rel.color || COLOR.line;
     const lineColor  = isActive   ? COLOR.lineHover
                      : isConnected ? (rel.color || COLOR.lineHover)
@@ -1699,6 +1734,17 @@ function syncMarkdownOverlays() {
 // ── RAF 스케줄링 ─────────────────────────────────────────────────
 // render()  : 다음 애니메이션 프레임에 실행 (중복 호출 자동 병합)
 // renderNow(): 즉시 동기 실행 (타임라인 미리보기 등 즉각 반영 필요 시)
+function _viewportBounds() {
+  const _qlOff = _qbLeftOff();
+  const cw = window.innerWidth - _qlOff - (panelOpen ? PANEL_W : 0);
+  const ch = window.innerHeight;
+  return {
+    x1: (0  - vx) / scale,
+    y1: (0  - vy) / scale,
+    x2: (cw - vx) / scale,
+    y2: (ch - vy) / scale,
+  };
+}
 let _renderPending = false;
 function render() {
   if (_renderPending) return;
@@ -1747,7 +1793,16 @@ function renderNow() {
   drawSections();
   drawNotes();
   drawRelations();
-  ENTITIES.forEach(drawEntity);
+  const _vb = _viewportBounds();
+  const _MARGIN = 20;
+  ENTITIES.forEach(e => {
+    const eh = entityHeight(e);
+    if (e.x + W  + _MARGIN < _vb.x1) return;
+    if (e.x      - _MARGIN > _vb.x2) return;
+    if (e.y + eh + _MARGIN < _vb.y1) return;
+    if (e.y      - _MARGIN > _vb.y2) return;
+    drawEntity(e);
+  });
   if (draggingRelPort) {
     const { entity, x, y, curX, curY, targetEntity } = draggingRelPort;
     ctx.save();

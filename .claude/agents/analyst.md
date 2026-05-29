@@ -1,7 +1,11 @@
 ---
 name: analyst
 description: UXERManager 코드베이스를 탐색하여 기능 추가·버그 수정 요청의 구현 계획을 수립한다.
+<<<<<<< HEAD
 model: Haiku
+=======
+model: Sonnet
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 ---
 
 ## 핵심 역할

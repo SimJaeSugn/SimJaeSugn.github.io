@@ -42,141 +42,127 @@
         <div class="mb-item" onclick="mbClose();importFullBackup()"><span class="mb-ico">📥</span><span class="mb-text">전체 백업 불러오기</span></div>
         <div class="mb-item" onclick="mbClose();openDDLImportModal()"><span class="mb-ico">⬆</span><span class="mb-text">DDL 가져오기</span></div>
       </div>
-    </div>
-
-    <!-- 편집 -->
-    <div class="mb-menu" onmouseenter="mbHover('edit')">
-      <span class="mb-lbl" onclick="mbToggle('edit')">편집</span>
-      <div class="mb-drop" id="mb-drop-edit">
-        <div class="mb-item" onclick="mbClose();undo()"><span class="mb-ico">↩</span><span class="mb-text">실행취소</span><span class="mb-kbd">Ctrl+Z</span></div>
-        <div class="mb-item" onclick="mbClose();redo()"><span class="mb-ico">↪</span><span class="mb-text">다시실행</span><span class="mb-kbd">Ctrl+Y</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" id="mbi-section" onclick="mbClose();toggleSectionMode()"><span class="mb-chk"></span><span class="mb-text">섹션 모드</span></div>
-        <div class="mb-item" id="mbi-snap" onclick="mbClose();toggleGridSnap()"><span class="mb-chk"></span><span class="mb-text">그리드 스냅</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();openAISchemaModal()"><span class="mb-ico">🤖</span><span class="mb-text">AI 스키마 생성</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item danger" onclick="mbClose();resetToDefault()"><span class="mb-ico">⚠</span><span class="mb-text">데이터 초기화</span></div>
+      <div class="toolbox-body">
+        <div class="tb-dropdown">
+          <button class="btn-primary" onclick="tbToggle(event,'ddAdd')">＋ 추가 ▾</button>
+          <div class="tb-dropdown-menu" id="ddAdd">
+            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAddEntityModal()">📋 엔티티 추가</div>
+            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAddRelationModal()">⟷ 관계 추가</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAISchemaModal()">🤖 AI 스키마 생성</div>
+          </div>
+        </div>
+        <div class="tb-dropdown">
+          <button class="btn" onclick="tbToggle(event,'ddExport')">⬇ 내보내기 ▾</button>
+          <div class="tb-dropdown-menu" id="ddExport">
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportFullBackup()">💾 전체 백업 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');importFullBackup()">📥 전체 백업 불러오기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportData()">⬇ JSON 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');importData()">⬆ JSON 불러오기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');openDDLImportModal()">⬆ DDL 가져오기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');openDDLModal()">🗄 DDL 생성</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadImage(true)">🖼 이미지 (섹션 포함)</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadImage(false)">🖼 이미지 (섹션 제외)</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadSVG()">⬡ SVG 내보내기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportMarkdown()">📄 Markdown 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportHTML()">🌐 HTML 내보내기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');exportPDF()">🖨 인쇄 / PDF 저장</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');generateShareUrl()">🔗 공유 URL 생성</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddExport');resetExportDir()">📁 내보내기 폴더 재설정</div>
+          </div>
+        </div>
+        <div class="tb-dropdown">
+          <button class="btn" onclick="tbToggle(event,'ddTools')">⚙ 도구 ▾</button>
+          <div class="tb-dropdown-menu" id="ddTools">
+            <div class="tb-dd-item" onclick="tbClose('ddTools');resetView()">↺ 뷰 초기화</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');fitAll()">⊟ 전체 맞춤</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('hierarchical')">⋹ 계층형 배치</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('grid')">⊞ 격자형 배치</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('circular')">◯ 원형 배치</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');deOverlapLines('관계선 겹침 해소 중...')">⇌ 선 겹침 해소</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" id="ddItemSnap" onclick="tbClose('ddTools');toggleGridSnap()">⊞ 스냅 켜기</div>
+            <div class="tb-dd-item" id="ddItemSection" onclick="tbClose('ddTools');toggleSectionMode()">▣ 섹션 모드</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openThemeModal()">🎨 테마 변경</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openRtcModal()">🔗 P2P 실시간 협업</div>
+            <div class="tb-dd-item" id="ddItemBcSync" onclick="tbClose('ddTools');toggleBcSync()">📡 탭 동기화 끄기</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');saveSnapshot()">📷 스냅샷 저장</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openSnapshotListModal()">📋 스냅샷 목록</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openTimelineModal()">⏱ 타임라인 슬라이더</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openSqlRunner()">🗄 SQL 실행기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openJoinExplorer()">🔗 JOIN 경로 탐색기</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');runNormalizeDiagnosis()">⚠ 정규화 진단</div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');clearNormDiagnosis()">✓ 진단 배지 제거</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item" onclick="tbClose('ddTools');openTemplateModal()">📎 컬럼 템플릿 관리</div>
+            <div class="tb-dd-sep"></div>
+            <div class="tb-dd-item danger" onclick="tbClose('ddTools');resetToDefault()">⚠ 데이터 초기화</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 보기 -->
-    <div class="mb-menu" onmouseenter="mbHover('view')">
-      <span class="mb-lbl" onclick="mbToggle('view')">보기</span>
-      <div class="mb-drop" id="mb-drop-view">
-        <div class="mb-item" onclick="mbClose();openThemeModal()"><span class="mb-ico">🎨</span><span class="mb-text">테마 변경</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();resetView()"><span class="mb-ico">↺</span><span class="mb-text">뷰 초기화</span></div>
-        <div class="mb-item" onclick="mbClose();fitAll()"><span class="mb-ico">⊟</span><span class="mb-text">전체 맞춤</span><span class="mb-kbd">Home</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-grp">배치</div>
-        <div class="mb-item" onclick="mbClose();autoLayout('hierarchical')"><span class="mb-ico">⋹</span><span class="mb-text">계층형 배치</span></div>
-        <div class="mb-item" onclick="mbClose();autoLayout('grid')"><span class="mb-ico">⊞</span><span class="mb-text">격자형 배치</span></div>
-        <div class="mb-item" onclick="mbClose();autoLayout('circular')"><span class="mb-ico">◯</span><span class="mb-text">원형 배치</span></div>
-        <div class="mb-item" onclick="mbClose();autoOptimizeRelations()"><span class="mb-ico">⫸</span><span class="mb-text">자동 관계선 최적화</span></div>
-        <div class="mb-item" onclick="mbClose();autoOptimizeRelationsV2()"><span class="mb-ico">⫷</span><span class="mb-text">관계선최적화V2</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-grp">표기법</div>
-        <div class="mb-item" id="mbi-logical" onclick="mbClose();setViewMode('logical')"><span class="mb-chk"></span><span class="mb-text">논리 보기</span></div>
-        <div class="mb-item" id="mbi-physical" onclick="mbClose();setViewMode('physical')"><span class="mb-chk"></span><span class="mb-text">물리 보기</span></div>
-        <div class="mb-item" id="mbi-notation" onclick="mbClose();toggleNotation()"><span class="mb-chk"></span><span class="mb-text">크로우풋 표기</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-grp">정렬</div>
-        <div class="mb-item" onclick="mbClose();alignEntities('left')"><span class="mb-ico">◧</span><span class="mb-text">왼쪽 정렬</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('hcenter')"><span class="mb-ico">↔</span><span class="mb-text">수평 중앙 정렬</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('right')"><span class="mb-ico">◨</span><span class="mb-text">오른쪽 정렬</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('top')"><span class="mb-ico">⬒</span><span class="mb-text">위 정렬</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('vcenter')"><span class="mb-ico">↕</span><span class="mb-text">수직 중앙 정렬</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('bottom')"><span class="mb-ico">⬓</span><span class="mb-text">아래 정렬</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('hdist')"><span class="mb-ico">⇔</span><span class="mb-text">수평 균등 배분</span></div>
-        <div class="mb-item" onclick="mbClose();alignEntities('vdist')"><span class="mb-ico">⇕</span><span class="mb-text">수직 균등 배분</span></div>
+    <div class="tb-div"></div>
+
+    <!-- ── 툴박스 2: 논리/물리 · 정렬 · 크로우풋 ── -->
+    <div class="toolbox" id="tb2">
+      <div class="toolbox-hdr" onclick="toggleToolbox('tb2')" title="접기 / 펼치기">
+        <span>📐 보기</span><span class="toolbox-caret">▶</span>
+      </div>
+      <div class="toolbox-body">
+        <div class="view-toggle">
+          <button class="vt-btn active" id="btn-logical" onclick="setViewMode('logical')">논리</button>
+          <button class="vt-btn" id="btn-physical" onclick="setViewMode('physical')">물리</button>
+        </div>
+        <div class="tb-div"></div>
+        <button class="btn-icon" onclick="alignEntities('left')"    title="왼쪽 정렬">◧</button>
+        <button class="btn-icon" onclick="alignEntities('hcenter')" title="수평 중앙">↔</button>
+        <button class="btn-icon" onclick="alignEntities('right')"   title="오른쪽 정렬">◨</button>
+        <button class="btn-icon" onclick="alignEntities('top')"     title="위 정렬">⬒</button>
+        <button class="btn-icon" onclick="alignEntities('vcenter')" title="수직 중앙">↕</button>
+        <button class="btn-icon" onclick="alignEntities('bottom')"  title="아래 정렬">⬓</button>
+        <button class="btn-icon" onclick="alignEntities('hdist')"   title="수평 균등 배분">⇔</button>
+        <button class="btn-icon" onclick="alignEntities('vdist')"   title="수직 균등 배분">⇕</button>
+        <div class="tb-div"></div>
+        <button id="ddItemNotation" class="btn-icon" onclick="toggleNotation()" title="크로우풋 켜기">🐦</button>
       </div>
     </div>
 
-    <!-- 도구 -->
-    <div class="mb-menu" onmouseenter="mbHover('tools')">
-      <span class="mb-lbl" onclick="mbToggle('tools')">도구</span>
-      <div class="mb-drop" id="mb-drop-tools">
-        <div class="mb-item" onclick="mbClose();openCmdPalette()"><span class="mb-ico">⌘</span><span class="mb-text">메뉴 전체 검색</span><span class="mb-kbd">Ctrl+K</span></div>
-        <div class="mb-item" onclick="mbClose();openSearch()"><span class="mb-ico">🔍</span><span class="mb-text">엔티티 검색</span><span class="mb-kbd">Ctrl+F</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-grp">탬플릿</div>
-        <div class="mb-item" onclick="mbClose();openTemplateModal()"><span class="mb-ico">📎</span><span class="mb-text">컬럼 탬플릿 관리</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-grp">SQL</div>
-        <div class="mb-item" onclick="mbClose();openSqlRunner()"><span class="mb-ico">🗄</span><span class="mb-text">SQL 실행기</span></div>
-        <div class="mb-item" onclick="mbClose();openJoinExplorer()"><span class="mb-ico">🔗</span><span class="mb-text">JOIN 경로 탐색기</span></div>
-        <div class="mb-item" onclick="mbClose();runNormalizeDiagnosis()"><span class="mb-ico">⚠</span><span class="mb-text">정규화 진단</span></div>
-        <div class="mb-item" onclick="mbClose();clearNormDiagnosis()"><span class="mb-ico">✓</span><span class="mb-text">진단 배지 제거</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-grp">스냅샷</div>
-        <div class="mb-item" onclick="mbClose();saveSnapshot()"><span class="mb-ico">📷</span><span class="mb-text">스냅샷 저장</span></div>
-        <div class="mb-item" onclick="mbClose();openSnapshotListModal()"><span class="mb-ico">📋</span><span class="mb-text">스냅샷 목록</span></div>
-        <div class="mb-item" onclick="mbClose();openTimelineModal()"><span class="mb-ico">⏱</span><span class="mb-text">타임라인 슬라이더</span></div>
+    <div class="tb-div"></div>
+
+    <!-- ── 툴박스 3: 실행취소 / 다시실행 · 검색 · 단축키 ── -->
+    <div class="toolbox" id="tb3">
+      <div class="toolbox-hdr" onclick="toggleToolbox('tb3')" title="접기 / 펼치기">
+        <span>⚡ 기능</span><span class="toolbox-caret">▶</span>
+      </div>
+      <div class="toolbox-body">
+        <button class="btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩ 실행취소</button>
+        <button class="btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪ 다시실행</button>
+        <div class="tb-div"></div>
+        <button class="btn" onclick="openSearch()" title="엔티티 검색 (Ctrl+F)">🔍 검색</button>
+        <button class="btn" onclick="openShortcutsModal()" title="단축키 목록">⌨ 단축키</button>
       </div>
     </div>
 
-    <!-- 공유 -->
-    <div class="mb-menu" onmouseenter="mbHover('share')">
-      <span class="mb-lbl" onclick="mbToggle('share')">공유</span>
-      <div class="mb-drop" id="mb-drop-share">
-        <div class="mb-item" onclick="mbClose();openRtcModal()"><span class="mb-ico">🔗</span><span class="mb-text">P2P 실시간 협업</span></div>
-        <div class="mb-item" id="ddItemBcSync" onclick="mbClose();toggleBcSync()"><span class="mb-chk"></span><span class="mb-text">탭 동기화</span></div>
-        <div class="mb-sep"></div>
-        <div class="mb-item" onclick="mbClose();generateShareUrl()"><span class="mb-ico">🔗</span><span class="mb-text">공유 URL 생성</span></div>
-      </div>
-    </div>
-
-    <!-- Help -->
-    <div class="mb-menu" onmouseenter="mbHover('help')">
-      <span class="mb-lbl" onclick="mbToggle('help')">Help</span>
-      <div class="mb-drop" id="mb-drop-help">
-        <div class="mb-item" onclick="mbClose();openShortcutsModal()"><span class="mb-ico">⌨</span><span class="mb-text">단축키 목록</span></div>
-      </div>
-    </div>
-
-  </div><!-- /.mb-menus -->
-
-  <div class="mb-right">
-    <button class="mb-zoom-btn" id="quickbarToggleBtn" onclick="toggleQuickbar()" title="빠른 실행 도구 모음 접기/펼치기">▼</button>
-    <div class="mb-vsep"></div>
-    <button class="mb-zoom-btn" onclick="zoom(0.87)" title="축소 (Ctrl+-)">－</button>
-    <span id="zoomLabel">100%</span>
-    <button class="mb-zoom-btn" onclick="zoom(1.15)" title="확대 (Ctrl++)">＋</button>
+    <div class="tb-div"></div>
+    <span id="sessionBadge" title="저장되지 않은 변경사항">● 변경됨</span>
   </div>
 </div>
 
-<!-- ── Quick Access Toolbar ─────────────────── -->
-<div id="quickbar">
-  <div id="qb-dock-handle" class="qb-dock-handle" title="드래그하여 도킹 위치 변경 (상단 ↔ 좌측)">⣿</div>
-  <button class="qb-btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩</button>
-  <button class="qb-btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪</button>
-  <div class="qb-sep"></div>
-  <button class="qb-btn" onclick="openAddEntityModal()" title="엔티티 추가 (N)">＋</button>
-  <button class="qb-btn" onclick="openAddRelationModal()" title="관계 추가 (R)">↔</button>
-  <div class="qb-sep"></div>
-  <button class="qb-btn" onclick="exportData()" title="JSON 내보내기 (Ctrl+S)">💾</button>
-  <div class="qb-sep"></div>
-  <button class="qb-btn" onclick="fitAll()" title="전체 맞춤 (Home)">⊟</button>
-  <button class="qb-btn" onclick="resetView()" title="뷰 초기화">↺</button>
-  <div class="qb-sep"></div>
-  <button class="qb-btn qb-text" id="qb-logical" onclick="setViewMode('logical')" title="논리 보기">논리</button>
-  <button class="qb-btn qb-text" id="qb-physical" onclick="setViewMode('physical')" title="물리 보기">물리</button>
-  <div class="qb-sep"></div>
-  <button class="qb-btn" id="qb-snap" onclick="toggleGridSnap()" title="그리드 스냅">⊞</button>
-  <button class="qb-btn" id="qb-section" onclick="toggleSectionMode()" title="섹션 모드">▭</button>
-  <div class="qb-sep"></div>
-  <button class="qb-btn" onclick="openCmdPalette()" title="메뉴 전체 검색 (Ctrl+K)">⌘</button>
-  <button class="qb-btn" onclick="openSearch()" title="엔티티 검색 (Ctrl+F)">🔍</button>
-  <button class="qb-btn" onclick="saveSnapshot()" title="스냅샷 저장">📷</button>
-  <div id="qb-custom-sep" class="qb-sep" style="display:none"></div>
-  <div id="qb-custom-area" style="display:contents"></div>
-  <div id="qb-drop-hint" class="qb-drop-hint" style="display:none">메뉴 항목을 여기로 드래그</div>
-  <button class="qb-btn" id="qb-size-btn" onclick="toggleQuickbarSize()" title="대형 크기로 전환">⊕</button>
+<!-- ── Zoom Panel (top-right) ───────────────── -->
+<div id="zoomPanel">
+  <button class="btn-zoom" onclick="zoom(0.87)" title="축소">－</button>
+  <span id="zoomLabel">100%</span>
+  <button class="btn-zoom" onclick="zoom(1.15)" title="확대">＋</button>
 </div>
-
-<!-- ── Dock Ghost ──────────────────────────────── -->
-<div id="qb-dock-ghost"></div>
 
 <!-- ── Search Panel ──────────────────────────── -->
 <div id="searchPanel" style="display:none;position:fixed;top:36px;left:50%;transform:translateX(-50%);z-index:300;background:rgba(30,30,46,0.97);border:1px solid #45475a;border-radius:10px;box-shadow:0 6px 28px rgba(0,0,0,0.55);padding:10px 12px;min-width:300px;max-width:400px;">
@@ -271,8 +257,6 @@
   <div class="ctx-item" id="ctx-edit-ent" onclick="ctxFn('editEnt')"><span class="ctx-ico">✏</span>엔티티 편집</div>
   <div class="ctx-item" id="ctx-dup-ent" onclick="ctxFn('dupEnt')"><span class="ctx-ico">⧉</span>엔티티 복제</div>
   <div class="ctx-item" id="ctx-copy-diag" onclick="ctxFn('copyToDiag')"><span class="ctx-ico">⎘</span>다이어그램으로 복사</div>
-  <div class="ctx-item" id="ctx-color-ent" onclick="ctxFn('colorEnt')"><span class="ctx-ico">🎨</span>헤더 색상 변경</div>
-  <div class="ctx-item" id="ctx-sel-related" onclick="ctxFn('selRelated')"><span class="ctx-ico">⊡</span>관련 엔티티 선택</div>
   <div class="ctx-sep" id="ctx-sep-ent"></div>
   <div class="ctx-item" id="ctx-add-note" onclick="ctxFn('addNote')"><span class="ctx-ico">📝</span>메모 추가</div>
   <div class="ctx-item danger" id="ctx-del-note" onclick="ctxFn('delNote')"><span class="ctx-ico">✕</span>메모 삭제</div>
@@ -486,7 +470,7 @@
 <div class="modal-overlay" id="copyDiagOverlay" onmousedown="overlayClose(event,'copyDiagOverlay')">
   <div class="modal" style="width:360px">
     <h3>다이어그램으로 복사</h3>
-    <p style="color:#a6adc8;font-size:13px;margin-bottom:14px;">복사할 대상 다이어그램을 선택하세요.</p>
+    <p style="color:#a6adc8;font-size:13px;margin-bottom:14px;">선택한 엔티티를 복사할 대상 다이어그램을 선택하세요.</p>
     <div id="copyDiagList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
     <div class="modal-actions"><button class="btn-cancel-m" onclick="closeCopyDiagModal()">취소</button></div>
   </div>
@@ -668,206 +652,125 @@
 
 <!-- ── Shortcuts Modal ───────────────────────── -->
 <div class="modal-overlay" id="shortcutsOverlay" onmousedown="overlayCloseExtra(event,'shortcutsOverlay')">
-  <div class="sc-modal">
-
-    <!-- Header -->
-    <div class="sc-hdr">
-      <span class="sc-hdr-title">⌨ 단축키</span>
-      <button class="sc-reset-all-btn" onclick="scResetAll()" title="모든 단축키 기본값으로 초기화">↺ 전체 초기화</button>
-      <button class="sc-hdr-close" onclick="closeShortcutsModal()" title="닫기">×</button>
-    </div>
-
-    <!-- Environment Tabs -->
-    <div class="sc-envtabs">
-      <button class="sc-envtab active" onclick="scGoTo(0)">🖥 캔버스 <span class="sc-env-count">31</span></button>
-      <button class="sc-envtab"        onclick="scGoTo(1)">🗃 SQL 패널 <span class="sc-env-count">1</span></button>
-      <button class="sc-envtab"        onclick="scGoTo(2)">⏱ 타임라인 <span class="sc-env-count">3</span></button>
-    </div>
-
-    <!-- Slides -->
-    <div class="sc-slides-wrap">
-      <div class="sc-slides" id="scSlides">
-
-        <!-- ── Slide 0: 캔버스 (기본) ── -->
-        <div class="sc-slide">
-          <div class="sc-grid">
-
-            <!-- 왼쪽 열 -->
-            <div class="sc-col">
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac-g);">➕ 생성</div>
-                <div class="sc-row" data-sc-id="addEnt">
-                  <div class="sc-keys"><span class="sc-key">N</span></div>
-                  <div class="sc-desc">엔티티 추가<span class="sc-desc-note">입력 필드 미포커스 상태</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="addRel">
-                  <div class="sc-keys"><span class="sc-key">R</span></div>
-                  <div class="sc-desc">관계 추가<span class="sc-desc-note">입력 필드 미포커스 상태</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key sc-key-mouse">드래그</span></div>
-                  <div class="sc-desc">섹션 그리기<span class="sc-desc-note">빈 캔버스에서 드래그해 섹션 영역 생성</span></div>
-                </div>
-              </div>
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac);">💾 저장</div>
-                <div class="sc-row" data-sc-id="save">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
-                  <div class="sc-desc">JSON 저장<span class="sc-desc-note">현재 다이어그램만</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="saveAll">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
-                  <div class="sc-desc">전체 백업 내보내기<span class="sc-desc-note">스냅샷 포함 전체</span></div>
-                </div>
-              </div>
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac-y);">↩ 실행취소</div>
-                <div class="sc-row" data-sc-id="undo">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Z</span></div>
-                  <div class="sc-desc">실행취소<span class="sc-desc-note">히스토리 범위 내 무제한</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="redo">
-                  <div class="sc-keys" style="flex-wrap:wrap;row-gap:3px;">
-                    <span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Y</span>
-                    &thinsp;<span class="sc-key-sep">/</span>&thinsp;
-                    <span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">Z</span>
-                  </div>
-                  <div class="sc-desc">다시실행<span class="sc-desc-note">두 단축키 동일 동작</span></div>
-                </div>
-              </div>
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--tx-attr);">🔍 검색 · 기타</div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">K</span></div>
-                  <div class="sc-desc">메뉴 전체 검색<span class="sc-desc-note">기능명 · 단축키로 메뉴 항목 검색 후 실행</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="search">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">F</span></div>
-                  <div class="sc-desc">엔티티 검색<span class="sc-desc-note">논리명 · 물리명 · ID</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">우클릭</span></div>
-                  <div class="sc-desc">컨텍스트 메뉴<span class="sc-desc-note">대상(엔티티·관계·캔버스)별 상이</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key">Esc</span></div>
-                  <div class="sc-desc">선택 해제 / 모드 취소<span class="sc-desc-note">모달 · 검색창 닫기 포함</span></div>
-                </div>
-              </div>
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac-g);">🧭 이동 · 뷰</div>
-                <div class="sc-row">
-                  <div class="sc-keys">
-                    <span class="sc-key sc-key-arrow">←</span>
-                    <span class="sc-key sc-key-arrow">↑</span>
-                    <span class="sc-key sc-key-arrow">→</span>
-                    <span class="sc-key sc-key-arrow">↓</span>
-                  </div>
-                  <div class="sc-desc">선택 엔티티 이동<span class="sc-desc-note">1px · Shift: 10px · 그리드 스냅 시: 그리드 단위</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="fitAll">
-                  <div class="sc-keys"><span class="sc-key">Home</span></div>
-                  <div class="sc-desc">전체 맞춤<span class="sc-desc-note">모든 객체를 화면에 맞게 축소/이동</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">휠</span></div>
-                  <div class="sc-desc">확대 / 축소<span class="sc-desc-note">커서 위치 기준</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">드래그</span><span class="sc-ctx">(빈 캔버스)</span></div>
-                  <div class="sc-desc">화면 이동<span class="sc-desc-note">패닝</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">드래그</span><span class="sc-ctx">(포트)</span></div>
-                  <div class="sc-desc">관계 생성<span class="sc-desc-note">엔티티 테두리 포트에서 드래그</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">드래그</span><span class="sc-ctx">(관계 선분)</span></div>
-                  <div class="sc-desc">경로 꺾기<span class="sc-desc-note">선분 드래그로 벤드 포인트 추가</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">드래그</span><span class="sc-ctx">(관계 레이블)</span></div>
-                  <div class="sc-desc">레이블 위치 조정</div>
-                </div>
-              </div>
-
-            </div><!-- /왼쪽 열 -->
-
-            <!-- 오른쪽 열 -->
-            <div class="sc-col">
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac-o);">✂ 편집</div>
-                <div class="sc-row" data-sc-id="copy">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">C</span></div>
-                  <div class="sc-desc">복사<span class="sc-desc-note">선택된 엔티티 클립보드 저장</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="paste">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">V</span></div>
-                  <div class="sc-desc">붙여넣기<span class="sc-desc-note">미선택 시: 텍스트 → 속성 자동 입력 후 엔티티 생성 팝업</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="dup">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">D</span></div>
-                  <div class="sc-desc">복제<span class="sc-desc-note">다중 선택 시 일괄 복제</span></div>
-                </div>
-                <div class="sc-row" data-sc-id="del">
-                  <div class="sc-keys"><span class="sc-key">Delete</span></div>
-                  <div class="sc-desc">삭제<span class="sc-desc-note">엔티티 · 관계 · 섹션</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(엔티티)</span></div>
-                  <div class="sc-desc">편집 / 접기·펼치기<span class="sc-desc-note">헤더: 접기, 본문: 편집 팝업</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(메모)</span></div>
-                  <div class="sc-desc">메모 인라인 편집<span class="sc-desc-note">Text / MD 탭 전환 후 편집</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(관계선)</span></div>
-                  <div class="sc-desc">관계 편집<span class="sc-desc-note">관계 편집 팝업 열기</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(관계 중간점)</span></div>
-                  <div class="sc-desc">중간점 제거<span class="sc-desc-note">벤드 포인트 삭제</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(섹션)</span></div>
-                  <div class="sc-desc">섹션 이름 변경</div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">더블클릭</span><span class="sc-ctx">(빈 캔버스)</span></div>
-                  <div class="sc-desc">엔티티 추가<span class="sc-desc-note">엔티티 추가 팝업 열기</span></div>
-                </div>
-              </div>
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac-p);">⬜ 선택</div>
-                <div class="sc-row" data-sc-id="selAll">
-                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">A</span></div>
-                  <div class="sc-desc">전체 선택</div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key sc-key-mouse">클릭</span></div>
-                  <div class="sc-desc">다중 선택 토글<span class="sc-desc-note">선택 추가 / 해제 전환</span></div>
-                </div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key sc-key-mouse">드래그</span></div>
-                  <div class="sc-desc">범위 선택<span class="sc-desc-note">빈 캔버스에서 박스로 일괄 선택</span></div>
-                </div>
-              </div>
-
-              <div class="sc-card">
-                <div class="sc-card-hdr" style="color:var(--ac-o);">⚡ 퀵바</div>
-                <div class="sc-row">
-                  <div class="sc-keys"><span class="sc-key sc-key-mouse">우클릭</span></div>
-                  <div class="sc-desc">구분선 추가<span class="sc-desc-note">커스텀 버튼 영역 우클릭</span></div>
-                </div>
-              </div>
+  <div class="modal" style="width:min(880px,92vw)" onmousedown.stop>
+    <h3>⌨ 단축키 목록</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+      <colgroup>
+        <col style="width:22%">
+        <col style="width:38%">
+        <col style="width:40%">
+      </colgroup>
+      <thead>
+        <tr style="border-bottom:2px solid #313244;">
+          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">단축키</th>
+          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">기능</th>
+          <th style="text-align:left;padding:7px 10px;color:#89b4fa;font-weight:bold;">부가기능</th>
+        </tr>
+      </thead>
+      <tbody id="shortcutsTableBody">
+        <!-- ── 엔티티 / 관계 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">N</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 추가</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">입력 필드 미포커스 상태</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">R</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">관계 추가</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">입력 필드 미포커스 상태</td>
+        </tr>
+        <!-- ── 저장 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+S</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">JSON 저장</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">현재 다이어그램 단일 저장</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Shift+S</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">전체 백업 내보내기</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">전체 다이어그램 + 스냅샷 포함</td>
+        </tr>
+        <!-- ── 실행취소 / 다시실행 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Z</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">실행취소</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">히스토리 범위 내 무제한</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+Y&nbsp;/&nbsp;Ctrl+Shift+Z</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">다시실행</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">두 단축키 모두 동일 동작</td>
+        </tr>
+        <!-- ── 검색 / 복사 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+F</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 검색</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">논리명 · 물리명 · ID 대상</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+C</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 엔티티 복사</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 선택 상태에서 동작</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+V</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">붙여넣기</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">미선택 시: 클립보드의 콤마 구분 텍스트를 속성 논리명으로 자동 입력 후 엔티티 추가 팝업<br><span style="color:#a6adc8;font-family:Consolas,monospace;font-size:11px;">예) 식별자, 이름, 비밀번호, 등록일자</span></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+D</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 엔티티 복제</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">다중 선택 시 일괄 복제</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Ctrl+A</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">전체 엔티티 선택</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;"></td>
+        </tr>
+        <!-- ── 뷰 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Home</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">전체 맞춤</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">모든 엔티티 · 메모 · 섹션이 화면에 맞게 축소/이동</td>
+        </tr>
+        <!-- ── 삭제 / 취소 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Delete</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 항목 삭제</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 · 관계 · 섹션 대상</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">Escape</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">선택 해제 / 모드 취소</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">모달 · 검색창 닫기도 포함</td>
+        </tr>
+        <!-- ── 마우스 ── -->
+        <tr style="border-top:1px solid #1e1e2e;">
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">마우스 휠</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">확대 / 축소</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">커서 위치 기준 줌</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">우클릭</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">컨텍스트 메뉴</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">엔티티 · 관계 · 캔버스 대상별 메뉴 상이</td>
+        </tr>
+        <!-- ── 더블클릭 ── -->
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">더블클릭 (엔티티)</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">엔티티 편집 / 접기·펼치기</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">헤더 클릭 시 접기, 본문 클릭 시 편집</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;color:#cba6f7;font-family:Consolas,monospace;white-space:nowrap;">더블클릭 (메모)</td>
+          <td style="padding:6px 10px;color:#cdd6f4;">메모 인라인 편집</td>
+          <td style="padding:6px 10px;color:#6c7086;font-size:12px;">Text / MD 탭 전환 후 편집 가능</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="modal-actions"><button class="btn-cancel-m" onclick="closeShortcutsModal()">닫기</button></div>
+  </div>
+</div>
 
             </div><!-- /오른쪽 열 -->
           </div>
@@ -971,7 +874,6 @@
 <script src="js/broadcast.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="js/webrtc.js"></script>
-<script src="js/shortcuts.js"></script>
 <script src="js/main.js"></script>
 
 <!-- ── Status Bar ───────────────────────────── -->

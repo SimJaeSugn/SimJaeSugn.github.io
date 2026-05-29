@@ -309,7 +309,7 @@ function _runAutoOptimizeRelations() {
 
     if (overlaps === 0 || pass >= MAX_PASS) {
       hideLayoutProgress();
-      fitAll();
+      centerOnEntities();
       saveState();
       showToast(overlaps === 0
         ? `관계선 최적화 완료 (${pass}패스)`
@@ -401,7 +401,38 @@ function _applySegNudge(rel, si, dir, offset) {
   }
 }
 
+<<<<<<< HEAD
 // ── 관계선최적화 V2 (방향 기반 포트 배정 + 스파인 라우팅) ─────────
+=======
+// ── V2 전용: nudge 적용 시 관통 증가 시 롤백 ─────────────────────
+function _v2NudgeWithCrossingCheck(NUDGE, TOL) {
+  const backup = new Map();
+  const before = new Map();
+  RELATIONS.forEach(rel => {
+    const w = rel.bend?.wpts;
+    backup.set(rel, w ? w.map(p => [p[0], p[1]]) : null);
+    before.set(rel, _v2CountCrossings(rel, [rel.from, rel.to]));
+  });
+  const overlaps = _nudgeOverlapPass(NUDGE, TOL);
+  RELATIONS.forEach(rel => {
+    const after = _v2CountCrossings(rel, [rel.from, rel.to]);
+    if (after > (before.get(rel) ?? 0)) {
+      const b = backup.get(rel);
+      if (rel.bend) rel.bend.wpts = b ? b.map(p => [p[0], p[1]]) : null;
+    }
+  });
+  return overlaps;
+}
+
+// ── 관계선최적화 V2 (A* 격자 라우터 + 통합 수렴 루프) ─────────
+
+// V2 상수
+const _V2_TURN_COST  = 80;   // 꺾임 페널티 (직교 우회 억제)
+const _V2_USAGE_COST = 40;   // 간선 재사용 소프트 페널티
+const _V2_MAX_ROUND  = 8;    // 수렴 루프 최대 라운드
+const _V2_MAX_NUDGE  = 60;   // nudge 보조 패스 상한
+const _V2_GRID_LIMIT = 4000; // 격자 노드 폭발 방지 (X*Y 상한)
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 
 function autoOptimizeRelationsV2() {
   showLayoutProgress('관계선최적화 V2 실행 중...');
@@ -410,12 +441,16 @@ function autoOptimizeRelationsV2() {
 }
 
 function _runOptimizeV2() {
+<<<<<<< HEAD
   const NUDGE = 14, TOL = 2, MAX_PASS = 100;
 
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   // 1. 전체 초기화
   RELATIONS.forEach(rel => { rel.bend = null; });
   updateLayoutProgress(4, '포트 배정 중...');
 
+<<<<<<< HEAD
   // 2. 방향 벡터 기반 포트 배정
   _v2AssignPorts();
   updateLayoutProgress(18, '스파인 경로 계산 중...');
@@ -459,6 +494,96 @@ function _runOptimizeV2() {
 }
 
 // 두 엔티티 중심 벡터 → 출발/도착 면 배정 (방향 강도 기반 확률로 매 실행 다양화)
+=======
+  // 2. 결정적 포트 배정 (무작위성 제거)
+  _v2AssignPorts();
+  updateLayoutProgress(12, 'A* 격자 구성 중...');
+
+  // 3. Hanan 격자 구성
+  const grid = _v2BuildGrid();
+  updateLayoutProgress(20, 'A* 경로 탐색 중...');
+
+  // 4. 사용 비용 맵 (간선 키 → 사용 횟수)
+  const usage = new Map();
+
+  // 5. 통합 수렴 루프
+  let round = 0;
+  let crossings = Infinity, overlaps = Infinity;
+
+  function runRound() {
+    round++;
+    // 이번 라운드에 재라우팅할 관계 목록 (첫 라운드는 전체)
+    const toRoute = round === 1
+      ? RELATIONS.slice()
+      : RELATIONS.filter(rel => _v2CountCrossings(rel, [rel.from, rel.to]) > 0);
+
+    toRoute.forEach(rel => {
+      _v2RouteWithFaceCycle(rel, grid, usage);
+      _v2SimplifyWpts(rel);
+    });
+
+    // 검증
+    crossings = RELATIONS.reduce((s, rel) => s + _v2CountCrossings(rel, [rel.from, rel.to]), 0);
+    overlaps  = _v2NudgeWithCrossingCheck(14, 2);
+
+    const pct = 20 + Math.round(round / _V2_MAX_ROUND * 55);
+    updateLayoutProgress(pct, `라운드 ${round}/${_V2_MAX_ROUND}  —  관통 ${crossings} · 겹침 ${overlaps}`);
+    render();
+
+    if ((crossings === 0 && overlaps === 0) || round >= _V2_MAX_ROUND) {
+      _v2FinishUp(crossings, overlaps, round);
+    } else {
+      // usage 맵 갱신 (해결된 선의 사용 비용 반영)
+      _v2UpdateUsage(usage, RELATIONS, grid);
+      requestAnimationFrame(runRound);
+    }
+  }
+
+  requestAnimationFrame(runRound);
+}
+
+// 보조 nudge + 마무리 단계
+function _v2FinishUp(crossings, overlaps, round) {
+  updateLayoutProgress(78, '겹침 보조 분리 중...');
+  let nudgePass = 0;
+
+  function nudgeIterate() {
+    nudgePass++;
+    const ov = _v2NudgeWithCrossingCheck(14, 2);
+    // 남은 관통 세그먼트도 보정 시도
+    if (crossings > 0) {
+      RELATIONS.forEach(rel => {
+        if (_v2CountCrossings(rel, [rel.from, rel.to]) > 0) {
+          _fixEntityCrossingsForRel(rel);
+          _v2SimplifyWpts(rel);
+        }
+      });
+      crossings = RELATIONS.reduce((s, r) => s + _v2CountCrossings(r, [r.from, r.to]), 0);
+    }
+    const pct = 78 + Math.round(nudgePass / _V2_MAX_NUDGE * 18);
+    updateLayoutProgress(pct, `보조 패스 ${nudgePass}  —  겹침 ${ov} · 관통 ${crossings}`);
+    render();
+
+    if ((ov === 0 && crossings === 0) || nudgePass >= _V2_MAX_NUDGE) {
+      RELATIONS.forEach(rel => _v2SimplifyWpts(rel));
+      render();
+      hideLayoutProgress();
+      centerOnEntities();
+      saveState();
+      const ok = crossings === 0 && ov === 0;
+      showToast(ok
+        ? `V2 최적화 완료 (${round}라운드 · ${nudgePass}보조패스)`
+        : `V2 완료 — 잔여 관통 ${crossings} · 겹침 ${ov}`);
+    } else {
+      requestAnimationFrame(nudgeIterate);
+    }
+  }
+
+  requestAnimationFrame(nudgeIterate);
+}
+
+// ── _v2AssignPorts: 결정적 면 배정 (무작위 제거) ──────────────────
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 function _v2AssignPorts() {
   const em = entityMap();
 
@@ -466,6 +591,7 @@ function _v2AssignPorts() {
     const a = em[rel.from], b = em[rel.to];
     if (!a || !b) return;
     const ah = entityHeight(a), bh = entityHeight(b);
+<<<<<<< HEAD
     const dx = (b.x + W / 2) - (a.x + W / 2);
     const dy = (b.y + bh / 2) - (a.y + ah / 2);
     const adx = Math.abs(dx), ady = Math.abs(dy);
@@ -478,6 +604,26 @@ function _v2AssignPorts() {
     const useHoriz = Math.random() < horizStrength;
 
     if (useHoriz) {
+=======
+
+    // 자기참조 처리
+    if (rel.from === rel.to) {
+      if (!rel.bend) rel.bend = {};
+      rel.bend.fromFace = 'right'; rel.bend.toFace = 'bottom';
+      rel.bend.fromPct  = 0.25;   rel.bend.toPct  = 0.25;
+      rel.bend.wpts     = null;
+      return;
+    }
+
+    const dx = (b.x + W / 2) - (a.x + W / 2);
+    const dy = (b.y + bh / 2) - (a.y + ah / 2);
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+
+    if (!rel.bend) rel.bend = {};
+
+    // 결정적 면 선택: 더 강한 축 우선, 동률이면 수평 우선
+    if (adx >= ady) {
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
       rel.bend.fromFace = dx >= 0 ? 'right' : 'left';
       rel.bend.toFace   = dx >= 0 ? 'left'  : 'right';
     } else {
@@ -489,7 +635,11 @@ function _v2AssignPorts() {
     rel.bend.wpts    = null;
   });
 
+<<<<<<< HEAD
   // 같은 면 다중 포트: 상대 엔티티 위치 기준 정렬 + 미세 무작위 섞기 → 매 실행 포트 순서 다양화
+=======
+  // 같은 면 다중 포트: 상대 엔티티 위치 기준 결정적 정렬 (노이즈 제거)
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   ENTITIES.forEach(ent => {
     ['left', 'right', 'top', 'bottom'].forEach(face => {
       const items = [];
@@ -499,14 +649,21 @@ function _v2AssignPorts() {
       });
       if (items.length < 2) return;
       const isH = face === 'left' || face === 'right';
+<<<<<<< HEAD
       // 위치 기반 정렬에 랜덤 노이즈 추가 → 동률 구간에서 순서 섞임
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
       items.sort((x, y) => {
         const axis = ({ rel, isFrom }) => {
           const other = em[isFrom ? rel.to : rel.from];
           if (!other) return 0;
           return isH ? other.y + entityHeight(other) / 2 : other.x + W / 2;
         };
+<<<<<<< HEAD
         return (axis(x) - axis(y)) + (Math.random() - 0.5) * 40;
+=======
+        return axis(x) - axis(y);
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
       });
       items.forEach(({ rel, isFrom }, i) => {
         const pct = (i + 1) / (items.length + 1);
@@ -516,7 +673,356 @@ function _v2AssignPorts() {
   });
 }
 
+<<<<<<< HEAD
 // L자형 우선 라우팅: 막히면 3세그먼트 스파인으로 대체
+=======
+// ── _v2BuildGrid: Hanan 격자 구성 ────────────────────────────────
+function _v2BuildGrid() {
+  const xs = new Set(), ys = new Set();
+  const em = entityMap();
+
+  ENTITIES.forEach(e => {
+    const eh = entityHeight(e);
+    xs.add(e.x - GAP);   xs.add(e.x);   xs.add(e.x + W);   xs.add(e.x + W + GAP);
+    ys.add(e.y - GAP);   ys.add(e.y);   ys.add(e.y + eh);  ys.add(e.y + eh + GAP);
+  });
+
+  // 포트 anchor 좌표 추가 (현재 pct + 0.25/0.5/0.75 pct 격자선 포함)
+  RELATIONS.forEach(rel => {
+    const a = em[rel.from], b = em[rel.to];
+    if (!a || !b || !rel.bend?.fromFace) return;
+    const fp = faceAnchor(a, rel.bend.fromFace, rel.bend.fromPct);
+    const tp = faceAnchor(b, rel.bend.toFace,   rel.bend.toPct);
+    xs.add(fp[0]); ys.add(fp[1]);
+    xs.add(tp[0]); ys.add(tp[1]);
+  });
+  // 0.25/0.5/0.75 pct anchor를 모든 엔티티·면에 대해 격자선에 추가
+  ENTITIES.forEach(ent => {
+    for (const pct of [0.25, 0.5, 0.75]) {
+      ['right', 'left', 'top', 'bottom'].forEach(face => {
+        const pt = faceAnchor(ent, face, pct);
+        if (pt) { xs.add(pt[0]); ys.add(pt[1]); }
+      });
+    }
+  });
+
+  const xArr = Array.from(xs).sort((a, b) => a - b);
+  const yArr = Array.from(ys).sort((a, b) => a - b);
+
+  // 노드 수 상한 초과 시 간소화: 엔티티 경계·포트 anchor는 반드시 유지
+  const mustKeepX = new Set(), mustKeepY = new Set();
+  ENTITIES.forEach(e => {
+    const eh = entityHeight(e);
+    [e.x - GAP, e.x, e.x + W, e.x + W + GAP].forEach(v => mustKeepX.add(v));
+    [e.y - GAP, e.y, e.y + eh, e.y + eh + GAP].forEach(v => mustKeepY.add(v));
+  });
+  RELATIONS.forEach(rel => {
+    const a = em[rel.from], b = em[rel.to];
+    if (!a || !b || !rel.bend?.fromFace) return;
+    const fp = faceAnchor(a, rel.bend.fromFace, rel.bend.fromPct);
+    const tp = faceAnchor(b, rel.bend.toFace,   rel.bend.toPct);
+    mustKeepX.add(fp[0]); mustKeepY.add(fp[1]);
+    mustKeepX.add(tp[0]); mustKeepY.add(tp[1]);
+  });
+
+  function thinArr(arr, limit, mustKeep) {
+    if (arr.length <= limit) return arr;
+    const step = arr.length / limit;
+    return arr.filter((v, i) =>
+      mustKeep.has(v) ||
+      Math.round(i / step) * step === i ||
+      i === 0 ||
+      i === arr.length - 1
+    );
+  }
+  const maxDim = Math.ceil(Math.sqrt(_V2_GRID_LIMIT));
+  const xFinal = thinArr(xArr, maxDim, mustKeepX);
+  const yFinal = thinArr(yArr, maxDim, mustKeepY);
+
+  // 엔티티 내부 노드 blocked 표시
+  const blocked = new Set();
+  for (let yi = 0; yi < yFinal.length; yi++) {
+    for (let xi = 0; xi < xFinal.length; xi++) {
+      const px = xFinal[xi], py = yFinal[yi];
+      for (const e of ENTITIES) {
+        const eh = entityHeight(e);
+        if (px > e.x && px < e.x + W && py > e.y && py < e.y + eh) {
+          blocked.add(yi * xFinal.length + xi);
+          break;
+        }
+      }
+    }
+  }
+
+  return { xs: xFinal, ys: yFinal, blocked };
+}
+
+// ── _v2RouteWithFaceCycle: 포트 면 조합 순환으로 관통 최소 경로 ───
+function _v2RouteWithFaceCycle(rel, grid, usage) {
+  const em = entityMap();
+  const a = em[rel.from], b = em[rel.to];
+  if (!a || !b || !rel.bend?.fromFace) {
+    _v2AStarRoute(rel, grid, usage, [rel.from, rel.to]);
+    return;
+  }
+
+  const faces = ['right', 'left', 'bottom', 'top'];
+  const exIds = [rel.from, rel.to];
+
+  // 상대 방향 기준으로 1순위 면 결정 (정렬 기준)
+  const ah = entityHeight(a), bh = entityHeight(b);
+  const dx = (b.x + W / 2) - (a.x + W / 2);
+  const dy = (b.y + bh / 2) - (a.y + ah / 2);
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  const prefFrom = adx >= ady ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'bottom' : 'top');
+  const prefTo   = adx >= ady ? (dx >= 0 ? 'left'  : 'right') : (dy >= 0 ? 'top'    : 'bottom');
+
+  // 16조합 생성: 현재 면이 0번, 선호 조합 우선 정렬
+  const origFrom = rel.bend.fromFace, origTo = rel.bend.toFace;
+  const combos = [];
+  for (const ff of faces) {
+    for (const tf of faces) {
+      const score = (ff === origFrom && tf === origTo ? 0 : 1)
+                  + (ff === prefFrom ? 0 : 2)
+                  + (tf === prefTo   ? 0 : 2);
+      combos.push({ ff, tf, score });
+    }
+  }
+  combos.sort((x, y) => x.score - y.score);
+
+  let bestCross = Infinity;
+  let bestWpts  = null, bestFrom = origFrom, bestTo = origTo;
+  let bestFromPct = rel.bend.fromPct, bestToPct = rel.bend.toPct;
+
+  for (const { ff, tf } of combos) {
+    rel.bend.fromFace = ff;
+    rel.bend.toFace   = tf;
+    // pct는 중앙 유지 (포트 배정 이후이므로 현재값 보존 or 0.5)
+    if (ff !== origFrom) { rel.bend.fromPct = 0.5; }
+    if (tf !== origTo)   { rel.bend.toPct   = 0.5; }
+
+    _v2AStarRoute(rel, grid, usage, exIds);
+    const cross = _v2CountCrossings(rel, exIds);
+
+    if (cross < bestCross) {
+      bestCross   = cross;
+      bestWpts    = rel.bend.wpts ? rel.bend.wpts.map(p => [p[0], p[1]]) : null;
+      bestFrom    = ff; bestTo = tf;
+      bestFromPct = rel.bend.fromPct; bestToPct = rel.bend.toPct;
+      if (cross === 0) break;
+    }
+  }
+
+  // pct 단계적 확장: 16조합으로 관통=0을 못 찾은 경우 추가 시도
+  if (bestCross > 0) {
+    const pctCandidates = [0.25, 0.75];
+    outer: for (const fp of pctCandidates) {
+      for (const tp of pctCandidates) {
+        rel.bend.fromFace = bestFrom; rel.bend.toFace = bestTo;
+        rel.bend.fromPct  = fp;       rel.bend.toPct  = tp;
+        _v2AStarRoute(rel, grid, usage, exIds);
+        const cross = _v2CountCrossings(rel, exIds);
+        if (cross < bestCross) {
+          bestCross   = cross;
+          bestWpts    = rel.bend.wpts ? rel.bend.wpts.map(p => [p[0], p[1]]) : null;
+          bestFromPct = fp; bestToPct = tp;
+          if (cross === 0) break outer;
+        }
+      }
+    }
+  }
+
+  // 최적 결과 복원
+  rel.bend.fromFace = bestFrom; rel.bend.toFace = bestTo;
+  rel.bend.fromPct  = bestFromPct; rel.bend.toPct = bestToPct;
+  rel.bend.wpts = bestWpts;
+}
+
+// ── _v2AStarRoute: A* 직교 최단경로 + 폴백 ───────────────────────
+function _v2AStarRoute(rel, grid, usage, exIds) {
+  const em = entityMap();
+  const a = em[rel.from], b = em[rel.to];
+  if (!a || !b || !rel.bend?.fromFace) return;
+
+  // 자기참조 관계: 작은 사각 루프
+  if (rel.from === rel.to) {
+    const fp = faceAnchor(a, rel.bend.fromFace, rel.bend.fromPct);
+    const tp = faceAnchor(a, rel.bend.toFace,   rel.bend.toPct);
+    const off = W / 3;
+    rel.bend.wpts = [
+      [fp[0] + off, fp[1]],
+      [fp[0] + off, tp[1]]
+    ];
+    return;
+  }
+
+  const fromPt = faceAnchor(a, rel.bend.fromFace, rel.bend.fromPct);
+  const toPt   = faceAnchor(b, rel.bend.toFace,   rel.bend.toPct);
+  const { xs, ys, blocked } = grid;
+  const W2 = xs.length;
+
+  // 격자 좌표 snap (가장 가까운 격자선)
+  function snapX(v) { return xs.reduce((bi, x, i) => Math.abs(x - v) < Math.abs(xs[bi] - v) ? i : bi, 0); }
+  function snapY(v) { return ys.reduce((bi, y, i) => Math.abs(y - v) < Math.abs(ys[bi] - v) ? i : bi, 0); }
+
+  const si = snapX(fromPt[0]), sj = snapY(fromPt[1]);
+  const ei = snapX(toPt[0]),   ej = snapY(toPt[1]);
+  const startKey = sj * W2 + si, goalKey = ej * W2 + ei;
+
+  if (startKey === goalKey) {
+    rel.bend.wpts = [];
+    return;
+  }
+
+  // 출발 면 → 초기 이동 방향 강제
+  // fromFace: 'right'→+x, 'left'→-x, 'bottom'→+y, 'top'→-y
+  const faceDirMap = { right: [1, 0], left: [-1, 0], bottom: [0, 1], top: [0, -1] };
+  const startDir = faceDirMap[rel.bend.fromFace] || null;
+
+  // A* 우선순위 큐 (간이 min-heap: 정렬 배열)
+  // node: { key, xi, yi, g, f, prevKey, prevDir }
+  const open   = [];
+  const gScore = new Map();
+  const cameFrom = new Map();
+  const dirFrom  = new Map();
+
+  function heur(xi, yi) {
+    return Math.abs(xs[xi] - toPt[0]) + Math.abs(ys[yi] - toPt[1]);
+  }
+  function usageKey(xi1, yi1, xi2, yi2) {
+    const k1 = yi1 * W2 + xi1, k2 = yi2 * W2 + xi2;
+    return k1 < k2 ? `${k1}_${k2}` : `${k2}_${k1}`;
+  }
+
+  const startNode = { key: startKey, xi: si, yi: sj, g: 0, f: heur(si, sj), prevKey: -1, prevDir: startDir };
+  open.push(startNode);
+  gScore.set(startKey, 0);
+
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  let found = false;
+  let iters = 0;
+  const MAX_ITER = Math.min(xs.length * ys.length * 4, 8000);
+
+  while (open.length > 0 && iters < MAX_ITER) {
+    iters++;
+    // pop min-f
+    let minIdx = 0;
+    for (let k = 1; k < open.length; k++) {
+      if (open[k].f < open[minIdx].f) minIdx = k;
+    }
+    const cur = open.splice(minIdx, 1)[0];
+
+    if (cur.key === goalKey) { found = true; break; }
+
+    for (const [dx, dy] of dirs) {
+      const nxi = cur.xi + dx, nyi = cur.yi + dy;
+      if (nxi < 0 || nxi >= xs.length || nyi < 0 || nyi >= ys.length) continue;
+      const nKey = nyi * W2 + nxi;
+      if (blocked.has(nKey) && nKey !== startKey && nKey !== goalKey) continue;
+
+      // 출발 노드에서는 startDir과 일치하는 방향만 확장
+      if (cur.key === startKey && startDir && (dx !== startDir[0] || dy !== startDir[1])) continue;
+
+      // hard constraint: 세그먼트가 exIds 외 엔티티를 관통하면 불가
+      if (obstacleOnSeg(xs[cur.xi], ys[cur.yi], xs[nxi], ys[nyi], exIds)) continue;
+
+      // 비용 계산
+      const dist = Math.abs(xs[nxi] - xs[cur.xi]) + Math.abs(ys[nyi] - ys[cur.yi]);
+      const turnPenalty = (cur.prevDir && (cur.prevDir[0] !== dx || cur.prevDir[1] !== dy)) ? _V2_TURN_COST : 0;
+      const uKey   = usageKey(cur.xi, cur.yi, nxi, nyi);
+      const uCost  = (usage.get(uKey) || 0) * _V2_USAGE_COST;
+      const tentG  = cur.g + dist + turnPenalty + uCost;
+
+      if (tentG < (gScore.get(nKey) ?? Infinity)) {
+        gScore.set(nKey, tentG);
+        cameFrom.set(nKey, cur.key);
+        dirFrom.set(nKey, [dx, dy]);
+        open.push({ key: nKey, xi: nxi, yi: nyi, g: tentG, f: tentG + heur(nxi, nyi), prevDir: [dx, dy] });
+      }
+    }
+  }
+
+  if (!found) {
+    // 폴백: 기존 스파인 라우팅
+    _v2SpineRoute(rel);
+    return;
+  }
+
+  // 경로 역추적
+  const pathKeys = [];
+  let backKey = goalKey;
+  while (backKey !== -1) {
+    pathKeys.unshift(backKey);
+    backKey = cameFrom.has(backKey) ? cameFrom.get(backKey) : -1;
+  }
+
+  // usage 맵 갱신 (사용한 간선 기록)
+  for (let k = 0; k < pathKeys.length - 1; k++) {
+    const k1 = pathKeys[k], k2 = pathKeys[k + 1];
+    const xi1 = k1 % W2, yi1 = Math.floor(k1 / W2);
+    const xi2 = k2 % W2, yi2 = Math.floor(k2 / W2);
+    const uk = usageKey(xi1, yi1, xi2, yi2);
+    usage.set(uk, (usage.get(uk) || 0) + 1);
+  }
+
+  // 격자 노드 → 월드 좌표 → 꺾임점만 추출
+  const worldPath = pathKeys.map(k => [xs[k % W2], ys[Math.floor(k / W2)]]);
+  rel.bend.wpts = _v2GridPathToWpts(worldPath);
+}
+
+// ── _v2GridPathToWpts: 격자 경로 → 꺾임점 wpts ───────────────────
+function _v2GridPathToWpts(worldPath) {
+  if (worldPath.length <= 2) return [];
+  const wpts = [];
+  // 첫 점(출발 anchor)·마지막 점(도착 anchor) 제외, 방향 전환점만 추출
+  for (let i = 1; i < worldPath.length - 1; i++) {
+    const prev = worldPath[i - 1], cur = worldPath[i], next = worldPath[i + 1];
+    const dx1 = Math.sign(cur[0] - prev[0]), dy1 = Math.sign(cur[1] - prev[1]);
+    const dx2 = Math.sign(next[0] - cur[0]),  dy2 = Math.sign(next[1] - cur[1]);
+    if (dx1 !== dx2 || dy1 !== dy2) wpts.push([cur[0], cur[1]]);
+  }
+  return wpts;
+}
+
+// ── _v2CountCrossings: 관계선의 관통 세그먼트 수 ─────────────────
+function _v2CountCrossings(rel, exIds) {
+  const bfw = buildFullWpts(rel);
+  if (!bfw) return 0;
+  let count = 0;
+  const f = bfw.full;
+  for (let i = 0; i < f.length - 1; i++) {
+    if (obstacleOnSeg(f[i][0], f[i][1], f[i + 1][0], f[i + 1][1], exIds)) count++;
+  }
+  return count;
+}
+
+// ── _v2UpdateUsage: usage 맵 갱신 (라운드 간 재사용 반영) ─────────
+// grid를 받아 _v2AStarRoute와 동일한 격자 인덱스 기반 키를 사용한다.
+function _v2UpdateUsage(usage, relations, grid) {
+  usage.clear();
+  const { xs, ys } = grid;
+  const W2 = xs.length;
+  function snapX(v) { return xs.reduce((bi, x, i) => Math.abs(x - v) < Math.abs(xs[bi] - v) ? i : bi, 0); }
+  function snapY(v) { return ys.reduce((bi, y, i) => Math.abs(y - v) < Math.abs(ys[bi] - v) ? i : bi, 0); }
+  function usageKey(xi1, yi1, xi2, yi2) {
+    const k1 = yi1 * W2 + xi1, k2 = yi2 * W2 + xi2;
+    return k1 < k2 ? `${k1}_${k2}` : `${k2}_${k1}`;
+  }
+  relations.forEach(rel => {
+    const bfw = buildFullWpts(rel);
+    if (!bfw) return;
+    const f = bfw.full;
+    for (let i = 0; i < f.length - 1; i++) {
+      const xi1 = snapX(f[i][0]),   yi1 = snapY(f[i][1]);
+      const xi2 = snapX(f[i+1][0]), yi2 = snapY(f[i+1][1]);
+      const k = usageKey(xi1, yi1, xi2, yi2);
+      usage.set(k, (usage.get(k) || 0) + 1);
+    }
+  });
+}
+
+// ── _v2SpineRoute: 폴백 스파인 라우팅 (A* 실패 시 사용) ──────────
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 function _v2SpineRoute(rel) {
   const em = entityMap();
   const a = em[rel.from], b = em[rel.to];
@@ -531,7 +1037,10 @@ function _v2SpineRoute(rel) {
   const toH      = toFace   === 'left' || toFace   === 'right';
 
   if (fromH === toH) {
+<<<<<<< HEAD
     // 같은 방향 출구 → 스파인 라우팅 (무작위 시작 위치)
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     if (fromH) {
       const spX = _v2ClearSpineX(fromPt, toPt, exIds);
       rel.bend.wpts = [[spX, fromPt[1]], [spX, toPt[1]]];
@@ -540,7 +1049,10 @@ function _v2SpineRoute(rel) {
       rel.bend.wpts = [[fromPt[0], spY], [toPt[0], spY]];
     }
   } else {
+<<<<<<< HEAD
     // 혼합 출구 → L자형 시도, 막히면 스파인 대체
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     const corner = fromH ? [toPt[0], fromPt[1]] : [fromPt[0], toPt[1]];
     const ok1 = !obstacleOnSeg(fromPt[0], fromPt[1], corner[0], corner[1], exIds);
     const ok2 = !obstacleOnSeg(corner[0],  corner[1], toPt[0],  toPt[1],  exIds);
@@ -556,20 +1068,39 @@ function _v2SpineRoute(rel) {
   }
 }
 
+<<<<<<< HEAD
 // 수직 스파인 X: 무작위 시작 위치 + 장애물 회피
 function _v2ClearSpineX(fromPt, toPt, exIds) {
   // 엔티티 간 범위를 넘어 좌우로 W/2까지 확장된 영역에서 무작위 시작
   const lo = Math.min(fromPt[0], toPt[0]) - W / 2;
   const hi = Math.max(fromPt[0], toPt[0]) + W / 2;
   let x = lo + Math.random() * (hi - lo);
+=======
+// 수직 스파인 X: 장애물 회피 (폴백용)
+function _v2ClearSpineX(fromPt, toPt, exIds) {
+  const lo = Math.min(fromPt[0], toPt[0]) - W / 2;
+  const hi = Math.max(fromPt[0], toPt[0]) + W / 2;
+  let x = (lo + hi) / 2;
+  let bestX = x, bestCross = Infinity;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   for (let t = 0; t < 12; t++) {
     const obs = obstacleOnSeg(fromPt[0], fromPt[1], x,         fromPt[1], exIds)
              || obstacleOnSeg(x,         fromPt[1], x,         toPt[1],   exIds)
              || obstacleOnSeg(x,         toPt[1],   toPt[0],   toPt[1],   exIds);
+<<<<<<< HEAD
+=======
+    const crossCount = [
+      obstacleOnSeg(fromPt[0], fromPt[1], x,       fromPt[1], exIds),
+      obstacleOnSeg(x,         fromPt[1], x,        toPt[1],   exIds),
+      obstacleOnSeg(x,         toPt[1],   toPt[0],  toPt[1],   exIds)
+    ].filter(Boolean).length;
+    if (crossCount < bestCross) { bestCross = crossCount; bestX = x; }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     if (!obs) break;
     const candL = obs.x - GAP, candR = obs.x + W + GAP;
     x = Math.abs(candL - x) <= Math.abs(candR - x) ? candL : candR;
   }
+<<<<<<< HEAD
   return x;
 }
 
@@ -578,16 +1109,40 @@ function _v2ClearSpineY(fromPt, toPt, exIds) {
   const lo = Math.min(fromPt[1], toPt[1]) - entityHeight(ENTITIES[0] || { cols: [] }) / 2;
   const hi = Math.max(fromPt[1], toPt[1]) + 80;
   let y = lo + Math.random() * Math.max(0, hi - lo);
+=======
+  return bestX;
+}
+
+// 수평 스파인 Y: 장애물 회피 (폴백용)
+function _v2ClearSpineY(fromPt, toPt, exIds) {
+  const lo = Math.min(fromPt[1], toPt[1]) - 80;
+  const hi = Math.max(fromPt[1], toPt[1]) + 80;
+  let y = (lo + hi) / 2;
+  let bestY = y, bestCross = Infinity;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   for (let t = 0; t < 12; t++) {
     const obs = obstacleOnSeg(fromPt[0], fromPt[1], fromPt[0], y,         exIds)
              || obstacleOnSeg(fromPt[0], y,          toPt[0],  y,         exIds)
              || obstacleOnSeg(toPt[0],   y,          toPt[0],  toPt[1],   exIds);
+<<<<<<< HEAD
+=======
+    const crossCount = [
+      obstacleOnSeg(fromPt[0], fromPt[1], fromPt[0], y,        exIds),
+      obstacleOnSeg(fromPt[0], y,         toPt[0],   y,        exIds),
+      obstacleOnSeg(toPt[0],   y,         toPt[0],   toPt[1],  exIds)
+    ].filter(Boolean).length;
+    if (crossCount < bestCross) { bestCross = crossCount; bestY = y; }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     if (!obs) break;
     const oh = entityHeight(obs);
     const candA = obs.y - GAP, candB = obs.y + oh + GAP;
     y = Math.abs(candA - y) <= Math.abs(candB - y) ? candA : candB;
   }
+<<<<<<< HEAD
   return y;
+=======
+  return bestY;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 }
 
 // 직교 경로에서 동일선상(collinear) 중간 점 반복 제거 — 직선 가능 구간 정리

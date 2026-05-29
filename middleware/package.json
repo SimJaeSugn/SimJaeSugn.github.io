@@ -1,0 +1,37 @@
+{
+  "name": "uxermanager-middleware",
+  "version": "1.0.0",
+  "description": "UXERManager DB 미들웨어 - ERD 도구와 운영 DB를 연결하는 로컬 프록시",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "build:win": "pkg src/index.js --targets node18-win-x64 --output dist/uxermanager.exe",
+    "build:mac": "pkg src/index.js --targets node18-macos-x64 --output dist/uxermanager-mac",
+    "build:linux": "pkg src/index.js --targets node18-linux-x64 --output dist/uxermanager-linux",
+    "build": "pkg src/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path dist",
+    "build:installer": "npm run build:win && node scripts/run-iscc.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mssql": "^10.0.2",
+    "mysql2": "^3.6.5",
+    "oracledb": "^6.4.0",
+    "pg": "^8.11.3",
+    "systray2": "^2.1.4"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^5.11.5"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/tedious/lib/**/*",
+      "node_modules/mssql/**/*"
+    ],
+    "targets": [
+      "node18-win-x64",
+      "node18-macos-x64",
+      "node18-linux-x64"
+    ]
+  }
+}
