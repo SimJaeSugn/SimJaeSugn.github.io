@@ -63,10 +63,11 @@ async function openForwardEngineerModal() {
   document.getElementById('feOverlay').classList.add('active');
 }
 
-// ── 단일 엔티티 포워드 엔지니어링 (컨텍스트 메뉴 진입) ────────────
-async function openForwardEngineerForEntity(entityId) {
-  const target = ENTITIES.find(e => e.id === entityId);
-  if (!target) return;
+// ── 지정 엔티티 포워드 엔지니어링 (컨텍스트 메뉴 진입, 단일/다중) ──
+async function openForwardEngineerForEntity(entityIdOrIds) {
+  const ids = Array.isArray(entityIdOrIds) ? entityIdOrIds : [entityIdOrIds];
+  const targets = ids.map(id => ENTITIES.find(e => e.id === id)).filter(Boolean);
+  if (!targets.length) return;
 
   const running = await _mwPing();
   if (!running) {
@@ -111,8 +112,8 @@ async function openForwardEngineerForEntity(entityId) {
 
   _feRenderStep1Modal();
   document.getElementById('feOverlay').classList.add('active');
-  // 엔티티 선택 단계 건너뜀: 해당 엔티티만 표시
-  await _feShowStep2(entityId);
+  // 엔티티 선택 단계 건너뜀: 지정한 엔티티들만 표시
+  await _feShowStep2(targets.map(t => t.id));
 }
 
 function closeForwardEngineerModal() {
@@ -237,6 +238,19 @@ function _feResetToStep1() {
   document.getElementById('feNextBtn').onclick = _feNextStep;
   const errEl = document.getElementById('feErrMsg');
   if (errEl) errEl.style.display = 'none';
+
+  // SQL 미리보기 잔상 제거 — 재오픈 시 이전 SQL이 남지 않도록 항상 초기화
+  const previewWrap = document.getElementById('fePreviewWrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  const previewSql = document.getElementById('fePreviewSql');
+  if (previewSql) previewSql.textContent = '';
+
+  // 진행률 바 잔상 제거
+  const progressWrap = document.getElementById('feProgress');
+  if (progressWrap) progressWrap.style.display = 'none';
+  const progressBar = document.getElementById('feProgressBar');
+  if (progressBar) progressBar.style.width = '0%';
+
   _feStep = 1;
 }
 
@@ -256,6 +270,11 @@ async function _feShowStep2(restrictEntityId = null) {
     showToast('엔티티가 없습니다. 먼저 ERD를 작성하세요.');
     return;
   }
+
+  // 제한 대상 정규화: null(전체) | 단일 ID(문자열) | ID 배열 모두 허용
+  const restrictIds = restrictEntityId == null
+    ? null
+    : (Array.isArray(restrictEntityId) ? restrictEntityId : [restrictEntityId]);
 
   const nextBtn = document.getElementById('feNextBtn');
   nextBtn.disabled = true;
@@ -280,9 +299,9 @@ async function _feShowStep2(restrictEntityId = null) {
 
   const existingNames = new Set(_feExistingTables.map(t => t.name.toLowerCase()));
 
-  // 엔티티 체크리스트 렌더링 (단일 엔티티 모드 지원)
-  const entsToRender = restrictEntityId
-    ? ENTITIES.filter(ent => ent.id === restrictEntityId)
+  // 엔티티 체크리스트 렌더링 (단일/다중 제한 모드 지원)
+  const entsToRender = restrictIds
+    ? ENTITIES.filter(ent => restrictIds.includes(ent.id))
     : ENTITIES;
   const listEl = document.getElementById('feEntityList');
   listEl.innerHTML = entsToRender.map(ent => {
@@ -312,7 +331,9 @@ async function _feShowStep2(restrictEntityId = null) {
 
   document.getElementById('feStep1Wrap').style.display = 'none';
   document.getElementById('feStep2Wrap').style.display = '';
-  document.getElementById('feSelectAllBtn').style.display = restrictEntityId ? 'none' : '';
+  // 제한 대상이 2개 이상이면 전체선택 버튼 표시(다중 모드), 단일/null 처리
+  document.getElementById('feSelectAllBtn').style.display =
+    (restrictIds && restrictIds.length <= 1) ? 'none' : '';
   document.getElementById('fePreviewBtn').style.display = '';
   nextBtn.disabled = false;
   nextBtn.textContent = '실행';

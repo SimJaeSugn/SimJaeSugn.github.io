@@ -1550,7 +1550,15 @@ function ctxFn(action) {
   if (action === 'copyToDiag') { if (ctxTargetEntity) openCopyDiagModal(ctxTargetEntity); }
   if (action === 'colorEnt')  showCtxEntityColorPicker();
   if (action === 'selRelated') selectRelatedEntities(ctxTargetEntity);
-  if (action === 'forwardEng') { if (ctxTargetEntity) openForwardEngineerForEntity(ctxTargetEntity.id); return; }
+  if (action === 'forwardEng') {
+    // 다중 선택(2개 이상) 시 선택 집합 전체, 아니면 우클릭 대상 단일
+    if (typeof selectedEntities !== 'undefined' && selectedEntities.size > 1) {
+      openForwardEngineerForEntity([...selectedEntities]);
+    } else if (ctxTargetEntity) {
+      openForwardEngineerForEntity(ctxTargetEntity.id);
+    }
+    return;
+  }
   if (action === 'addNote')   addNoteAt(ctxLastWorld.x, ctxLastWorld.y);
   if (action === 'delNote')   { if (ctxTargetNote) { const i = NOTES.indexOf(ctxTargetNote); if (i>=0) NOTES.splice(i,1); render(); saveState(); } }
   if (action === 'delEnt')  askConfirm(`'${entDisplayName(ctxTargetEntity)}' 엔티티와 연결된 모든 관계를 삭제합니다.`, () => deleteEntity(ctxTargetEntity), '삭제');

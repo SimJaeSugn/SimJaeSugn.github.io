@@ -1,23 +1,34 @@
-## 단축키 동기화
-- 상태: N/A
-- 상세: 새 단축키 추가 없음. 기존 Ctrl+C(copy)/Ctrl+V(paste) 동작만 내부 수정. main.js 키 바인딩·index.html #shortcutsTableBody·shortcuts.js 변경 불필요.
+## 통합 검사 결과 — 최종 상태: PASS
 
-## 백업 통합 (export/import/ui)
-- export.js: N/A — 신규 키/배열 없음. 복사된 관계선은 RELATIONS(기존 배열)에 push되며, flushCurrentState()가 RELATIONS를 diagram.relations로 직렬화 → export 자동 포함(export.js:321에서 RELATIONS 순회 확인).
-- import.js: N/A — diagram.relations(import.js:133,193,212)로 이미 처리. 신규 처리 불필요.
-- ui.js (_BK_GROUPS): N/A — 신규 백업 그룹 없음.
-- 상세: _clipboard는 메모리 전용 변수로 localStorage에 저장되지 않음. 영속 데이터는 기존 RELATIONS 배열뿐이며 이미 백업 파이프라인에 포함됨.
+### 검증 1: 단축키 동기화
+- 신규/변경 단축키 없음. `index.html` `#shortcutsTableBody` 영향 없음. **PASS**
 
-## 상태 저장/로드
-- 상태: N/A
-- 상세: state.js에 새 전역 변수 추가 없음. _clipboard/pasteCount는 entities.js 내 기존 모듈 변수. saveState()는 pasteEntity() 말미에서 기존대로 호출됨.
+### 검증 2: 백업/내보내기·가져오기 통합
+- 신규 localStorage 키 없음. 엔티티/관계/다이어그램 직렬화 구조 변경 없음.
+- export.js/import.js 수정 불필요. **PASS**
 
-## 렌더링 연동
-- 상태: OK
-- 상세: 새 시각 요소 없음. 붙여넣은 관계선은 RELATIONS에 추가되어 drawRelations()(canvas.js)가 기존대로 렌더링. pasteEntity()에서 render() 호출 유지됨.
+### 검증 3: 함수 시그니처 호환성 (`openForwardEngineerForEntity`)
+- 호출처: `js/ui.js:1556` `openForwardEngineerForEntity([...selectedEntities])` (배열), `js/ui.js:1558` `openForwardEngineerForEntity(ctxTargetEntity.id)` (단일 문자열).
+- 구현부: 진입 시 `Array.isArray` 정규화로 두 형태 모두 처리. **PASS**
 
-## 검증 메모
-- toWorld/_qbLeftOff/entityHeight/panelOpen/PANEL_W 모두 전역 스코프이며 entities.js에서 호출 가능. typeof 가드로 방어 처리됨.
-- 관계선 영속 waypoints 미존재 확인 → 좌표 보정 불필요(analyst 확인 필요 항목 해소).
+### 검증 4: 함수 시그니처 호환성 (`_feShowStep2`)
+- 호출처: `forward_engineer.js:261` `_feShowStep2()` (인자 없음 → 전체), `forward_engineer.js:116` `_feShowStep2(targets.map(t => t.id))` (배열).
+- 구현부: `restrictEntityId = null` 기본값 + `restrictIds` 정규화(null/문자열/배열). 단일 ID 문자열 입력도 하위호환. **PASS**
 
-## 최종 상태: PASS
+### 검증 5: 컨텍스트 메뉴 진입 경로
+- `index.html:282` `ctxFn('forwardEng')` → `ui.js` `forwardEng` 분기 → `selectedEntities.size > 1` 우선, 아니면 `ctxTargetEntity`. 디스패치 경로 일관. **PASS**
+
+### 검증 6: 전역 `selectedEntities` 접근
+- `selectedEntities`는 `js/canvas.js:29` 전역 Set. ui.js는 동일 전역 스코프에서 접근 가능(ui.js:17에 동일 `typeof` 가드 선례). 방어적 `typeof` 가드 적용. **PASS**
+
+### 검증 7: 미리보기 초기화 단일 지점
+- `_feResetToStep1()`은 신규 오픈(`_feRenderStep1Modal` 끝)과 재오픈(`_feRenderStep1Modal` line 128 분기) 양쪽에서 호출됨. 여기에 `fePreviewWrap` 숨김 + `fePreviewSql` 비움 + 진행률 초기화 추가 → 모든 오픈 경로에서 잔상 제거 보장. **PASS**
+
+### 검증 8: 구문 검사
+- `node --check js/forward_engineer.js` → OK
+- `node --check js/ui.js` → OK
+- **PASS**
+
+### 잔여 주의사항(차단 아님)
+- 다중 선택 상태에서 선택 집합에 포함되지 않은 다른 엔티티를 우클릭해도 `size > 1`이면 선택 집합이 우선됨. 요청 우선순위 정의에 부합하나 UX 관점 재확인은 reviewer 권장 사항.
+- `feDbCfgNotice` 오버레이 생성 코드 중복은 이전 review 지적 사항으로 범위 외 유지.

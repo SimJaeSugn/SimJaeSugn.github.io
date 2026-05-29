@@ -1,90 +1,78 @@
 ## 요청 요약
 
-요청 1 — 붙여넣기(Ctrl+V) 시 엔티티 그룹을 현재 뷰포트(화면) 중앙 좌표에 배치한다.
-- 기존: 원본 좌표 + (30 * pasteCount) 오프셋
-- 변경: 클립보드 엔티티 그룹의 바운딩 박스 중심을 현재 화면 중앙의 월드 좌표로 이동시켜 배치
+**요청 1 — 컨텍스트 메뉴 포워드 엔지니어링의 다중 선택 지원**
+우클릭 컨텍스트 메뉴에서 "포워드 엔지니어링" 선택 시, 현재는 우클릭 대상(`ctxTargetEntity`) 단일 엔티티만 처리한다. `selectedEntities`(Set, 엔티티 ID 보관)에 2개 이상 선택돼 있으면 선택 집합 전체를 포워드 엔지니어링 대상으로 넘긴다. 우선순위: `selectedEntities.size > 1` 이면 선택 집합, 아니면 기존대로 `ctxTargetEntity`.
 
-요청 2 — 복사(Ctrl+C) 시 선택 집합 내에서 from/to 양쪽이 모두 포함된 관계선을 함께 복사하고, 붙여넣기 시 새 엔티티 id로 재매핑하여 RELATIONS에 추가한다.
+**요청 2 — SQL 미리보기 창의 이전 값 유지 버그 수정**
+포워드 엔지니어링 모달을 다시 열 때, 이전에 생성한 SQL이 `#fePreviewSql`에 남아 보이는 경우가 있다. 모달 재오픈 시 미리보기 영역을 항상 초기화/숨김 처리하여, 새로 "미리보기" 또는 "실행"을 누를 때만 최신 SQL이 보이도록 한다.
 
 ## 탐색한 파일
-
-- js/entities.js (448~511): copyEntity()/pasteEntity()/_clipboard/pasteCount 구현. 변경 핵심 파일.
-- js/state.js (11, 31): RELATIONS 배열, vx/vy/scale 전역 뷰포트 변수 선언 위치.
-- js/config.js (107~123): DEFAULT_RELATIONS로 관계선 객체 구조 확인, PANEL_W=240, W=295 상수.
-- js/relations.js (51~98): 관계선 객체 필드 구조와 from/to가 엔티티 id임을 확인.
-- js/canvas.js (1731~1853): _viewportBounds(), toWorld(), _qbLeftOff(), panelOpen/PANEL_W 등 화면→월드 좌표 변환 패턴.
-- js/main.js (62~84): copy/paste 단축키 핸들러. paste는 이미 빈 선택 시 CSV 모드 분기 존재.
+- `js/forward_engineer.js`: 포워드 엔지니어링 전체 구현. `openForwardEngineerForEntity()`, `_feShowStep2(restrictEntityId)`, `_feResetToStep1()`, `_fePreview()` 등.
+- `js/ui.js` (1531~1574 `ctxFn`): 컨텍스트 메뉴 액션 디스패치. line 1553에서 `forwardEng` → `openForwardEngineerForEntity(ctxTargetEntity.id)` 호출.
+- `js/canvas.js` (line 29, 2450): `selectedEntities = new Set()` 전역 선언, contextmenu 핸들러가 `ctxTargetEntity` 세팅.
+- `js/state.js`: `selectedEntities` 미정의(상태는 canvas.js에 위치). → state.js 변경 불필요.
 
 ## 영향 분석
-
-- 단축키 변경: 없음 — Ctrl+C(copy), Ctrl+V(paste) 동작만 내부 수정. main.js 키 바인딩·index.html #shortcutsTableBody·ui.js 메뉴 변경 불필요.
-- 새 localStorage 키: 없음 — _clipboard는 메모리 전용 변수(저장 안 됨). RELATIONS는 saveState()/flushCurrentState()에서 이미 직렬화되므로 백업·export 영향 없음.
-- 새 데이터 배열/상태 변수: 없음 — _clipboard 객체에 `relations` 속성만 추가(기존 구조 확장). 새 전역 변수 없음.
-- 기타 파급 효과:
-  - 관계선 객체는 **id 필드가 없고** from/to(엔티티 id) 쌍으로 식별됨. card/lineStyle/pathStyle/label/color는 옵션 필드. 복사 시 JSON 깊은 복제 후 from/to만 새 id로 재매핑하면 됨.
-  - pasteEntity()는 현재 FK ref를 null로 제거함(copy.attrs.map(a => ({...a, ref:null}))). 관계선을 함께 복사하더라도 **FK ref와 관계선은 별개**다. 요청 2 범위는 "관계선만" 복사이므로 ref:null 유지(관계선 시각 요소만 복원). FK ref까지 재매핑하는 것은 요청 범위 밖 — 확인 필요(현 계획은 ref:null 유지로 안전하게 진행).
-  - 화면 중앙 월드 좌표 계산은 _qbLeftOff()(좌측 도킹 퀵바)와 panelOpen?PANEL_W:0(우측 패널)을 반영해야 정확함. canvas.js 패턴과 동일하게 처리.
-  - 뷰포트 중앙 배치로 변경되므로 pasteCount 기반 누적 오프셋은 더 이상 좌표 계산에 사용하지 않음(연속 붙여넣기 시 같은 위치 겹침 방지를 위해 소량 누적 오프셋은 선택적으로 유지 가능 — 구현 시 판단).
-
-## 관계선 객체 구조 (확정)
-
-```
-{ from: <entityId>, to: <entityId>, card: '1:N',
-  lineStyle?: 'dashed', pathStyle?: 'curved', label?: string, color?: '#xxxxxx', waypoints?: [...] }
-```
-- id 없음. from/to는 엔티티 id. RELATIONS는 state.js 전역.
-
-## 뷰포트 중앙 월드 좌표 계산 (확정 패턴)
-
-canvas.js 패턴 기반:
-```
-const off = _qbLeftOff();
-const cw  = window.innerWidth - off - (panelOpen ? PANEL_W : 0);
-const ch  = window.innerHeight;
-const centerWorldX = (cw / 2 - off - vx) / scale;   // toWorld(off + cw/2, ch/2) 와 동일
-const centerWorldY = (ch / 2 - vy) / scale;
-```
-주의: toWorld(cx,cy) = ((cx - _qbLeftOff() - vx)/scale, (cy - vy)/scale). 화면 중앙 화면좌표는 cx = off + cw/2, cy = ch/2. → toWorld(off + cw/2, ch/2) 사용이 가장 안전(중복 보정 방지). 구현 시 toWorld() 헬퍼 직접 호출 권장.
+- **단축키 변경**: 없음 — 컨텍스트 메뉴 동작만 변경. `index.html`의 `#shortcutsTableBody` 영향 없음.
+- **새 localStorage 키**: 없음 — 영구 저장 데이터 구조 변경 없음.
+- **새 데이터 배열/상태 변수**: 없음 — 기존 전역 `selectedEntities`(Set), `ENTITIES`, 모듈 스코프 `_fe*` 상태 재사용.
+- **export/import 파급**: 없음 — 백업 직렬화 대상(엔티티/관계/다이어그램) 구조 미변경.
+- **기타 파급 효과**:
+  - 요청 1은 `_feShowStep2`가 받는 "대상 엔티티 한정" 인자를 단일 ID → 복수 ID 집합도 받도록 일반화해야 함. 기존 단일 진입(`openForwardEngineerForEntity`)과 호환 유지 필요.
+  - `toggleForwardEngineerAll` 전체선택 버튼은 단일 제한 모드에서 숨겨져 있음(line 315). 다중 선택 모드에서는 표시해도 무방하나, 현재 "제한된 목록 내 전체 선택"이 자연스러우므로 버튼 표시 정책 결정 필요 — **구현 시 다중 모드에서는 버튼 표시 권장**(목록이 2개 이상이므로 의미 있음).
 
 ## 구현 계획
 
-### 파일: js/entities.js
+### 파일: js/forward_engineer.js
 
-#### copyEntity() (453~469)
-- 위치: _clipboard 객체 생성부.
+**1) `_feShowStep2(restrictEntityId = null)` 시그니처를 복수 대상 지원으로 일반화**
+- 위치: line 254 `async function _feShowStep2(restrictEntityId = null)` 및 내부 line 284~286, 315.
 - 변경 내용:
-  1. 복사 대상 엔티티 id 집합 `entIds`를 Set으로 확보(이미 있음).
-  2. RELATIONS를 순회하여 `entIds.has(r.from) && entIds.has(r.to)`인 관계선만 추려 깊은 복제 후 `_clipboard.relations`에 저장.
-  3. _clipboard 구조: `{ entities, sections, relations }`.
-  4. 토스트 메시지에 관계선 개수 포함 가능(선택). 예: `${total}개 항목 복사됨` 유지 또는 관계선 수 표기.
-- 이유: 선택 집합 내부 완결 관계선만 복사(한쪽만 선택된 관계선 제외).
+  - 인자를 `restrictEntityIds = null`(배열 또는 null)로 받도록 변경하되, 하위호환을 위해 단일 문자열도 허용: 함수 진입부에서 `const restrictIds = restrictEntityId == null ? null : (Array.isArray(restrictEntityId) ? restrictEntityId : [restrictEntityId]);` 형태로 정규화.
+  - 엔티티 필터: `const entsToRender = restrictIds ? ENTITIES.filter(ent => restrictIds.includes(ent.id)) : ENTITIES;` (기존 line 284~286 대체).
+  - 전체선택 버튼 가시성(line 315): 제한 대상이 2개 이상이면 표시, 1개면 숨김. 예: `feSelectAllBtn.style.display = (restrictIds && restrictIds.length <= 1) ? 'none' : '';`
+- 이유: 단일/복수 제한 목록을 동일 경로로 처리해 코드 중복 방지, 기존 단일 진입 호환 유지.
 
-#### pasteEntity() (471~511)
-- 위치: 좌표 계산부 + 관계선 붙여넣기 로직 추가.
+**2) `openForwardEngineerForEntity(entityId)`를 복수 대상도 받도록 확장**
+- 위치: line 67 `async function openForwardEngineerForEntity(entityId)` ~ line 116.
 - 변경 내용:
-  1. **좌표 재계산(요청 1)**: 클립보드 엔티티들의 바운딩 박스를 계산.
-     - `minX = min(e.x)`, `minY = min(e.y)`, `maxX = max(e.x + W)`, `maxY = max(e.y + entityHeight(e))` (높이 함수는 entityHeight(e) 사용 — canvas.js 전역). 섹션도 포함하려면 섹션 x/y/w/h 반영(엔티티만으로 충분하면 엔티티 기준).
-     - 그룹 중심 `gcx = (minX+maxX)/2`, `gcy = (minY+maxY)/2`.
-     - 화면 중앙 월드좌표 `c = toWorld(_qbLeftOff() + cw/2, window.innerHeight/2)` (cw = window.innerWidth - _qbLeftOff() - (panelOpen?PANEL_W:0)).
-     - 이동량 `dx = c.x - gcx`, `dy = c.y - gcy`.
-     - 연속 붙여넣기 겹침 방지를 위해 pasteCount 기반 소량 오프셋(예: 20*pasteCount)을 dx/dy에 가산(선택, 권장).
-  2. 각 새 엔티티 좌표 = `e.x + dx`, `e.y + dy` (기존 `e.x + offset` 대체). 섹션도 동일 dx/dy 적용.
-  3. **엔티티 id 매핑(요청 2)**: 기존 엔티티 id → 새 엔티티 id 매핑 테이블 `idMap` 구축(newEnts 생성 시 `idMap[origId] = newId`).
-  4. **관계선 붙여넣기(요청 2)**: `_clipboard.relations`(있으면) 순회 → 깊은 복제 후 `from = idMap[r.from]`, `to = idMap[r.to]` 재매핑. 두 매핑이 모두 존재할 때만 RELATIONS.push. waypoints가 있으면 dx/dy만큼 이동(있을 경우만; 좌표 기반 waypoint면 보정, 포트 기반이면 그대로).
-  5. FK ref는 기존대로 null 유지(요청 범위 밖). 확인 필요 표기.
-  6. render(); saveState(); renderEntityTree() 기존 호출 유지.
-- 이유: 화면 중앙 배치 + 내부 완결 관계선 동시 복원.
+  - 시그니처를 `openForwardEngineerForEntity(entityIdOrIds)`로 하고, 진입부에서 배열 정규화: `const ids = Array.isArray(entityIdOrIds) ? entityIdOrIds : [entityIdOrIds];` 후 `const targets = ids.map(id => ENTITIES.find(e => e.id === id)).filter(Boolean); if (!targets.length) return;` (기존 line 68~69 단일 `target` 가드 대체).
+  - 마지막 호출(line 115)을 `await _feShowStep2(targets.map(t => t.id));`로 변경.
+- 이유: 컨텍스트 메뉴에서 단일/복수 모두 이 함수로 진입하도록 단일화.
+- **확인 필요**: line 78~98의 `feDbCfgNotice` 오버레이 생성 블록은 `openForwardEngineerModal`(line 29~49)과 완전 중복임. reviewer가 이전 run에서 지적(`_workspace/04_review.md` 항목 1). 이번 변경 범위 밖이나, 가능하면 헬퍼(`_feEnsureMwReady()`)로 추출 권장 — 미적용 시 중복 유지.
+
+**3) SQL 미리보기 초기화 (요청 2)**
+- 위치: `_feResetToStep1()` (line 224~241). 이 함수는 신규 오픈(`_feRenderStep1Modal` 끝, line 221)과 재오픈(line 128)에서 모두 호출됨 → 미리보기 초기화의 단일 지점으로 적합.
+- 변경 내용: `_feResetToStep1()` 내부에 아래 초기화 추가.
+  - `const previewWrap = document.getElementById('fePreviewWrap'); if (previewWrap) previewWrap.style.display = 'none';`
+  - `const previewSql = document.getElementById('fePreviewSql'); if (previewSql) previewSql.textContent = '';`
+  - (선택) 진행률 바도 함께 초기화 권장: `feProgress` display 'none', `feProgressBar` width '0%'. 이전 실행 후 재오픈 시 잔상 방지.
+- 이유: 모달을 다시 열 때(`_feRenderStep1Modal`이 기존 오버레이를 재사용하는 경로 포함) 항상 미리보기를 비우고 숨겨, 이전 SQL 잔상 제거. `_fePreview()`/`_feRun()` 시점에만 `fePreviewWrap`을 다시 표시하고 `textContent`를 새로 채우므로 항상 최신값 보장.
+- **확인 필요**: `_feShowStep2`도 진입 시 미리보기 영역을 명시적으로 숨기는지 점검. 현재는 step2 진입 시 `fePreviewWrap`을 건드리지 않음 — `_feResetToStep1`이 항상 step2보다 먼저 호출되므로(오픈 경로상) 충분하나, 방어적으로 `_feShowStep2` 진입부에서도 `fePreviewWrap` 숨김을 추가해도 좋음(integration-checker 판단).
+
+### 파일: js/ui.js
+
+**4) `ctxFn`의 `forwardEng` 분기에서 다중 선택 우선 처리 (요청 1)**
+- 위치: line 1553.
+- 변경 전: `if (action === 'forwardEng') { if (ctxTargetEntity) openForwardEngineerForEntity(ctxTargetEntity.id); return; }`
+- 변경 후(권장 로직):
+  ```js
+  if (action === 'forwardEng') {
+    if (typeof selectedEntities !== 'undefined' && selectedEntities.size > 1) {
+      openForwardEngineerForEntity([...selectedEntities]);
+    } else if (ctxTargetEntity) {
+      openForwardEngineerForEntity(ctxTargetEntity.id);
+    }
+    return;
+  }
+  ```
+- 이유: `selectedEntities`는 canvas.js 전역이므로 ui.js에서 직접 접근 가능. `size > 1` 이면 선택 집합(ID 배열) 전달, 아니면 기존 단일 동작 유지. `typeof` 가드는 다른 모듈(ui.js line 17에서도 동일 패턴 사용)과 일관.
+- **확인 필요**: 우클릭 시 canvas.js의 contextmenu 핸들러(line 2450)는 `ctxTargetEntity`만 세팅하고 `selectedEntities`를 변경하지 않음. 즉 다중 선택 상태에서 선택된 엔티티 중 하나를 우클릭하면 `selectedEntities`가 유지됨 → 의도대로 동작. 단, 선택되지 않은 다른 엔티티를 우클릭한 경우에도 `selectedEntities.size > 1`이면 선택 집합이 우선됨(우클릭 대상이 집합에 없을 수 있음). 요청 우선순위 정의("size>1이면 선택집합")에 부합하므로 그대로 진행하되, reviewer가 UX 관점에서 재확인 권장.
 
 ### 파일: js/state.js
-- 변경 없음 — RELATIONS/vx/vy/scale 기존 전역 사용.
+- 변경 없음. `selectedEntities`는 canvas.js 소유.
 
-### 파일: js/canvas.js
-- 변경 없음 — toWorld()/_qbLeftOff()/panelOpen/PANEL_W 기존 헬퍼·전역 그대로 활용. (entities.js에서 toWorld가 전역 함수로 호출 가능한지 확인 필요 — 전역 스코프 함수이므로 호출 가능.)
-
-## 확인 필요 (integration-checker 주의)
-
-1. FK ref 재매핑 여부: 현 계획은 관계선만 복원하고 FK ref는 null 유지. 사용자가 FK 컬럼 참조까지 함께 복원하길 원하는지 범위 재확인 가능(현재 요청 문구는 "관계선" 한정 → ref:null 안전).
-2. waypoints 좌표 보정: 관계선에 waypoints가 dx/dy 절대 월드좌표로 저장되는 경우 이동 보정 필요. 미보정 시 새 위치에서 경로가 틀어질 수 있음 — 보정 로직 포함 권장.
-3. 섹션 바운딩 박스 포함: 섹션만 복사 후 붙여넣을 때도 중앙 배치가 자연스러운지(엔티티 없을 때 분모 0 방지) 엣지케이스 처리 필요.
-4. entityHeight(e) 함수가 entities.js에서 호출 가능한 전역인지 확인(canvas.js 정의, 전역 스코프 → 호출 가능 예상).
-5. _clipboard에 relations 미존재(이전 복사본/구조) 시 옵셔널 처리(`_clipboard.relations || []`).
+## 구현 순서 요약
+1. `js/forward_engineer.js`: `_feShowStep2` 인자 일반화(배열/단일) → `openForwardEngineerForEntity` 복수 대상 확장 → `_feResetToStep1`에 미리보기/진행률 초기화 추가.
+2. `js/ui.js`: `ctxFn`의 `forwardEng` 분기에 `selectedEntities.size > 1` 우선 분기 추가.
+3. 통합 점검: 단축키/localStorage/export 영향 없음 확인. 단일 진입 호환성, 미리보기 초기화 단일 지점 확인.

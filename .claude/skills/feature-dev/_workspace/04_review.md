@@ -1,31 +1,25 @@
-## 리뷰 요약
-- 전체 평가: PASS
+## 최종 코드 리뷰 — 평가: PASS
 
-## 발견 사항
+### 요청 충족도
+| 요청 | 상태 |
+|------|------|
+| 1. 다중 선택 시 선택 집합 전체 포워드 엔지니어링 (size>1 우선) | 충족 — ui.js forwardEng 분기 |
+| 2. 미리보기 재오픈 시 이전 SQL 잔상 제거 | 충족 — _feResetToStep1 초기화 |
 
-### 심각 (즉시 수정 필요)
+### 항목별 검토
+1. **`openForwardEngineerForEntity` 배열/단일 정규화** — `Array.isArray` 후 `map+find+filter(Boolean)`로 존재하지 않는 ID 방어. `!targets.length` 가드로 빈 입력 조기 반환. OK
+2. **`_feShowStep2` 인자 일반화** — `restrictEntityId == null` 체크로 null/undefined 모두 전체 모드, 그 외 배열 정규화. 기존 단일 문자열 호출도 하위호환. OK
+3. **전체선택 버튼 가시성** — `restrictIds.length <= 1`일 때만 숨김. 다중 모드에서 표시되어 UX 개선. OK
+4. **ui.js forwardEng 분기** — `typeof selectedEntities !== 'undefined'` 가드 + `size > 1` 우선순위가 요청 정의와 정확히 일치. `return`으로 후속 분기 차단 유지. OK
+5. **미리보기 초기화** — `_feResetToStep1`이 모든 오픈 경로의 공통 지점이므로 단일 지점 초기화로 충분. null 체크(`if (previewWrap)`)로 DOM 미존재 시 안전. OK
+6. **진행률 바 초기화** — 실행 후 재오픈 시 완료된 진행률 바 잔상까지 제거. 범위를 약간 넘지만 동일 버그 클래스(잔상)로 합리적. OK
+
+### 심각 이슈
 - 없음.
 
-### 경미 (개선 권장)
-- js/entities.js:516 — 엔티티 신규 id 생성이 `Date.now()` + 3자 난수에 의존. 다수 엔티티를 한 번에 붙여넣을 때 동일 밀리초 + 난수 충돌 가능성이 이론상 존재. 단, 이는 기존 코드의 id 생성 패턴을 그대로 유지한 것으로 요청 범위 밖이며 코드베이스 일관성상 그대로 두는 것이 적절. (개선 시 인덱스 접미사 추가 고려)
-- js/entities.js:507 — nudge=20*(pasteCount-1)는 동일 클립보드 연속 붙여넣기에서만 누적됨. copyEntity()가 pasteCount=0으로 리셋하므로 새 복사 후 첫 붙여넣기는 정확히 중앙. 의도대로 동작. 참고용.
+### 권장(비차단) 사항
+- 다중 선택 집합과 우클릭 대상이 불일치할 때의 UX는 제품 정책상 "선택 집합 우선"으로 정의됨에 부합. 추후 사용자 피드백 시 재고 가능.
+- `feDbCfgNotice` 오버레이 중복 코드(openForwardEngineerModal vs openForwardEngineerForEntity)는 별도 리팩터링 과제로 남김.
 
-## 검증 결과 (리뷰 항목별)
-1. 기능 정확성:
-   - 요청 1(뷰포트 중앙 배치): toWorld(off + cw/2, ch/2)로 화면 중앙 월드좌표 산출, 그룹 바운딩 중심을 거기로 이동. 정확.
-   - 요청 2(양쪽 포함 관계선 복사/재매핑): copyEntity()에서 idSet 양쪽 포함 필터, pasteEntity()에서 idMap 재매핑 후 RELATIONS push. 정확.
-2. 엣지 케이스: 빈 클립보드(early return), 섹션만 복사(섹션 바운딩 포함), 바운딩 미산출 시 isFinite 가드로 dx=dy=0, _clipboard.relations 옵셔널(`|| []`), 매핑 누락 관계선 필터링. 모두 처리됨.
-3. Canvas 렌더링: 신규 관계선은 RELATIONS에 추가되어 drawRelations()가 기존대로 렌더링, render() 호출 유지. 불필요한 재렌더링 없음.
-4. LocalStorage: _clipboard는 메모리 전용. RELATIONS는 saveState()→flushCurrentState()로 직렬화되어 정상 저장. JSON 깊은 복제로 참조 공유 없음.
-5. 이벤트 리스너: 변경 없음. 누수 없음.
-6. 보안: innerHTML/사용자 입력 직접 삽입 없음. showToast 텍스트는 숫자만 보간. XSS 무관.
-7. 코드 패턴: 기존 주석 스타일(// ── ──), 변수 컨벤션, JSON 깊은 복제 패턴 일관 유지.
-8. 불필요한 변경: 없음. 요청 범위 내 최소 변경.
-
-## integration-checker 확인 요청 항목 검토
-- 영속 waypoints 미존재로 좌표 보정 불필요 판단 → 코드 직접 확인 결과 관계선에 waypoints 영속 필드 없음(canvas.js에서 매 렌더링 재계산). 판단 타당. 동의.
-- FK ref null 유지 → 요청 문구가 "관계선" 한정이므로 적절. FK 컬럼 참조 복원은 별도 요청 시 처리 권장.
-
-## 최종 권고
-- 즉시 수정 필요 항목 없음. 병합 가능.
-- 후속 개선 후보(선택): 대량 붙여넣기 id 충돌 방지를 위한 인덱스 접미사, FK ref 재매핑(요청 확장 시).
+### 구문/통합
+- node --check 양 파일 통과, 모든 호출처 시그니처 호환 확인됨.
