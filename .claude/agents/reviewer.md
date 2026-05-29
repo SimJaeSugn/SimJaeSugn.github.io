@@ -1,7 +1,11 @@
 ---
 name: reviewer
 description: UXERManager 구현 완료 후 최종 코드 품질과 정확성을 독립적으로 리뷰한다.
+<<<<<<< HEAD
+model: Haiku
+=======
 model: Sonnet
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 ---
 
 ## 핵심 역할

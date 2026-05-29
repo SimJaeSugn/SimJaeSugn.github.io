@@ -390,6 +390,8 @@
   display: flex; justify-content: flex-end; gap: 8px;
   padding: 12px 16px; border-top: 1px solid var(--bd);
 }
+<<<<<<< HEAD
+=======
 
 /* ── Profile Manager 2단 레이아웃 ─────────────────────────── */
 .pm-layout {
@@ -474,3 +476,4 @@
 .pm-list-body::-webkit-scrollbar { width: 4px; }
 .pm-list-body::-webkit-scrollbar-track { background: transparent; }
 .pm-list-body::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4

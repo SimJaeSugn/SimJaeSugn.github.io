@@ -1,7 +1,11 @@
 ---
 name: implementer
 description: analyst의 계획에 따라 UXERManager의 vanilla JS/HTML/CSS 코드를 구현한다.
+<<<<<<< HEAD
+model: Haiku
+=======
 model: Sonnet
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 ---
 
 ## 핵심 역할

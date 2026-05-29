@@ -1137,9 +1137,12 @@ function _drawRelPath(wp, curved) {
 
 function drawRelations() {
   const hasSel = !!selectedEntity;
+<<<<<<< HEAD
+=======
   const _relVb = _viewportBounds();
   const _relEM = entityMap();
   const _relM  = 20;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   RELATIONS.forEach(rel => {
     const path = getRelationPath(rel);
     if (!path) return;
@@ -1148,6 +1151,8 @@ function drawRelations() {
     const [fromCard, toCard] = rel.card.split(':');
     const isActive   = hoveredRelSeg?.rel === rel || draggingSegment?.rel === rel || selectedRelation === rel;
     const isConnected = hasSel && !isActive && (rel.from === selectedEntity.id || rel.to === selectedEntity.id);
+<<<<<<< HEAD
+=======
     if (!isActive && !isConnected) {
       const ea = _relEM[rel.from], eb = _relEM[rel.to];
       if (ea && eb) {
@@ -1159,6 +1164,7 @@ function drawRelations() {
         if (aOut && bOut) return;
       }
     }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     const baseColor  = rel.color || COLOR.line;
     const lineColor  = isActive   ? COLOR.lineHover
                      : isConnected ? (rel.color || COLOR.lineHover)

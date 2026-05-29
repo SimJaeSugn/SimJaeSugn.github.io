@@ -401,6 +401,9 @@ function _applySegNudge(rel, si, dir, offset) {
   }
 }
 
+<<<<<<< HEAD
+// ── 관계선최적화 V2 (방향 기반 포트 배정 + 스파인 라우팅) ─────────
+=======
 // ── V2 전용: nudge 적용 시 관통 증가 시 롤백 ─────────────────────
 function _v2NudgeWithCrossingCheck(NUDGE, TOL) {
   const backup = new Map();
@@ -429,6 +432,7 @@ const _V2_USAGE_COST = 40;   // 간선 재사용 소프트 페널티
 const _V2_MAX_ROUND  = 8;    // 수렴 루프 최대 라운드
 const _V2_MAX_NUDGE  = 60;   // nudge 보조 패스 상한
 const _V2_GRID_LIMIT = 4000; // 격자 노드 폭발 방지 (X*Y 상한)
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 
 function autoOptimizeRelationsV2() {
   showLayoutProgress('관계선최적화 V2 실행 중...');
@@ -437,10 +441,60 @@ function autoOptimizeRelationsV2() {
 }
 
 function _runOptimizeV2() {
+<<<<<<< HEAD
+  const NUDGE = 14, TOL = 2, MAX_PASS = 100;
+
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   // 1. 전체 초기화
   RELATIONS.forEach(rel => { rel.bend = null; });
   updateLayoutProgress(4, '포트 배정 중...');
 
+<<<<<<< HEAD
+  // 2. 방향 벡터 기반 포트 배정
+  _v2AssignPorts();
+  updateLayoutProgress(18, '스파인 경로 계산 중...');
+
+  // 3. 각 관계선: 스파인 라우팅 (L자형 우선, 막히면 3세그먼트) + 즉시 단순화
+  RELATIONS.forEach(rel => _v2SpineRoute(rel));
+  RELATIONS.forEach(rel => _v2SimplifyWpts(rel));  // 직선 가능 구간 즉시 정리
+  updateLayoutProgress(36, '엔티티 관통 보정 중...');
+
+  // 4. 엔티티 관통 반복 보정 (수렴까지) + 단순화
+  for (let i = 0; i < 15; i++) {
+    const before = RELATIONS.map(r => JSON.stringify(r.bend));
+    RELATIONS.forEach(rel => _fixEntityCrossingsForRel(rel));
+    const after = RELATIONS.map(r => JSON.stringify(r.bend));
+    if (before.every((s, j) => s === after[j])) break;
+  }
+  RELATIONS.forEach(rel => _v2SimplifyWpts(rel));  // 관통 보정 후 불필요 점 정리
+
+  updateLayoutProgress(52, '겹침 분리 시작...');
+  render();
+
+  // 5. 겹침 분리 애니메이션 루프
+  let pass = 0;
+  function iterate() {
+    pass++;
+    const overlaps = _nudgeOverlapPass(NUDGE, TOL);
+    updateLayoutProgress(52 + Math.round(pass / MAX_PASS * 46), `V2 패스 ${pass}  —  겹침 ${overlaps}개`);
+    render();
+    if (overlaps === 0 || pass >= MAX_PASS) {
+      RELATIONS.forEach(rel => _v2SimplifyWpts(rel)); // 최종 정리
+      render();
+      hideLayoutProgress();
+      fitAll();
+      saveState();
+      showToast(overlaps === 0 ? `V2 최적화 완료 (${pass}패스)` : `V2 완료 (잔여 겹침 ${overlaps}개)`);
+    } else {
+      requestAnimationFrame(iterate);
+    }
+  }
+  requestAnimationFrame(iterate);
+}
+
+// 두 엔티티 중심 벡터 → 출발/도착 면 배정 (방향 강도 기반 확률로 매 실행 다양화)
+=======
   // 2. 결정적 포트 배정 (무작위성 제거)
   _v2AssignPorts();
   updateLayoutProgress(12, 'A* 격자 구성 중...');
@@ -529,6 +583,7 @@ function _v2FinishUp(crossings, overlaps, round) {
 }
 
 // ── _v2AssignPorts: 결정적 면 배정 (무작위 제거) ──────────────────
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 function _v2AssignPorts() {
   const em = entityMap();
 
@@ -536,6 +591,20 @@ function _v2AssignPorts() {
     const a = em[rel.from], b = em[rel.to];
     if (!a || !b) return;
     const ah = entityHeight(a), bh = entityHeight(b);
+<<<<<<< HEAD
+    const dx = (b.x + W / 2) - (a.x + W / 2);
+    const dy = (b.y + bh / 2) - (a.y + ah / 2);
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    const total = adx + ady || 1;
+
+    if (!rel.bend) rel.bend = {};
+
+    // 수평 방향 강도(0~1) — 0.5에 가까울수록 대각선, 확률적으로 면 선택
+    const horizStrength = adx / total;
+    const useHoriz = Math.random() < horizStrength;
+
+    if (useHoriz) {
+=======
 
     // 자기참조 처리
     if (rel.from === rel.to) {
@@ -554,6 +623,7 @@ function _v2AssignPorts() {
 
     // 결정적 면 선택: 더 강한 축 우선, 동률이면 수평 우선
     if (adx >= ady) {
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
       rel.bend.fromFace = dx >= 0 ? 'right' : 'left';
       rel.bend.toFace   = dx >= 0 ? 'left'  : 'right';
     } else {
@@ -565,7 +635,11 @@ function _v2AssignPorts() {
     rel.bend.wpts    = null;
   });
 
+<<<<<<< HEAD
+  // 같은 면 다중 포트: 상대 엔티티 위치 기준 정렬 + 미세 무작위 섞기 → 매 실행 포트 순서 다양화
+=======
   // 같은 면 다중 포트: 상대 엔티티 위치 기준 결정적 정렬 (노이즈 제거)
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   ENTITIES.forEach(ent => {
     ['left', 'right', 'top', 'bottom'].forEach(face => {
       const items = [];
@@ -575,13 +649,21 @@ function _v2AssignPorts() {
       });
       if (items.length < 2) return;
       const isH = face === 'left' || face === 'right';
+<<<<<<< HEAD
+      // 위치 기반 정렬에 랜덤 노이즈 추가 → 동률 구간에서 순서 섞임
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
       items.sort((x, y) => {
         const axis = ({ rel, isFrom }) => {
           const other = em[isFrom ? rel.to : rel.from];
           if (!other) return 0;
           return isH ? other.y + entityHeight(other) / 2 : other.x + W / 2;
         };
+<<<<<<< HEAD
+        return (axis(x) - axis(y)) + (Math.random() - 0.5) * 40;
+=======
         return axis(x) - axis(y);
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
       });
       items.forEach(({ rel, isFrom }, i) => {
         const pct = (i + 1) / (items.length + 1);
@@ -591,6 +673,9 @@ function _v2AssignPorts() {
   });
 }
 
+<<<<<<< HEAD
+// L자형 우선 라우팅: 막히면 3세그먼트 스파인으로 대체
+=======
 // ── _v2BuildGrid: Hanan 격자 구성 ────────────────────────────────
 function _v2BuildGrid() {
   const xs = new Set(), ys = new Set();
@@ -937,6 +1022,7 @@ function _v2UpdateUsage(usage, relations, grid) {
 }
 
 // ── _v2SpineRoute: 폴백 스파인 라우팅 (A* 실패 시 사용) ──────────
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 function _v2SpineRoute(rel) {
   const em = entityMap();
   const a = em[rel.from], b = em[rel.to];
@@ -951,6 +1037,10 @@ function _v2SpineRoute(rel) {
   const toH      = toFace   === 'left' || toFace   === 'right';
 
   if (fromH === toH) {
+<<<<<<< HEAD
+    // 같은 방향 출구 → 스파인 라우팅 (무작위 시작 위치)
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     if (fromH) {
       const spX = _v2ClearSpineX(fromPt, toPt, exIds);
       rel.bend.wpts = [[spX, fromPt[1]], [spX, toPt[1]]];
@@ -959,6 +1049,10 @@ function _v2SpineRoute(rel) {
       rel.bend.wpts = [[fromPt[0], spY], [toPt[0], spY]];
     }
   } else {
+<<<<<<< HEAD
+    // 혼합 출구 → L자형 시도, 막히면 스파인 대체
+=======
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     const corner = fromH ? [toPt[0], fromPt[1]] : [fromPt[0], toPt[1]];
     const ok1 = !obstacleOnSeg(fromPt[0], fromPt[1], corner[0], corner[1], exIds);
     const ok2 = !obstacleOnSeg(corner[0],  corner[1], toPt[0],  toPt[1],  exIds);
@@ -974,26 +1068,48 @@ function _v2SpineRoute(rel) {
   }
 }
 
+<<<<<<< HEAD
+// 수직 스파인 X: 무작위 시작 위치 + 장애물 회피
+function _v2ClearSpineX(fromPt, toPt, exIds) {
+  // 엔티티 간 범위를 넘어 좌우로 W/2까지 확장된 영역에서 무작위 시작
+  const lo = Math.min(fromPt[0], toPt[0]) - W / 2;
+  const hi = Math.max(fromPt[0], toPt[0]) + W / 2;
+  let x = lo + Math.random() * (hi - lo);
+=======
 // 수직 스파인 X: 장애물 회피 (폴백용)
 function _v2ClearSpineX(fromPt, toPt, exIds) {
   const lo = Math.min(fromPt[0], toPt[0]) - W / 2;
   const hi = Math.max(fromPt[0], toPt[0]) + W / 2;
   let x = (lo + hi) / 2;
   let bestX = x, bestCross = Infinity;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   for (let t = 0; t < 12; t++) {
     const obs = obstacleOnSeg(fromPt[0], fromPt[1], x,         fromPt[1], exIds)
              || obstacleOnSeg(x,         fromPt[1], x,         toPt[1],   exIds)
              || obstacleOnSeg(x,         toPt[1],   toPt[0],   toPt[1],   exIds);
+<<<<<<< HEAD
+=======
     const crossCount = [
       obstacleOnSeg(fromPt[0], fromPt[1], x,       fromPt[1], exIds),
       obstacleOnSeg(x,         fromPt[1], x,        toPt[1],   exIds),
       obstacleOnSeg(x,         toPt[1],   toPt[0],  toPt[1],   exIds)
     ].filter(Boolean).length;
     if (crossCount < bestCross) { bestCross = crossCount; bestX = x; }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     if (!obs) break;
     const candL = obs.x - GAP, candR = obs.x + W + GAP;
     x = Math.abs(candL - x) <= Math.abs(candR - x) ? candL : candR;
   }
+<<<<<<< HEAD
+  return x;
+}
+
+// 수평 스파인 Y: 무작위 시작 위치 + 장애물 회피
+function _v2ClearSpineY(fromPt, toPt, exIds) {
+  const lo = Math.min(fromPt[1], toPt[1]) - entityHeight(ENTITIES[0] || { cols: [] }) / 2;
+  const hi = Math.max(fromPt[1], toPt[1]) + 80;
+  let y = lo + Math.random() * Math.max(0, hi - lo);
+=======
   return bestX;
 }
 
@@ -1003,22 +1119,30 @@ function _v2ClearSpineY(fromPt, toPt, exIds) {
   const hi = Math.max(fromPt[1], toPt[1]) + 80;
   let y = (lo + hi) / 2;
   let bestY = y, bestCross = Infinity;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   for (let t = 0; t < 12; t++) {
     const obs = obstacleOnSeg(fromPt[0], fromPt[1], fromPt[0], y,         exIds)
              || obstacleOnSeg(fromPt[0], y,          toPt[0],  y,         exIds)
              || obstacleOnSeg(toPt[0],   y,          toPt[0],  toPt[1],   exIds);
+<<<<<<< HEAD
+=======
     const crossCount = [
       obstacleOnSeg(fromPt[0], fromPt[1], fromPt[0], y,        exIds),
       obstacleOnSeg(fromPt[0], y,         toPt[0],   y,        exIds),
       obstacleOnSeg(toPt[0],   y,         toPt[0],   toPt[1],  exIds)
     ].filter(Boolean).length;
     if (crossCount < bestCross) { bestCross = crossCount; bestY = y; }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     if (!obs) break;
     const oh = entityHeight(obs);
     const candA = obs.y - GAP, candB = obs.y + oh + GAP;
     y = Math.abs(candA - y) <= Math.abs(candB - y) ? candA : candB;
   }
+<<<<<<< HEAD
+  return y;
+=======
   return bestY;
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 }
 
 // 직교 경로에서 동일선상(collinear) 중간 점 반복 제거 — 직선 가능 구간 정리

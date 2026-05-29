@@ -446,7 +446,11 @@ function collectIndexes() {
 }
 
 // ── 복사 / 붙여넣기 ──────────────────────────────────────────────
+<<<<<<< HEAD
+// _clipboard: { entities: [...], sections: [...] }
+=======
 // _clipboard: { entities: [...], sections: [...], relations: [...] }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 let _clipboard = null;
 let pasteCount  = 0;
 
@@ -459,6 +463,15 @@ function copyEntity() {
   const sects = [...selectedSections];
   if (!ents.length && !sects.length) return;
 
+<<<<<<< HEAD
+  _clipboard = {
+    entities: ents.map(e => JSON.parse(JSON.stringify(e))),
+    sections: sects.map(s => JSON.parse(JSON.stringify(s))),
+  };
+  pasteCount = 0;
+  const total = ents.length + sects.length;
+  showToast(`${total}개 항목 복사됨`);
+=======
   // 선택 집합 내에서 from/to 양쪽이 모두 포함된 관계선만 복사
   const idSet = new Set(ents.map(e => e.id));
   const rels  = RELATIONS.filter(r => idSet.has(r.from) && idSet.has(r.to));
@@ -472,11 +485,23 @@ function copyEntity() {
   const total = ents.length + sects.length;
   const relMsg = rels.length ? ` (관계선 ${rels.length})` : '';
   showToast(`${total}개 항목 복사됨${relMsg}`);
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 }
 
 function pasteEntity() {
   if (!_clipboard) return;
   pasteCount++;
+<<<<<<< HEAD
+  const offset = 30 * pasteCount;
+
+  // 엔티티 붙여넣기
+  const newEnts = _clipboard.entities.map(e => {
+    const copy = JSON.parse(JSON.stringify(e));
+    copy.id = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    copy.x = e.x + offset;
+    copy.y = e.y + offset;
+    // FK ref 제거 (관계선 미복사)
+=======
 
   // ── 붙여넣기 위치 계산: 클립보드 그룹 중심을 현재 뷰포트 중앙으로 이동 ──
   const off = (typeof _qbLeftOff === 'function') ? _qbLeftOff() : 0;
@@ -518,6 +543,7 @@ function pasteEntity() {
     copy.x = e.x + dx;
     copy.y = e.y + dy;
     // FK ref 제거 (관계선과 별개; FK 컬럼 참조는 미복사)
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
     return copy;
   });
@@ -526,6 +552,15 @@ function pasteEntity() {
   const newSects = _clipboard.sections.map(s => {
     const copy = JSON.parse(JSON.stringify(s));
     copy.id = makeSectionId();
+<<<<<<< HEAD
+    copy.x = s.x + offset;
+    copy.y = s.y + offset;
+    return copy;
+  });
+
+  newEnts.forEach(e => ENTITIES.push(e));
+  newSects.forEach(s => SECTIONS.push(s));
+=======
     copy.x = s.x + dx;
     copy.y = s.y + dy;
     return copy;
@@ -544,6 +579,7 @@ function pasteEntity() {
   newEnts.forEach(e => ENTITIES.push(e));
   newSects.forEach(s => SECTIONS.push(s));
   newRels.forEach(r => RELATIONS.push(r));
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 
   // 선택 상태 갱신
   selectedEntities.clear();
@@ -556,8 +592,12 @@ function pasteEntity() {
   saveState();
   if (typeof renderEntityTree === 'function') renderEntityTree();
   const total = newEnts.length + newSects.length;
+<<<<<<< HEAD
+  showToast(`${total}개 항목 붙여넣기 완료`);
+=======
   const relMsg = newRels.length ? ` (관계선 ${newRels.length})` : '';
   showToast(`${total}개 항목 붙여넣기 완료${relMsg}`);
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 }
 
 // ── 다이어그램 간 복사 ────────────────────────────────────────────

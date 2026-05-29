@@ -29,6 +29,9 @@
       "Bash(gh auth *)",
       "Bash(git pull *)",
       "Bash(Get-Content \"C:\\\\Users\\\\lvtlv\\\\Downloads\\\\UXERManager\\\\js\\\\canvas.js\")",
+<<<<<<< HEAD
+      "Bash(Measure-Object -Line)"
+=======
       "Bash(Measure-Object -Line)",
       "Bash(python -m http.server 18765)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:18765/)",
@@ -77,6 +80,7 @@
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
     ]
   }
 }

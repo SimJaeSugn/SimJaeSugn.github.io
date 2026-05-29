@@ -82,7 +82,10 @@
 .mb-item:hover { background: var(--bg-surface); }
 .mb-item.danger { color: var(--ac-r); }
 .mb-item.danger:hover { background: var(--danger-bg); }
+<<<<<<< HEAD
+=======
 .mb-item.disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
 .mb-ico  { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
 .mb-chk  { width: 16px; text-align: center; font-size: 12px; flex-shrink: 0; color: var(--ac); font-weight: bold; }
 .mb-text { flex: 1; }

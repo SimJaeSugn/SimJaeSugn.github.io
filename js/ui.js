@@ -1107,7 +1107,11 @@ const ctxMenu = document.getElementById('ctxMenu');
 
 const CTX_VISIBILITY = {
   canvas:        { 'ctx-add-ent':1, 'ctx-add-rel':1, 'ctx-add-note':1, 'ctx-sep-canvas':1, 'ctx-sel-all':1, 'ctx-auto-arrange':1, 'ctx-sep-note-v2':1, 'ctx-add-note-v2':1 },
+<<<<<<< HEAD
+  entity:        { 'ctx-edit-ent':1, 'ctx-dup-ent':1, 'ctx-copy-diag':1, 'ctx-color-ent':1, 'ctx-sel-related':1, 'ctx-sep-ent':1, 'ctx-add-rel':1, 'ctx-sep-del':1, 'ctx-del-ent':1 },
+=======
   entity:        { 'ctx-edit-ent':1, 'ctx-dup-ent':1, 'ctx-copy-diag':1, 'ctx-color-ent':1, 'ctx-sel-related':1, 'ctx-fe-ent':1, 'ctx-sep-ent':1, 'ctx-add-rel':1, 'ctx-sep-del':1, 'ctx-del-ent':1 },
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   relation:      { 'ctx-edit-rel':1, 'ctx-style-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
   relation_bent: { 'ctx-edit-rel':1, 'ctx-style-rel':1, 'ctx-reset-rel':1, 'ctx-sep-del':1, 'ctx-del-rel':1 },
   section:       { 'ctx-rename-sec':1, 'ctx-sep-del':1, 'ctx-del-sec':1 },
@@ -1119,7 +1123,11 @@ function showCtxMenu(x, y, mode) {
   _ctxScreenX = x; _ctxScreenY = y;
   const modeKey = (mode === 'relation' && ctxTargetRelation?.bend) ? 'relation_bent' : mode;
   const visible = CTX_VISIBILITY[modeKey] || {};
+<<<<<<< HEAD
+  ['ctx-add-ent','ctx-edit-ent','ctx-dup-ent','ctx-copy-diag','ctx-color-ent','ctx-sel-related',
+=======
   ['ctx-add-ent','ctx-edit-ent','ctx-dup-ent','ctx-copy-diag','ctx-color-ent','ctx-sel-related','ctx-fe-ent',
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
    'ctx-add-note','ctx-sep-ent','ctx-add-rel',
    'ctx-edit-rel','ctx-style-rel','ctx-reset-rel',
    'ctx-sep-del','ctx-del-ent','ctx-del-rel',
@@ -1553,6 +1561,8 @@ function ctxFn(action) {
   if (action === 'copyToDiag') { if (ctxTargetEntity) openCopyDiagModal(ctxTargetEntity); }
   if (action === 'colorEnt')  showCtxEntityColorPicker();
   if (action === 'selRelated') selectRelatedEntities(ctxTargetEntity);
+<<<<<<< HEAD
+=======
   if (action === 'forwardEng') {
     // 다중 선택(2개 이상) 시 선택 집합 전체, 아니면 우클릭 대상 단일
     if (typeof selectedEntities !== 'undefined' && selectedEntities.size > 1) {
@@ -1562,6 +1572,7 @@ function ctxFn(action) {
     }
     return;
   }
+>>>>>>> f8e4e4d566b333a81829bc390ad2940d6a23acd4
   if (action === 'addNote')   addNoteAt(ctxLastWorld.x, ctxLastWorld.y);
   if (action === 'delNote')   { if (ctxTargetNote) { const i = NOTES.indexOf(ctxTargetNote); if (i>=0) NOTES.splice(i,1); render(); saveState(); } }
   if (action === 'delEnt')  askConfirm(`'${entDisplayName(ctxTargetEntity)}' 엔티티와 연결된 모든 관계를 삭제합니다.`, () => deleteEntity(ctxTargetEntity), '삭제');
