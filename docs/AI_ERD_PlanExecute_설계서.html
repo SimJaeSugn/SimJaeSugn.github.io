@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자연어 ERD 제어 — LangGraph 기반 Plan-and-Execute 아키텍처 설계서 · UXERManager</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d2129; --ink:#e6e9ef; --mut:#9aa3b2;
+    --line:#2a2f3a; --acc:#5b9dff; --acc2:#7c5cff; --ok:#3fcf8e; --warn:#f0b429;
+    --danger:#ff6b6b; --read:#3fcf8e; --write:#f0b429; --ext:#5b9dff; --ctrl:#7c5cff;
+    --code:#11141a; --mono:'Cascadia Code','Consolas','D2Coding',monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard','Segoe UI','Malgun Gothic',system-ui,sans-serif;
+    line-height:1.7;font-size:15px}
+  .wrap{display:grid;grid-template-columns:280px 1fr;max-width:1400px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  nav.toc a{display:block;color:var(--mut);text-decoration:none;font-size:13.5px;
+    padding:5px 10px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+  nav.toc a.sub{padding-left:22px;font-size:12.5px;opacity:.85}
+  main{padding:48px 56px 120px;min-width:0}
+  h1{font-size:29px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:15px;margin-bottom:8px}
+  .meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);padding:10px 0;margin:22px 0 40px;
+    display:flex;gap:26px;flex-wrap:wrap}
+  .meta b{color:var(--ink);font-weight:600}
+  h2{font-size:23px;margin:54px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:24px}
+  h2 .n{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:17.5px;margin:30px 0 10px;color:#cdd5e3;scroll-margin-top:24px}
+  h4{font-size:15px;margin:20px 0 8px;color:var(--acc)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);background:var(--code);padding:2px 6px;border-radius:5px;
+    font-size:13px;color:#e0c9ff;border:1px solid var(--line)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:11px;
+    padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:16px 0}
+  pre code{background:none;border:none;padding:0;color:#d4dbe8}
+  .cm{color:#6b7689}.kw{color:#7c5cff;font-weight:600}.st{color:#3fcf8e}.fn{color:#5b9dff}.num{color:#f0b429}.cl{color:#ffd97a}
+  .box{border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0;background:var(--panel)}
+  .box.acc{border-left:4px solid var(--acc)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.ok{border-left:4px solid var(--ok)}
+  .box.danger{border-left:4px solid var(--danger)}
+  .box .t{font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdd5e3;font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  td code{font-size:12px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em;white-space:nowrap}
+  .tag.read{background:rgba(63,207,142,.14);color:var(--read);border:1px solid rgba(63,207,142,.3)}
+  .tag.write{background:rgba(240,180,41,.14);color:var(--write);border:1px solid rgba(240,180,41,.3)}
+  .tag.ext{background:rgba(91,157,255,.14);color:var(--ext);border:1px solid rgba(91,157,255,.3)}
+  .tag.ctrl{background:rgba(124,92,255,.14);color:var(--ctrl);border:1px solid rgba(124,92,255,.3)}
+  .fig{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin:22px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  .figcap{color:var(--mut);font-size:12.5px;margin-top:12px;text-align:center}
+  .ascii{font-family:var(--mono);font-size:12.5px;white-space:pre;color:#cdd5e3;text-align:left;line-height:1.45}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .pill{font-size:11.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .lead{font-size:16.5px;color:#cdd5e3}
+  .lg{color:#ffd97a;font-weight:600}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:32px 22px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <h2>목차</h2>
+  <a href="#overview">1. 개요 · 목표</a>
+  <a href="#why" class="sub">왜 LangGraph인가</a>
+  <a href="#mapping">2. 프레임워크 매핑</a>
+  <a href="#stack" class="sub">스택 · 역할</a>
+  <a href="#concept" class="sub">개념 대응표</a>
+  <a href="#arch">3. 전체 아키텍처</a>
+  <a href="#graph">4. LangGraph 상태 그래프</a>
+  <a href="#state" class="sub">AgentState</a>
+  <a href="#topology" class="sub">노드 · 엣지</a>
+  <a href="#nodes">5. 노드 상세</a>
+  <a href="#client">6. 클라이언트 인 더 루프</a>
+  <a href="#interrupt" class="sub">interrupt / resume</a>
+  <a href="#parallel" class="sub">병렬·순차·데이터전달</a>
+  <a href="#resolve" class="sub">양방향 데이터 해소</a>
+  <a href="#adapt" class="sub">적응형 재계획</a>
+  <a href="#tools">7. 툴 카탈로그</a>
+  <a href="#openai">8. LangChain · OpenAI 연동</a>
+  <a href="#ckpt">9. Checkpointer · 세션</a>
+  <a href="#flow">10. 데이터 흐름 시퀀스</a>
+  <a href="#integ">11. 기존 코드 통합</a>
+  <a href="#err">12. 오류·검증·롤백</a>
+  <a href="#sec">13. 보안</a>
+  <a href="#roadmap">14. 구현 로드맵</a>
+</nav>
+
+<main>
+  <h1>자연어 ERD 제어 — <span class="lg">LangGraph</span> 기반 Plan-and-Execute 아키텍처 설계서</h1>
+  <div class="sub">LangChain · LangGraph · OpenAI · UXERManager (Python Proxy 우선)</div>
+  <div class="meta">
+    <span><b>버전</b> v0.2 (LangGraph 기반)</span>
+    <span><b>작성일</b> 2026-05-30</span>
+    <span><b>두뇌</b> Python Proxy + LangGraph</span>
+    <span><b>손발</b> 클라이언트 툴 런타임</span>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="overview"><span class="n">1.</span>개요 · 목표</h2>
+  <p class="lead">
+    사용자가 <b>자연어</b>로 입력하면, Python 프록시에 호스팅된 <span class="lg">LangGraph 상태 그래프</span>가
+    의도를 분기하고(행동/답변), 계획을 세우고, 클라이언트에 툴 실행을 위임하며, 결과를 관측해 재계획한다.
+    클라이언트는 <code>ENTITIES</code>/<code>RELATIONS</code>를 쥔 <b>툴 실행 런타임</b>으로서 그래프의 <code>interrupt</code>에 응답한다.
+  </p>
+  <div class="grid2">
+    <div class="box acc">
+      <div class="t">🎯 핵심 목표</div>
+      <ul>
+        <li>자연어 → <b>의도 파악</b> (LangGraph 라우팅 노드)</li>
+        <li>행동 불필요 질의는 <b>툴 없이 토큰 스트리밍 응답</b></li>
+        <li>지원 툴 범위 내 <b>계획 수립·실행</b> (plan-and-execute)</li>
+        <li>툴 <b>독립 구동</b> · <b>병렬</b> · <b>순차</b>(출력→입력 전달)</li>
+        <li><b>양방향</b>: 프록시 그래프가 클라이언트에 데이터 요청</li>
+      </ul>
+    </div>
+    <div class="box ok">
+      <div class="t">✅ LangGraph 도입 효과</div>
+      <ul>
+        <li><b>Checkpointer</b>로 세션·재개를 프레임워크가 처리</li>
+        <li><b>interrupt/Command</b>로 client-in-the-loop 표준화</li>
+        <li><b>조건부 엣지</b>로 재계획·분기 선언적 표현</li>
+        <li><b>astream_events</b>로 토큰·진행 스트리밍 일원화</li>
+        <li>손수 만든 DAG 엔진·세션 스토어 <b>제거</b> → 유지보수↓</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 id="why">왜 LangGraph인가</h3>
+  <p>
+    Plan-and-Execute는 본질적으로 <b>상태를 가진 순환 그래프</b>다(계획→실행→관측→재계획→…). 이를 손으로 구현하면
+    세션 보관·재개·중단/재개·스트리밍·재시도를 모두 직접 만들어야 한다. LangGraph는 바로 이 문제를 위한 프레임워크로,
+    <b>StateGraph·Checkpointer·interrupt·조건부 엣지</b>를 1급 시민으로 제공한다. 특히 LangGraph 공식
+    <i>Plan-and-Execute</i> 레시피가 본 요구사항과 정확히 일치한다.
+  </p>
+  <div class="box warn">
+    <div class="t">⚠️ 본 프로젝트의 특수점</div>
+    표준 plan-and-execute는 툴을 <b>서버에서</b> 실행한다. 그러나 UXERManager의 ERD 상태(<code>ENTITIES</code>)는
+    <b>클라이언트 메모리</b>에 있다. 따라서 본 설계는 LangGraph의 <b><code>interrupt()</code></b>(human-in-the-loop)를
+    <b>client-in-the-loop</b>으로 활용한다 — 그래프가 툴 실행 지점에서 멈춰 클라이언트에 실행을 위임하고,
+    클라이언트가 라이브 상태에서 실행한 결과로 <b><code>Command(resume=…)</code></b> 하여 그래프를 재개한다.
+  </div>
+
+  <!-- 2 -->
+  <h2 id="mapping"><span class="n">2.</span>프레임워크 매핑</h2>
+
+  <h3 id="stack">2.1 스택 · 역할</h3>
+  <table>
+    <tr><th width="190">구성요소</th><th>역할</th><th>위치</th></tr>
+    <tr><td><span class="lg">LangGraph</span> <code>StateGraph</code></td><td>의도 분기·계획·실행위임·재계획의 <b>오케스트레이션 그래프</b></td><td>Python 프록시</td></tr>
+    <tr><td><span class="lg">LangGraph</span> Checkpointer</td><td>스레드(<code>thread_id</code>)별 상태 영속·중단/재개</td><td>Python 프록시</td></tr>
+    <tr><td><span class="lg">LangChain</span> <code>ChatOpenAI</code></td><td>OpenAI LLM 호출(구조화 출력·툴 바인딩·스트리밍)</td><td>Python 프록시</td></tr>
+    <tr><td><span class="lg">LangChain</span> <code>@tool</code> 스키마</td><td>툴 정의(이름·인자 스키마·<code>location</code>) — LLM에 노출되는 함수 시그니처</td><td>프록시(정의) ↔ 클라(구현)</td></tr>
+    <tr><td>FastAPI 라우터</td><td>그래프 실행·스트리밍·재개 HTTP/SSE 게이트웨이</td><td>Python 프록시</td></tr>
+    <tr><td>클라이언트 Tool Runtime</td><td>ERD 툴 <b>실제 실행</b>(병렬/순차)·드래프트·렌더·커밋</td><td>브라우저/Electron</td></tr>
+    <tr><td>프록시 Tool Runtime</td><td><b>DB 접속·연계 툴</b>(<code>run_sql</code>·<code>fetch_db_schema</code>) 실행 — 그래프 안 <code>ToolNode</code></td><td>Python 프록시</td></tr>
+    <tr><td><span class="lg">MCP</span> 어댑터 <span class="tag ctrl">향후</span></td><td><code>langchain-mcp-adapters</code>로 MCP 서버 툴을 프록시 툴로 편입(외부 시스템 연계 확장)</td><td>Python 프록시</td></tr>
+  </table>
+  <div class="box acc">
+    <div class="t">🧰🛠️ 이중 툴 런타임</div>
+    툴은 <b>클라이언트·프록시 양쪽</b>에 존재한다. 각 툴의 <code>location</code> 속성으로 <code>execute</code> 노드가 실행 위치를 라우팅한다 —
+    ERD 조작·조회는 클라이언트(<code>interrupt</code> 위임), DB 접속·연계 및 <b>향후 MCP</b>는 프록시(<code>ToolNode</code> 직접 실행). 상세 §7.
+  </div>
+
+  <h3 id="concept">2.2 개념 대응표 (v0.1 손수 구현 → v0.2 LangGraph)</h3>
+  <table>
+    <tr><th width="280">v0.1 (직접 구현)</th><th>v0.2 (LangGraph 프리미티브)</th></tr>
+    <tr><td>손수 만든 세션 스토어 (인메모리 dict + TTL)</td><td><b>Checkpointer</b> + <code>thread_id</code> (MemorySaver / SqliteSaver)</td></tr>
+    <tr><td><code>need_data</code> / <code>/agent/resolve</code> 프로토콜</td><td><b><code>interrupt()</code></b> ↔ <b><code>Command(resume=…)</code></b></td></tr>
+    <tr><td>클라이언트 DAG 실행 엔진(위상정렬)</td><td>그래프 <b>슈퍼스텝</b> + <b><code>Send</code></b> 팬아웃(병렬) + 상태 누적(순차)</td></tr>
+    <tr><td>재계획 루프(수동 N회)</td><td><b>조건부 엣지</b> <code>replan → {execute, END}</code> + <code>recursion_limit</code></td></tr>
+    <tr><td>Intent Gate <code>/agent/route</code></td><td>라우팅 <b>노드</b> + 조건부 엣지 <code>gate → {plan, answer}</code></td></tr>
+    <tr><td>Direct Answer <code>/agent/chat/stream</code></td><td><code>answer</code> <b>노드</b> → <code>END</code> + <code>stream_mode="messages"</code></td></tr>
+    <tr><td>출력→입력 토큰 바인딩 <code>${n1.id}</code></td><td>그래프 <b>State</b>에 누적된 <code>past_steps</code>를 다음 노드가 참조</td></tr>
+    <tr><td>OpenAI 직접 <code>fetch</code></td><td><code>langchain-openai</code> <b><code>ChatOpenAI</code></b></td></tr>
+  </table>
+
+  <!-- 3 -->
+  <h2 id="arch"><span class="n">3.</span>전체 아키텍처</h2>
+  <div class="fig">
+    <svg viewBox="0 0 940 540" font-family="var(--mono)" font-size="13">
+      <defs>
+        <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b9dff"/></marker>
+        <marker id="arrG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#3fcf8e"/></marker>
+        <marker id="arrY" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#f0b429"/></marker>
+      </defs>
+
+      <!-- client -->
+      <rect x="18" y="20" width="380" height="500" rx="14" fill="#171a21" stroke="#2a2f3a"/>
+      <text x="38" y="46" fill="#9aa3b2" font-size="12">CLIENT — 브라우저 / Electron (Tool Runtime)</text>
+      <rect x="40" y="60" width="336" height="56" rx="9" fill="#1d2129" stroke="#2a2f3a"/>
+      <text x="56" y="84" fill="#e6e9ef">🗣️ Agent 패널 (자연어 입력)</text>
+      <text x="56" y="103" fill="#9aa3b2" font-size="11">SSE 수신: token · interrupt · done</text>
+      <rect x="40" y="128" width="336" height="64" rx="9" fill="#1d2129" stroke="#f0b429"/>
+      <text x="56" y="152" fill="#ffd97a">🧰 Tool Runtime (js/agent/runtime.js)</text>
+      <text x="56" y="171" fill="#9aa3b2" font-size="11">interrupt 요청 수신 → 툴 실행(병렬)</text>
+      <text x="56" y="187" fill="#9aa3b2" font-size="11">→ /agent/resume 로 결과 회신</text>
+      <rect x="40" y="204" width="336" height="86" rx="9" fill="#1d2129" stroke="#2a2f3a"/>
+      <text x="56" y="228" fill="#e6e9ef">🔧 Tool 구현 (js/agent/tools/*)</text>
+      <text x="56" y="247" fill="#3fcf8e" font-size="11">create_entity · create_relation · auto_layout</text>
+      <text x="56" y="264" fill="#3fcf8e" font-size="11">describe_table · find_tables · generate_ddl …</text>
+      <text x="56" y="281" fill="#9aa3b2" font-size="11">→ entities.js · relations.js · layout.js 재사용</text>
+      <rect x="40" y="302" width="336" height="50" rx="9" fill="#1d2129" stroke="#2a2f3a"/>
+      <text x="56" y="332" fill="#e6e9ef">📦 ERD State + Draft (state.js)</text>
+      <rect x="40" y="364" width="336" height="48" rx="9" fill="#1d2129" stroke="#2a2f3a"/>
+      <text x="56" y="393" fill="#e6e9ef">🎨 render() · saveState() (커밋 1회)</text>
+
+      <!-- proxy -->
+      <rect x="430" y="20" width="490" height="380" rx="14" fill="#171a21" stroke="#2a2f3a"/>
+      <text x="450" y="46" fill="#9aa3b2" font-size="12">PYTHON PROXY — FastAPI · LangGraph · 127.0.0.1:3737</text>
+
+      <rect x="452" y="62" width="446" height="40" rx="9" fill="#11141a" stroke="#5b9dff"/>
+      <text x="468" y="87" fill="#bcd4ff">🌐 FastAPI: /agent/stream · /agent/resume · /agent/key</text>
+
+      <!-- graph box -->
+      <rect x="452" y="116" width="446" height="210" rx="11" fill="#14171e" stroke="#7c5cff"/>
+      <text x="468" y="138" fill="#cdb8ff" font-size="12">⬡ LangGraph StateGraph (Checkpointer)</text>
+
+      <rect x="468" y="150" width="100" height="40" rx="8" fill="#1d2129" stroke="#f0b429"/>
+      <text x="482" y="175" fill="#ffd97a" font-size="12">gate</text>
+      <rect x="468" y="206" width="100" height="40" rx="8" fill="#1d2129" stroke="#3fcf8e"/>
+      <text x="478" y="231" fill="#8df0bf" font-size="12">answer</text>
+      <rect x="600" y="150" width="100" height="40" rx="8" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="620" y="175" fill="#bcd4ff" font-size="12">plan</text>
+      <rect x="600" y="206" width="100" height="40" rx="8" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="610" y="231" fill="#bcd4ff" font-size="12">execute</text>
+      <rect x="600" y="262" width="100" height="40" rx="8" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="612" y="287" fill="#bcd4ff" font-size="12">replan</text>
+      <rect x="732" y="206" width="100" height="40" rx="8" fill="#1d2129" stroke="#2a2f3a"/>
+      <text x="748" y="231" fill="#e6e9ef" font-size="12">respond</text>
+
+      <!-- graph edges -->
+      <line x1="568" y1="170" x2="600" y2="170" stroke="#f0b429" stroke-width="1.6" marker-end="url(#arrY)"/>
+      <line x1="518" y1="190" x2="518" y2="206" stroke="#f0b429" stroke-width="1.6" marker-end="url(#arrY)"/>
+      <line x1="650" y1="190" x2="650" y2="206" stroke="#5b9dff" stroke-width="1.6" marker-end="url(#arr)"/>
+      <line x1="650" y1="246" x2="650" y2="262" stroke="#5b9dff" stroke-width="1.6" marker-end="url(#arr)"/>
+      <path d="M600,282 C560,282 560,226 600,226" fill="none" stroke="#5b9dff" stroke-width="1.6" marker-end="url(#arr)"/>
+      <text x="548" y="258" fill="#9aa3b2" font-size="9">loop</text>
+      <line x1="700" y1="226" x2="732" y2="226" stroke="#5b9dff" stroke-width="1.6" marker-end="url(#arr)"/>
+
+      <rect x="452" y="338" width="446" height="48" rx="9" fill="#11141a" stroke="#2a2f3a"/>
+      <text x="468" y="361" fill="#9aa3b2" font-size="11">🔐 Keystore·Audit (utils/)  ·  기존 /execute·/schema·/config</text>
+      <text x="468" y="378" fill="#9aa3b2" font-size="11">🔗 langchain-openai → ☁️ OpenAI</text>
+
+      <!-- OpenAI -->
+      <rect x="600" y="430" width="200" height="70" rx="12" fill="#11141a" stroke="#3fcf8e"/>
+      <text x="620" y="458" fill="#3fcf8e">☁️ OpenAI API</text>
+      <text x="620" y="480" fill="#9aa3b2" font-size="11">ChatOpenAI · stream · tools</text>
+
+      <!-- cross arrows client<->proxy -->
+      <line x1="398" y1="84" x2="452" y2="82" stroke="#5b9dff" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="402" y="74" fill="#9aa3b2" font-size="10">① 질의</text>
+      <line x1="452" y1="160" x2="398" y2="156" stroke="#f0b429" stroke-width="2" marker-end="url(#arrY)"/>
+      <text x="402" y="135" fill="#ffd97a" font-size="10">② interrupt(툴요청)</text>
+      <line x1="398" y1="178" x2="452" y2="178" stroke="#3fcf8e" stroke-width="2" marker-end="url(#arrG)"/>
+      <text x="402" y="200" fill="#8df0bf" font-size="10">③ resume(결과)</text>
+      <line x1="700" y1="326" x2="700" y2="430" stroke="#3fcf8e" stroke-width="1.6" marker-end="url(#arrG)" opacity=".5"/>
+    </svg>
+    <div class="figcap">그림 1 — 프록시가 LangGraph 그래프를 호스팅(두뇌), 클라이언트는 툴 런타임(손발). <code>interrupt↔resume</code>으로 실행을 왕복 위임한다.</div>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="graph"><span class="n">4.</span>LangGraph 상태 그래프</h2>
+
+  <h3 id="state">4.1 AgentState</h3>
+  <p>그래프의 모든 노드가 읽고 쓰는 공유 상태. 순차 실행의 "출력→입력 전달"은 이 상태 누적으로 자연스럽게 구현된다.</p>
+<pre><code><span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict, Literal
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+
+<span class="kw">class</span> <span class="cl">AgentState</span>(TypedDict):
+    messages:   Annotated[list, add_messages]   <span class="cm"># 대화·툴 메시지 누적</span>
+    erd_context: dict          <span class="cm"># 클라이언트가 보낸 ERD 요약(엔티티/관계 id·이름)</span>
+    route:       Literal[<span class="st">"act"</span>, <span class="st">"answer"</span>] | <span class="kw">None</span>
+    plan:        list[dict]     <span class="cm"># 남은 스텝 목록</span>
+    past_steps:  Annotated[list, <span class="kw">lambda</span> a,b: a+b]  <span class="cm"># (step, result) 누적</span>
+    response:    str | <span class="kw">None</span>    <span class="cm"># 최종 응답</span></code></pre>
+
+  <h3 id="topology">4.2 노드 · 엣지 (그래프 토폴로지)</h3>
+<pre><code><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver   <span class="cm"># 운영: SqliteSaver</span>
+
+g = StateGraph(AgentState)
+g.add_node(<span class="st">"gate"</span>,    gate_node)        <span class="cm"># 의도 분기</span>
+g.add_node(<span class="st">"answer"</span>,  answer_node)      <span class="cm"># 툴없이 직접 답변(스트리밍)</span>
+g.add_node(<span class="st">"plan"</span>,    plan_node)        <span class="cm"># 계획 수립(구조화 출력)</span>
+g.add_node(<span class="st">"execute"</span>, execute_node)     <span class="cm"># 클라이언트에 툴 실행 위임(interrupt)</span>
+g.add_node(<span class="st">"replan"</span>,  replan_node)      <span class="cm"># 관측→재계획/종료 판단</span>
+g.add_node(<span class="st">"respond"</span>, respond_node)     <span class="cm"># 최종 요약 응답</span>
+
+g.add_edge(START, <span class="st">"gate"</span>)
+g.add_conditional_edges(<span class="st">"gate"</span>,   lambda s: s[<span class="st">"route"</span>],
+                        {<span class="st">"answer"</span>:<span class="st">"answer"</span>, <span class="st">"act"</span>:<span class="st">"plan"</span>})
+g.add_edge(<span class="st">"answer"</span>, END)
+g.add_edge(<span class="st">"plan"</span>,    <span class="st">"execute"</span>)
+g.add_edge(<span class="st">"execute"</span>, <span class="st">"replan"</span>)
+g.add_conditional_edges(<span class="st">"replan"</span>, should_continue,
+  {<span class="st">"continue"</span>:<span class="st">"execute"</span>, <span class="st">"revise"</span>:<span class="st">"execute"</span>, <span class="st">"alternative"</span>:<span class="st">"execute"</span>,   <span class="cm"># 적응형 재계획 §6.4</span>
+                         <span class="st">"done"</span>:<span class="st">"respond"</span>, <span class="st">"escalate"</span>:<span class="st">"respond"</span>, <span class="st">"abort"</span>:<span class="st">"respond"</span>})
+g.add_edge(<span class="st">"respond"</span>, END)
+
+graph = g.compile(checkpointer=MemorySaver())   <span class="cm"># thread_id 별 상태 영속</span></code></pre>
+
+  <div class="fig">
+    <div class="ascii">                      ┌──────────────────────────── replan(loop) ──┐
+                      ▼                                             │
+ START ─▶ gate ──act──▶ plan ─▶ execute ─▶ replan ──continue───────┘
+            │                      ▲  │
+          answer                interrupt└──done──▶ respond ─▶ END
+            │                   (클라 실행)
+            ▼
+           END (토큰 스트리밍)</div>
+    <div class="figcap">그림 2 — StateGraph 토폴로지. <code>gate</code>가 answer/act로 분기, <code>execute↔replan</code>이 plan-and-execute 순환을 이룬다.</div>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="nodes"><span class="n">5.</span>노드 상세</h2>
+  <table>
+    <tr><th width="110">노드</th><th>역할 · LangChain 사용</th></tr>
+    <tr><td><b>gate</b> <span class="tag ctrl">분기</span></td><td>경량 모델(<code>gpt-4o-mini</code>)에 카탈로그·ERD 요약만 주고 <code>with_structured_output(RouteDecision)</code>로 <code>act</code>/<code>answer</code> 판정. 모호하면 <code>answer</code>(보수적).</td></tr>
+    <tr><td><b>answer</b> <span class="tag read">답변</span></td><td>툴 없이 <code>ChatOpenAI(...).astream()</code> — 토큰을 그대로 흘려보냄. ERD 요약을 프롬프트에 포함해 읽기성 질문("PK 없는 테이블 있어?")도 답변. 상태 변경 없음.</td></tr>
+    <tr><td><b>plan</b> <span class="tag ctrl">계획</span></td><td><code>with_structured_output(Plan)</code>로 스텝 목록 생성. 카탈로그 범위 밖이면 <code>clarify</code> 스텝. <code>state["plan"]</code>에 저장.</td></tr>
+    <tr><td><b>execute</b> <span class="tag write">실행위임</span></td><td>다음 스텝(들)의 툴콜을 만들고 툴 <code>location</code>으로 분기 — <b>client</b>면 <code><b>interrupt({tool_calls})</b></code>로 클라 위임 후 <code>Command(resume=results)</code>로 재개, <b>proxy</b>(DB·MCP)면 <code>ToolNode</code>로 그래프 안 직접 실행. 결과를 <code>past_steps</code>·<code>messages</code>에 기록. §6·§7 참조.</td></tr>
+    <tr><td><b>replan</b> <span class="tag ctrl">재계획</span></td><td>결과를 <b>목표 대비 평가</b>해 5갈래로 분기 — <code>continue</code>/<code>revise</code>/<code>alternative</code>(execute로) · <code>done</code>/<code>escalate</code>/<code>abort</code>(respond로). 툴 오류·기대 이탈 시 <b>대체 수단으로 계획 수정</b>. 상세 §6.4.</td></tr>
+    <tr><td><b>respond</b> <span class="tag read">응답</span></td><td>수행 요약을 스트리밍 응답. 클라는 이 시점 신호로 드래프트를 <b>커밋</b>(<code>saveState()</code> 1회).</td></tr>
+  </table>
+
+  <!-- 6 -->
+  <h2 id="client"><span class="n">6.</span>클라이언트 인 더 루프 (interrupt 기반)</h2>
+  <p>
+    ERD 툴의 <b>실행</b>과 <b>데이터 조회</b>는 모두 클라이언트에서 일어난다. LangGraph의 <code>interrupt()</code>가
+    이 위임의 단일 메커니즘이다 — v0.1의 <code>need_data</code>/<code>resolve</code>와 DAG 실행을 하나로 통합한다.
+  </p>
+
+  <h3 id="interrupt">6.1 interrupt / resume 프로토콜</h3>
+<pre><code><span class="cm"># execute_node — 서버(프록시) 측</span>
+<span class="kw">from</span> langgraph.types <span class="kw">import</span> interrupt
+
+<span class="kw">def</span> <span class="fn">execute_node</span>(state: AgentState):
+    batch = next_parallel_batch(state[<span class="st">"plan"</span>])      <span class="cm"># 의존성 없는 스텝 묶음</span>
+    tool_calls = [{<span class="st">"id"</span>:s[<span class="st">"id"</span>], <span class="st">"tool"</span>:s[<span class="st">"tool"</span>], <span class="st">"args"</span>:s[<span class="st">"args"</span>]} <span class="kw">for</span> s <span class="kw">in</span> batch]
+    <span class="cm"># ↓ 그래프 일시정지. 페이로드가 클라이언트로 전달됨</span>
+    results = interrupt({<span class="st">"type"</span>:<span class="st">"tool_calls"</span>, <span class="st">"calls"</span>: tool_calls})
+    <span class="cm"># ↓ 클라가 Command(resume=results) 하면 여기서 재개</span>
+    <span class="kw">return</span> {<span class="st">"past_steps"</span>: [(c, r) <span class="kw">for</span> c,r <span class="kw">in</span> zip(tool_calls, results)],
+            <span class="st">"messages"</span>: to_tool_messages(tool_calls, results)}</code></pre>
+
+<pre><code><span class="cm">// 클라이언트 — interrupt 수신 → 툴 실행 → resume</span>
+<span class="kw">async function</span> <span class="fn">onInterrupt</span>(payload, threadId) {
+  <span class="kw">const</span> { calls } = payload;
+  <span class="cm">// 병렬 실행 (의존성 없는 배치)</span>
+  <span class="kw">const</span> results = <span class="kw">await</span> Promise.allSettled(
+    calls.map(c => registry[c.tool].run(ctx.draft, c.args))
+  ).then(rs => rs.map(toResult));
+  <span class="cm">// resume — SSE 스트림 재개</span>
+  <span class="kw">await</span> postSSE(<span class="st">'/agent/resume'</span>, { threadId, resume: results });
+}</code></pre>
+
+  <div class="box acc">
+    <div class="t">왜 이 방식이 우아한가</div>
+    <code>thread_id</code>로 식별되는 그래프 상태는 Checkpointer에 저장돼 있으므로, HTTP 왕복 사이에 프록시가
+    대화 맥락을 <b>직접 보관할 필요가 없다</b>. <code>interrupt</code>는 한 지점에서 <b>데이터 조회</b>든 <b>상태 변경 툴</b>이든
+    동일하게 클라이언트로 위임한다 — v0.1의 두 메커니즘이 하나로 합쳐진다.
+  </div>
+
+  <h3 id="parallel">6.2 병렬 · 순차 · 데이터 전달 (LangGraph 표현)</h3>
+  <table>
+    <tr><th width="120">요구</th><th>LangGraph 구현</th></tr>
+    <tr><td><b>병렬</b></td><td>① <code>execute</code> 한 번의 <code>interrupt</code>에 <b>독립 툴콜 배치</b>를 실어 보내 클라가 <code>Promise.allSettled</code>로 동시 실행. ② 또는 <b><code>Send</code></b> API로 노드를 팬아웃해 슈퍼스텝에서 병렬 처리.</td></tr>
+    <tr><td><b>순차</b></td><td><code>execute→replan→execute</code> 순환. 각 라운드 결과가 <code>past_steps</code>에 누적되고 다음 <code>plan</code>/<code>execute</code>가 이를 참조.</td></tr>
+    <tr><td><b>출력→입력 전달</b></td><td>선행 툴 결과가 <b>State(<code>past_steps</code>)</b>에 들어가므로, 다음 스텝의 인자를 만들 때 LLM/바인더가 실제 값(예: 새 <code>entityId</code>)을 사용. v0.1의 <code>${n1.id}</code> 토큰 치환을 State 누적이 대체.</td></tr>
+  </table>
+<pre><code><span class="cm"># Send 로 병렬 팬아웃 (대안)</span>
+<span class="kw">from</span> langgraph.types <span class="kw">import</span> Send
+<span class="kw">def</span> <span class="fn">fan_out</span>(state):
+    <span class="kw">return</span> [Send(<span class="st">"execute_one"</span>, {<span class="st">"step"</span>: s}) <span class="kw">for</span> s <span class="kw">in</span> independent_steps(state)]
+g.add_conditional_edges(<span class="st">"plan"</span>, fan_out)   <span class="cm"># 독립 스텝들이 동시 슈퍼스텝으로 실행</span></code></pre>
+
+  <h3 id="resolve">6.3 양방향 데이터 해소 (계획 중 조회)</h3>
+  <p>
+    "회원 테이블에 이메일 추가해줘" → 계획하려면 회원 테이블의 현재 컬럼이 필요하다. 이는 <code>plan</code>/<code>execute</code>
+    노드가 <b>읽기 툴</b>(<code>describe_table</code>)을 먼저 <code>interrupt</code>로 요청해 해결한다. 별도 프로토콜이 아니라
+    <b>같은 interrupt 메커니즘</b>이다.
+  </p>
+  <div class="fig">
+    <svg viewBox="0 0 940 668" font-family="'Pretendard','Segoe UI',sans-serif">
+      <defs>
+        <marker id="mB" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#5b9dff"/></marker>
+        <marker id="mY" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#f0b429"/></marker>
+        <marker id="mG" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#3fcf8e"/></marker>
+        <marker id="mR" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c8596"/></marker>
+      </defs>
+
+      <!-- phase bands -->
+      <rect x="16" y="204" width="908" height="122" rx="11" fill="#f0b429" opacity="0.05"/>
+      <rect x="16" y="388" width="908" height="122" rx="11" fill="#5b9dff" opacity="0.055"/>
+      <rect x="26" y="196" width="232" height="18" rx="9" fill="#241f12" stroke="#5a4a1e"/>
+      <text x="38" y="209" fill="#ffd97a" font-size="11">STEP ① 계획용 데이터 해소 · describe_table</text>
+      <rect x="26" y="380" width="214" height="18" rx="9" fill="#13203a" stroke="#274266"/>
+      <text x="38" y="393" fill="#bcd4ff" font-size="11">STEP ② 변경 실행 · add_attribute</text>
+      <text x="912" y="262" text-anchor="end" fill="#caa64a" font-size="9.5" font-style="italic">⏸ 그래프 일시정지 · Checkpointer 보존</text>
+      <text x="912" y="446" text-anchor="end" fill="#6f93c8" font-size="9.5" font-style="italic">⏸ 그래프 일시정지 · Checkpointer 보존</text>
+
+      <!-- lifelines -->
+      <line x1="65"  y1="62" x2="65"  y2="606" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="255" y1="62" x2="255" y2="606" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="445" y1="62" x2="445" y2="606" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="650" y1="62" x2="650" y2="606" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="860" y1="62" x2="860" y2="606" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+
+      <!-- proxy activation: running(blue) / suspended(yellow dashed) -->
+      <rect x="646" y="124" width="8" height="98"  rx="2" fill="#34406b"/>
+      <rect x="645" y="222" width="10" height="90" rx="2" fill="#3a3217" stroke="#f0b429" stroke-dasharray="3 3"/>
+      <rect x="646" y="312" width="8" height="94"  rx="2" fill="#34406b"/>
+      <rect x="645" y="406" width="10" height="90" rx="2" fill="#3a3217" stroke="#f0b429" stroke-dasharray="3 3"/>
+      <rect x="646" y="496" width="8" height="74"  rx="2" fill="#34406b"/>
+      <!-- tool runtime activations -->
+      <rect x="441" y="252" width="8" height="30" rx="2" fill="#2f5d49"/>
+      <rect x="441" y="436" width="8" height="30" rx="2" fill="#2f5d49"/>
+
+      <!-- messages -->
+      <!-- 1 -->
+      <line x1="65" y1="98" x2="251" y2="98" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="160" y="91" text-anchor="middle" fill="#cdd5e3" font-size="10.5">“회원에 이메일 추가해줘”</text>
+      <!-- 2 -->
+      <line x1="255" y1="128" x2="646" y2="128" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="450" y="121" text-anchor="middle" fill="#cdd5e3" font-size="10.5">POST /agent/stream · gate → act</text>
+      <!-- 3 -->
+      <line x1="654" y1="158" x2="856" y2="158" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="755" y="151" text-anchor="middle" fill="#cdd5e3" font-size="10.5">plan: LLM 추론</text>
+      <!-- 4 return -->
+      <line x1="856" y1="186" x2="656" y2="186" stroke="#7c8596" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#mR)"/>
+      <text x="755" y="180" text-anchor="middle" fill="#9aa3b2" font-size="10">tool_call ⇢ describe_table 필요</text>
+      <!-- 5 interrupt -->
+      <line x1="645" y1="222" x2="259" y2="222" stroke="#f0b429" stroke-width="2" marker-end="url(#mY)"/>
+      <text x="452" y="215" text-anchor="middle" fill="#ffd97a" font-size="10.5">⚡ interrupt( describe_table "회원" )</text>
+      <!-- 6 -->
+      <line x1="255" y1="252" x2="441" y2="252" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="350" y="245" text-anchor="middle" fill="#cdd5e3" font-size="10.5">describe_table("회원") 실행</text>
+      <!-- 7 return -->
+      <line x1="441" y1="282" x2="259" y2="282" stroke="#7c8596" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#mR)"/>
+      <text x="350" y="276" text-anchor="middle" fill="#9aa3b2" font-size="10">⇠ { attrs:[ MEMBER_ID(pk), NAME … ] }</text>
+      <!-- 8 resume -->
+      <line x1="255" y1="312" x2="646" y2="312" stroke="#3fcf8e" stroke-width="2" marker-end="url(#mG)"/>
+      <text x="450" y="305" text-anchor="middle" fill="#8df0bf" font-size="10.5">POST /agent/resume( results ) · 재개</text>
+      <!-- 9 -->
+      <line x1="654" y1="342" x2="856" y2="342" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="755" y="335" text-anchor="middle" fill="#cdd5e3" font-size="10.5">execute: LLM 추론</text>
+      <!-- 10 return -->
+      <line x1="856" y1="370" x2="656" y2="370" stroke="#7c8596" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#mR)"/>
+      <text x="755" y="364" text-anchor="middle" fill="#9aa3b2" font-size="10">tool_call ⇢ add_attribute</text>
+      <!-- 11 interrupt -->
+      <line x1="645" y1="406" x2="259" y2="406" stroke="#f0b429" stroke-width="2" marker-end="url(#mY)"/>
+      <text x="452" y="399" text-anchor="middle" fill="#ffd97a" font-size="10.5">⚡ interrupt( add_attribute · member · EMAIL )</text>
+      <!-- 12 -->
+      <line x1="255" y1="436" x2="441" y2="436" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="350" y="429" text-anchor="middle" fill="#cdd5e3" font-size="10.5">add_attribute( draft )</text>
+      <!-- 13 return -->
+      <line x1="441" y1="466" x2="259" y2="466" stroke="#7c8596" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#mR)"/>
+      <text x="350" y="460" text-anchor="middle" fill="#9aa3b2" font-size="10">⇠ ok</text>
+      <!-- 14 resume -->
+      <line x1="255" y1="496" x2="646" y2="496" stroke="#3fcf8e" stroke-width="2" marker-end="url(#mG)"/>
+      <text x="450" y="489" text-anchor="middle" fill="#8df0bf" font-size="10.5">POST /agent/resume( ok ) · 재개</text>
+      <!-- proxy self note -->
+      <rect x="572" y="514" width="156" height="22" rx="7" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="650" y="529" text-anchor="middle" fill="#bcd4ff" font-size="10">replan → done → respond</text>
+      <!-- 16 stream token -->
+      <line x1="645" y1="560" x2="259" y2="560" stroke="#3fcf8e" stroke-width="2" marker-end="url(#mG)"/>
+      <text x="452" y="553" text-anchor="middle" fill="#8df0bf" font-size="10.5">◀ SSE token: “EMAIL VARCHAR(255) 추가 완료”</text>
+      <!-- 17 -->
+      <line x1="255" y1="590" x2="69" y2="590" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#mB)"/>
+      <text x="160" y="583" text-anchor="middle" fill="#cdd5e3" font-size="10.5">표시 + 드래프트 커밋 · saveState() 1회</text>
+
+      <!-- headers (on top) -->
+      <g font-size="11.5">
+        <rect x="22"  y="20" width="86"  height="42" rx="9" fill="#1d2129" stroke="#2a2f3a"/>
+        <text x="65"  y="38" text-anchor="middle" fill="#e6e9ef">🧑 사용자</text>
+        <text x="65"  y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">user</text>
+        <rect x="200" y="20" width="110" height="42" rx="9" fill="#1d2129" stroke="#5b9dff"/>
+        <text x="255" y="38" text-anchor="middle" fill="#bcd4ff">🖥️ Agent 패널</text>
+        <text x="255" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">client</text>
+        <rect x="388" y="20" width="114" height="42" rx="9" fill="#1d2129" stroke="#f0b429"/>
+        <text x="445" y="38" text-anchor="middle" fill="#ffd97a">🧰 Tool Runtime</text>
+        <text x="445" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">client</text>
+        <rect x="582" y="20" width="136" height="42" rx="9" fill="#14171e" stroke="#7c5cff"/>
+        <text x="650" y="38" text-anchor="middle" fill="#cdb8ff">⬡ 프록시 · LangGraph</text>
+        <text x="650" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">StateGraph + Checkpointer</text>
+        <rect x="808" y="20" width="104" height="42" rx="9" fill="#11141a" stroke="#3fcf8e"/>
+        <text x="860" y="38" text-anchor="middle" fill="#8df0bf">☁️ OpenAI</text>
+        <text x="860" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">ChatOpenAI</text>
+      </g>
+
+      <!-- legend -->
+      <g font-size="10" transform="translate(28,634)">
+        <line x1="0" y1="0" x2="22" y2="0" stroke="#f0b429" stroke-width="2" marker-end="url(#mY)"/>
+        <text x="28" y="3.5" fill="#9aa3b2">⚡ interrupt = 클라 위임</text>
+        <line x1="195" y1="0" x2="217" y2="0" stroke="#3fcf8e" stroke-width="2" marker-end="url(#mG)"/>
+        <text x="223" y="3.5" fill="#9aa3b2">resume = 그래프 재개</text>
+        <line x1="380" y1="0" x2="402" y2="0" stroke="#7c8596" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#mR)"/>
+        <text x="408" y="3.5" fill="#9aa3b2">⇢ 반환값</text>
+        <rect x="520" y="-5" width="11" height="11" rx="2" fill="#3a3217" stroke="#f0b429" stroke-dasharray="3 3"/>
+        <text x="537" y="3.5" fill="#9aa3b2">⏸ suspend = 상태 보존</text>
+      </g>
+    </svg>
+    <div class="figcap">그림 3 — 양방향 데이터 해소 시퀀스. 데이터 조회와 변경 실행이 모두 <code>interrupt</code>(노랑, 클라 위임)↔<code>resume</code>(초록, 재개)으로 통합되며, 그 사이 그래프는 <b>일시정지</b>되고 Checkpointer가 <code>thread_id</code>별 상태를 보존한다.</div>
+  </div>
+
+  <h3 id="adapt">6.4 적응형 재계획 — 실패·이탈 시 대체 수단</h3>
+  <p>
+    계획대로 진행하다 <b>예기치 않은 상황</b>(툴이 오류를 내거나, 결과가 기대와 다른 방향)이 생겨 그대로 진행하는 게 무의미해지면,
+    <code>replan</code> 노드가 이를 감지해 <b>대체 수단으로 계획을 수정</b>한다. 이것이 단순 "계획 실행"과 plan-and-execute의 결정적 차이다 —
+    실행은 항상 <b>실행 → 결과 평가 → 적응형 재계획</b>의 순환 안에서 일어난다.
+  </p>
+
+  <h4>두 가지 실패 유형</h4>
+  <table>
+    <tr><th width="160">유형</th><th>예시</th><th>감지</th></tr>
+    <tr><td><b>경성 실패</b> (hard)</td><td>툴 예외·HTTP 오류·인자 스키마 검증 실패·DB 연결 실패</td><td>예외/error 결과가 <code>past_steps</code>에 기록됨 — 명시적</td></tr>
+    <tr><td><b>연성 실패 · 이탈</b> (soft)</td><td>툴은 성공했지만 <b>빈 결과·0건</b>, 잘못된 방향, 후속 스텝의 전제 위반, 여러 라운드째 <b>진전 없음</b></td><td>결과 검증 + 목표 대비 LLM 자기평가 — 추론 필요</td></tr>
+  </table>
+
+  <h4>"기대와 다름"을 어떻게 아는가 — 평가 신호</h4>
+  <ul>
+    <li><b>구조적 검증</b>: 결과 스키마·빈값·카운트(예: <code>find_tables</code> 0건, <code>describe_table</code> 미존재).</li>
+    <li><b>스텝 성공조건(postcondition)</b>: <code>plan</code> 수립 시 각 스텝에 <code>expectation</code>을 부여 → <code>replan</code>이 실제 결과와 대조.</li>
+    <li><b>LLM 자기평가(reflexion)</b>: "원래 목표 대비 현재 진척이 유효한가?"를 <code>replan</code>이 판단.</li>
+    <li><b>진전 없음 감지</b>: 동일 오류 반복·<code>replan_count</code> 상한 → 같은 길로 더 가지 않음.</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 920 312" font-family="'Pretendard','Segoe UI',sans-serif">
+      <defs>
+        <marker id="rG" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#3fcf8e"/></marker>
+        <marker id="rB" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#5b9dff"/></marker>
+        <marker id="rP" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#7c5cff"/></marker>
+        <marker id="rYy" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#f0b429"/></marker>
+        <marker id="rRd" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#ff6b6b"/></marker>
+      </defs>
+      <!-- replan box -->
+      <rect x="298" y="16" width="324" height="60" rx="12" fill="#14171e" stroke="#7c5cff"/>
+      <text x="460" y="40" text-anchor="middle" fill="#cdb8ff" font-size="12.5">🔁 replan — 결과 평가 · 다음 행동 결정</text>
+      <text x="460" y="60" text-anchor="middle" fill="#9aa3b2" font-size="10.5">성공? · 툴 오류? · 기대 이탈? · 진전 없음?</text>
+
+      <!-- branches -->
+      <line x1="430" y1="76" x2="105" y2="156" stroke="#3fcf8e" stroke-width="1.8" marker-end="url(#rG)"/>
+      <line x1="445" y1="76" x2="285" y2="156" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#rB)"/>
+      <line x1="460" y1="76" x2="460" y2="156" stroke="#7c5cff" stroke-width="1.8" marker-end="url(#rP)"/>
+      <line x1="475" y1="76" x2="635" y2="156" stroke="#f0b429" stroke-width="1.8" marker-end="url(#rYy)"/>
+      <line x1="490" y1="76" x2="815" y2="156" stroke="#ff6b6b" stroke-width="1.8" marker-end="url(#rRd)"/>
+
+      <!-- outcome boxes -->
+      <g font-size="10">
+        <rect x="20"  y="158" width="160" height="120" rx="10" fill="#1d2129" stroke="#3fcf8e"/>
+        <text x="100" y="182" text-anchor="middle" fill="#8df0bf" font-size="12">✅ continue</text>
+        <text x="100" y="206" text-anchor="middle" fill="#cdd5e3">정상 진행 —</text>
+        <text x="100" y="222" text-anchor="middle" fill="#cdd5e3">다음 스텝 실행</text>
+        <text x="100" y="250" text-anchor="middle" fill="#6b8f7e">↺ execute 로 복귀</text>
+
+        <rect x="200" y="158" width="160" height="120" rx="10" fill="#1d2129" stroke="#5b9dff"/>
+        <text x="280" y="182" text-anchor="middle" fill="#bcd4ff" font-size="12">🔧 revise</text>
+        <text x="280" y="206" text-anchor="middle" fill="#cdd5e3">남은 계획 보정</text>
+        <text x="280" y="222" text-anchor="middle" fill="#cdd5e3">(인자·순서 수정)</text>
+        <text x="280" y="250" text-anchor="middle" fill="#6f86b0">↺ execute 로 복귀</text>
+
+        <rect x="380" y="158" width="160" height="120" rx="10" fill="#1d2129" stroke="#7c5cff"/>
+        <text x="460" y="182" text-anchor="middle" fill="#cdb8ff" font-size="12">🔀 alternative</text>
+        <text x="460" y="206" text-anchor="middle" fill="#cdd5e3">현재 접근 무의미 →</text>
+        <text x="460" y="222" text-anchor="middle" fill="#cdd5e3">대체 수단 새 계획</text>
+        <text x="460" y="250" text-anchor="middle" fill="#9b86c8">↺ execute 로 복귀</text>
+
+        <rect x="560" y="158" width="160" height="120" rx="10" fill="#1d2129" stroke="#f0b429"/>
+        <text x="640" y="182" text-anchor="middle" fill="#ffd97a" font-size="12">🙋 escalate</text>
+        <text x="640" y="206" text-anchor="middle" fill="#cdd5e3">사용자에 확인·선택</text>
+        <text x="640" y="222" text-anchor="middle" fill="#cdd5e3">(clarify)</text>
+        <text x="640" y="250" text-anchor="middle" fill="#bda35a">→ respond(질문)</text>
+
+        <rect x="740" y="158" width="160" height="120" rx="10" fill="#1d2129" stroke="#ff6b6b"/>
+        <text x="820" y="182" text-anchor="middle" fill="#ff9e9e" font-size="12">🛑 abort</text>
+        <text x="820" y="206" text-anchor="middle" fill="#cdd5e3">드래프트 폐기 ·</text>
+        <text x="820" y="222" text-anchor="middle" fill="#cdd5e3">안전 종료</text>
+        <text x="820" y="250" text-anchor="middle" fill="#bd7a7a">→ respond(사유)</text>
+      </g>
+    </svg>
+    <div class="figcap">그림 4 — <code>replan</code>의 5갈래 분기. 정상이면 <b>continue</b>, 고칠 수 있으면 <b>revise</b>, 접근 자체가 무의미하면 <b>alternative</b>(대체 수단), 사람이 정해야 하면 <b>escalate</b>, 안되면 <b>abort</b>. revise·alternative는 <code>execute</code>로 되돌아 순환을 잇는다.</div>
+  </div>
+
+  <h4>대체 수단(alternative) 예시</h4>
+  <table>
+    <tr><th>상황</th><th>대체 계획</th></tr>
+    <tr><td><code>auto_layout("hierarchical")</code> 결과가 과밀·교차 과다</td><td><code>grid</code> 또는 <code>circular</code> 레이아웃으로 재시도</td></tr>
+    <tr><td><code>run_sql</code>(DML) 권한 오류</td><td>읽기 전용 <code>fetch_db_schema</code>로 우회해 목표 달성</td></tr>
+    <tr><td>DDL 일괄 생성 파싱 실패</td><td><code>create_entity</code>×N 으로 분해해 개별 생성</td></tr>
+    <tr><td><code>describe_table</code> 빈 결과(테이블 없음)</td><td><code>find_tables</code>로 재탐색 → 후보 모호 시 <b>escalate</b></td></tr>
+  </table>
+
+  <h4>라우터 · 상태 확장</h4>
+<pre><code><span class="kw">from</span> typing <span class="kw">import</span> Literal
+
+<span class="kw">def</span> <span class="fn">should_continue</span>(state) -> Literal[<span class="st">"continue"</span>,<span class="st">"revise"</span>,<span class="st">"alternative"</span>,<span class="st">"escalate"</span>,<span class="st">"abort"</span>]:
+    last = state[<span class="st">"past_steps"</span>][-<span class="num">1</span>]
+    <span class="kw">if</span> last.ok <span class="kw">and</span> meets_expectation(last):    <span class="kw">return</span> <span class="st">"continue"</span> <span class="kw">if</span> state[<span class="st">"plan"</span>] <span class="kw">else</span> <span class="st">"done"</span>
+    <span class="kw">if</span> state[<span class="st">"replan_count"</span>] >= MAX_REPLAN:    <span class="kw">return</span> <span class="st">"escalate"</span>   <span class="cm"># 진전 없음 → 사람에게</span>
+    <span class="kw">if</span> recoverable(last):                    <span class="kw">return</span> <span class="st">"revise"</span>      <span class="cm"># 인자·순서만 고치면 됨</span>
+    <span class="kw">if</span> has_alternative(state):               <span class="kw">return</span> <span class="st">"alternative"</span> <span class="cm"># 대체 수단 있음</span>
+    <span class="kw">return</span> <span class="st">"abort"</span>                            <span class="cm"># 안전 종료</span>
+
+<span class="cm"># AgentState 확장 필드</span>
+<span class="cm">#   past_steps: [{step, ok, error, result}]   ← 오류·결과 동반</span>
+<span class="cm">#   plan[*]:    {tool, args, expectation, alternatives:[...]}  ← 기대·대체안</span>
+<span class="cm">#   replan_count: int                          ← 무한루프 방지</span>
+
+g.add_conditional_edges(<span class="st">"replan"</span>, should_continue, {
+    <span class="st">"continue"</span>:<span class="st">"execute"</span>, <span class="st">"revise"</span>:<span class="st">"execute"</span>, <span class="st">"alternative"</span>:<span class="st">"execute"</span>,
+    <span class="st">"done"</span>:<span class="st">"respond"</span>, <span class="st">"escalate"</span>:<span class="st">"respond"</span>, <span class="st">"abort"</span>:<span class="st">"respond"</span>,
+})</code></pre>
+
+  <div class="box ok">
+    <div class="t">🛡️ 무의미한 진행을 막는 안전장치</div>
+    <ul>
+      <li><b>드래프트 격리</b>: 모든 변경은 클라이언트 드래프트에만 → 실패해도 실제 ERD는 안전. 대체 시도는 드래프트를 <b>실패 직전으로 롤백</b>한 뒤 진행.</li>
+      <li><b>시도 상한</b>: <code>replan_count</code> + 그래프 <code>recursion_limit</code> → 같은 실패를 무한 반복하지 않고 <code>escalate</code>로 사람에게 넘긴다.</li>
+      <li><b>되돌리기 어려운 작업</b>(<code>run_sql</code> DML/DDL, <code>delete_*</code>)은 대체 시도 전 반드시 <b>승인 interrupt</b>를 거친다.</li>
+      <li><b>관측</b>: 모든 분기(revise/alternative/abort)와 사유는 <code>astream</code>으로 사용자에게 표시되고 감사 로그에 남는다.</li>
+    </ul>
+  </div>
+
+  <!-- 7 -->
+  <h2 id="tools"><span class="n">7.</span>툴 카탈로그 — 이중 런타임</h2>
+  <p>
+    툴은 <b>클라이언트와 프록시 양쪽에 존재</b>한다. 모든 툴은 LangChain <code>@tool</code> 스키마로 정의돼 LLM에 동일하게 노출되지만,
+    각 툴은 <b><code>location</code></b> 속성(<code>client</code> | <code>proxy</code>)을 가지며 <code>execute</code> 노드가 이 값으로 <b>실행 위치를 라우팅</b>한다.
+  </p>
+  <ul>
+    <li><b>클라이언트 툴</b> — ERD 상태(<code>ENTITIES</code>) 조작·조회. <code>interrupt↔resume</code>으로 위임(§6).</li>
+    <li><b>프록시 툴</b> — 실제 DB 접속·연계 작업, 그리고 <b>향후 MCP 서버 연계</b>. 그래프 안에서 <b><code>ToolNode</code></b>로 직접 실행(클라 왕복 불필요).</li>
+  </ul>
+
+  <div class="fig">
+    <svg viewBox="0 0 900 300" font-family="'Pretendard','Segoe UI',sans-serif">
+      <defs>
+        <marker id="tY" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#f0b429"/></marker>
+        <marker id="tB" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#5b9dff"/></marker>
+      </defs>
+      <!-- execute node -->
+      <rect x="345" y="18" width="210" height="50" rx="11" fill="#14171e" stroke="#7c5cff"/>
+      <text x="450" y="40" text-anchor="middle" fill="#cdb8ff" font-size="13">⬡ execute 노드 (그래프)</text>
+      <text x="450" y="58" text-anchor="middle" fill="#9aa3b2" font-size="10.5">LLM tool_call 발생 → location 으로 분기</text>
+      <!-- branch labels -->
+      <line x1="420" y1="68" x2="250" y2="150" stroke="#f0b429" stroke-width="2" marker-end="url(#tY)"/>
+      <text x="300" y="108" text-anchor="middle" fill="#ffd97a" font-size="11">location = "client"</text>
+      <text x="300" y="124" text-anchor="middle" fill="#9aa3b2" font-size="10">⚡ interrupt / resume</text>
+      <line x1="480" y1="68" x2="650" y2="150" stroke="#5b9dff" stroke-width="2" marker-end="url(#tB)"/>
+      <text x="600" y="108" text-anchor="middle" fill="#bcd4ff" font-size="11">location = "proxy"</text>
+      <text x="600" y="124" text-anchor="middle" fill="#9aa3b2" font-size="10">in-graph · ToolNode</text>
+
+      <!-- client runtime -->
+      <rect x="40" y="152" width="360" height="130" rx="12" fill="#1d2129" stroke="#f0b429"/>
+      <text x="60" y="176" fill="#ffd97a" font-size="12.5">🧰 클라이언트 Tool Runtime</text>
+      <text x="60" y="196" fill="#9aa3b2" font-size="10.5">브라우저/Electron · ERD 라이브 상태</text>
+      <line x1="56" y1="206" x2="384" y2="206" stroke="#2a2f3a"/>
+      <text x="60" y="226" fill="#3fcf8e" font-size="11">create_entity · create_relation · add_attribute</text>
+      <text x="60" y="245" fill="#3fcf8e" font-size="11">auto_layout · describe_table · find_tables</text>
+      <text x="60" y="264" fill="#9aa3b2" font-size="10.5">→ entities.js · relations.js · layout.js 재사용</text>
+
+      <!-- proxy runtime -->
+      <rect x="500" y="152" width="360" height="130" rx="12" fill="#14171e" stroke="#5b9dff"/>
+      <text x="520" y="176" fill="#bcd4ff" font-size="12.5">🛠️ 프록시 Tool Runtime</text>
+      <text x="520" y="196" fill="#9aa3b2" font-size="10.5">FastAPI · LangGraph · DB 어댑터 · MCP</text>
+      <line x1="516" y1="206" x2="844" y2="206" stroke="#2a2f3a"/>
+      <text x="520" y="226" fill="#5b9dff" font-size="11">run_sql · fetch_db_schema  (기존 /execute·/schema)</text>
+      <text x="520" y="245" fill="#7c5cff" font-size="11">🔌 MCP 서버 툴 (langchain-mcp-adapters)</text>
+      <text x="520" y="264" fill="#9aa3b2" font-size="10.5">사내 API·검색·파일 등 외부 시스템 연계(확장)</text>
+    </svg>
+    <div class="figcap">그림 5 — 이중 툴 런타임. <code>execute</code> 노드가 툴의 <code>location</code>으로 분기: 클라이언트 툴은 <code>interrupt</code>로 위임, 프록시 툴(DB·MCP)은 그래프 안 <code>ToolNode</code>로 직접 실행한다.</div>
+  </div>
+
+  <h3>7.1 클라이언트 툴 — ERD 조작·조회 <span class="tag read">read</span> <span class="tag write">write</span></h3>
+  <p>프록시의 함수 본문은 실제 로직 대신 <code>interrupt</code>로 위임만 하는 <b>스텁</b>이다(LLM엔 시그니처만 의미).</p>
+<pre><code><span class="kw">@tool</span>
+<span class="kw">def</span> <span class="fn">create_entity</span>(logicalName: str, physicalName: str, attrs: list) -> dict:
+    <span class="st">"""새 엔티티(테이블)를 생성한다. 반환: {entityId}"""</span>
+    <span class="kw">raise</span> ClientToolDelegation()      <span class="cm"># location="client" → execute 노드가 interrupt로 위임</span></code></pre>
+  <table>
+    <tr><th>툴</th><th>종류</th><th>재사용 원천(클라이언트)</th></tr>
+    <tr><td><code>create_entity</code> / <code>update_entity</code> / <code>delete_entity</code></td><td><span class="tag write">write</span></td><td><code>applyAISchema</code>·<code>saveEntity</code>·<code>deleteEntity</code></td></tr>
+    <tr><td><code>add_attribute</code> / <code>update_attribute</code> / <code>remove_attribute</code></td><td><span class="tag write">write</span></td><td><code>saveEntity</code></td></tr>
+    <tr><td><code>create_relation</code> / <code>delete_relation</code></td><td><span class="tag write">write</span></td><td><code>saveRelation</code>·<code>autoAddFkColumn</code>·<code>deleteRelation</code></td></tr>
+    <tr><td><code>auto_layout</code> / <code>optimize_relations</code> / <code>align_entities</code></td><td><span class="tag write">write</span></td><td><code>autoLayout</code>·<code>autoOptimizeRelationsV2</code>·<code>alignEntities</code></td></tr>
+    <tr><td><code>describe_table</code> / <code>find_tables</code> / <code>list_relations</code></td><td><span class="tag read">read</span></td><td><code>state.js</code>·<code>onSearchInput</code> (해소 루프용)</td></tr>
+    <tr><td><code>generate_ddl</code> / <code>normalize_diagnose</code> / <code>query_erd</code></td><td><span class="tag read">read</span></td><td><code>generateDDL</code>·<code>runNormalizeDiagnosis</code></td></tr>
+  </table>
+
+  <h3>7.2 프록시 툴 — DB 연계 · MCP <span class="tag ext">external</span></h3>
+  <p>프록시 툴은 본문에 실제 로직을 담아 <b>그래프 안에서 직접 실행</b>한다. <code>ToolNode</code> 또는 <code>execute</code> 노드가 종류로 구분해 호출한다.</p>
+<pre><code><span class="kw">@tool</span>
+<span class="kw">async def</span> <span class="fn">run_sql</span>(sql: str) -> dict:
+    <span class="st">"""연결된 DB에 SQL을 실행한다(읽기 기본). 기존 /execute 로직 재사용."""</span>
+    <span class="kw">return</span> <span class="kw">await</span> db_execute(sql)     <span class="cm"># location="proxy" → 클라 왕복 없이 서버 실행</span>
+
+<span class="cm"># 향후: MCP 서버 툴을 LangChain 툴로 편입</span>
+<span class="kw">from</span> langchain_mcp_adapters.client <span class="kw">import</span> MultiServerMCPClient
+mcp = MultiServerMCPClient({<span class="st">"std-mcp"</span>: {<span class="st">"transport"</span>:<span class="st">"sse"</span>, <span class="st">"url"</span>: ...}})
+proxy_tools = [run_sql, fetch_db_schema, *<span class="kw">await</span> mcp.get_tools()]</code></pre>
+  <table>
+    <tr><th>툴</th><th>구현 / 연계</th></tr>
+    <tr><td><code>run_sql</code></td><td>기존 <code>/execute</code> — DB에 SQL 실행(읽기 기본, DML/DDL은 승인)</td></tr>
+    <tr><td><code>fetch_db_schema</code></td><td>기존 <code>/schema</code> — 운영 DB의 테이블·뷰·FK 조회 → 역공학 입력</td></tr>
+    <tr><td><code>test_connection</code> / <code>list_profiles</code></td><td>기존 <code>/config</code> — 접속정보·프로파일 (DB 접속 연계)</td></tr>
+    <tr><td><span class="tag ctrl">확장</span> MCP 서버 툴</td><td><b>향후</b> — <code>langchain-mcp-adapters</code>로 MCP 서버의 툴을 프록시 LangChain 툴로 자동 편입. 표준 외부 시스템(사내 API·검색·파일·표준용어 등) 연계</td></tr>
+  </table>
+
+  <div class="box ok">
+    <div class="t">실행 위치 라우팅 규칙</div>
+    <ul>
+      <li><b><code>location="client"</code></b> (ERD <span class="tag read">read</span>·<span class="tag write">write</span>) → <code>execute</code> 노드가 <code>interrupt</code>로 클라이언트 위임. 라이브 상태 일관성·원자적 커밋 보장.</li>
+      <li><b><code>location="proxy"</code></b> (DB 연계·MCP) → 그래프 안 <code>ToolNode</code>로 직접 실행. 네트워크·키·세션이 이미 프록시에 있어 왕복 불필요.</li>
+      <li>그래프는 하나의 <code>plan</code>에서 두 종류 툴을 <b>혼합</b>할 수 있다(예: 프록시 <code>fetch_db_schema</code> → 클라 <code>create_entity</code>×N → 클라 <code>auto_layout</code>).</li>
+    </ul>
+  </div>
+
+  <!-- 8 -->
+  <h2 id="openai"><span class="n">8.</span>LangChain · OpenAI 연동</h2>
+<pre><code><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+llm      = ChatOpenAI(model=<span class="st">"gpt-4o"</span>,      api_key=load_openai_key(), temperature=<span class="num">0</span>)
+llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_openai_key(), temperature=<span class="num">0</span>)
+
+<span class="kw">class</span> <span class="cl">RouteDecision</span>(BaseModel):
+    route: Literal[<span class="st">"act"</span>,<span class="st">"answer"</span>]; reason: str
+<span class="kw">def</span> <span class="fn">gate_node</span>(state):
+    d = llm_fast.with_structured_output(RouteDecision).invoke(gate_prompt(state))
+    <span class="kw">return</span> {<span class="st">"route"</span>: d.route}
+
+<span class="kw">class</span> <span class="cl">Plan</span>(BaseModel):
+    steps: list[Step]
+<span class="kw">def</span> <span class="fn">plan_node</span>(state):
+    p = llm.with_structured_output(Plan).invoke(plan_prompt(state))
+    <span class="kw">return</span> {<span class="st">"plan"</span>: [s.model_dump() <span class="kw">for</span> s <span class="kw">in</span> p.steps]}</code></pre>
+  <table>
+    <tr><th>메서드</th><th>경로</th><th>설명</th></tr>
+    <tr><td>POST</td><td><code>/agent/stream</code></td><td>그래프 시작 — <code>graph.astream(input, {configurable:{thread_id}})</code>. SSE: <code>token</code>·<code>interrupt</code>·<code>done</code></td></tr>
+    <tr><td>POST</td><td><code>/agent/resume</code></td><td><code>graph.astream(Command(resume=results), {thread_id})</code> — 중단된 그래프 재개. SSE 계속</td></tr>
+    <tr><td>GET/POST</td><td><code>/agent/key</code></td><td>OpenAI 키 저장·존재여부(마스킹) — 기존 키스토어 재사용</td></tr>
+  </table>
+<pre><code><span class="cm"># /agent/stream — astream으로 토큰·interrupt를 SSE 중계</span>
+<span class="kw">@router.post</span>(<span class="st">"/stream"</span>)
+<span class="kw">async def</span> <span class="fn">stream</span>(body: TurnBody):
+    cfg = {<span class="st">"configurable"</span>: {<span class="st">"thread_id"</span>: body.threadId}}
+    <span class="kw">async def</span> <span class="fn">gen</span>():
+        <span class="kw">async for</span> ev <span class="kw">in</span> graph.astream(
+                {<span class="st">"messages"</span>:[(<span class="st">"user"</span>,body.query)], <span class="st">"erd_context"</span>:body.context},
+                cfg, stream_mode=[<span class="st">"messages"</span>,<span class="st">"updates"</span>]):
+            kind, data = ev
+            <span class="kw">if</span> kind==<span class="st">"messages"</span>:                       <span class="cm"># answer/respond 토큰</span>
+                <span class="kw">yield</span> sse(<span class="st">"token"</span>, {<span class="st">"t"</span>: data[<span class="num">0</span>].content})
+            <span class="kw">elif</span> <span class="st">"__interrupt__"</span> <span class="kw">in</span> data:               <span class="cm"># 클라 실행 위임</span>
+                <span class="kw">yield</span> sse(<span class="st">"interrupt"</span>, data[<span class="st">"__interrupt__"</span>][<span class="num">0</span>].value)
+                <span class="kw">return</span>                                  <span class="cm"># resume 호출 대기</span>
+        <span class="kw">yield</span> sse(<span class="st">"done"</span>, {})
+    <span class="kw">return</span> StreamingResponse(gen(), media_type=<span class="st">"text/event-stream"</span>)</code></pre>
+  <div class="box acc">
+    <div class="t">의존성 · 설정</div>
+    <code>requirements.txt</code>에 <code>langgraph</code>, <code>langchain-openai</code>, <code>langchain-core</code> 추가.
+    <code>main.py</code>에 <code>app.include_router(agent.router, prefix="/agent")</code> 1줄. CORS·키스토어·감사 로그는 기존 그대로 재사용.
+  </div>
+
+  <!-- 9 -->
+  <h2 id="ckpt"><span class="n">9.</span>Checkpointer · 세션</h2>
+  <p>v0.1의 손수 만든 세션 스토어를 <b>Checkpointer</b>가 대체한다. 대화·재개 단위는 <code>thread_id</code>다.</p>
+  <table>
+    <tr><th width="180">관심사</th><th>LangGraph 처리</th></tr>
+    <tr><td>세션 식별</td><td><code>thread_id</code> = 클라가 턴 시작 시 발급(예: <code>sess_8fk2</code>). interrupt/resume이 같은 thread를 공유</td></tr>
+    <tr><td>상태 영속</td><td>개발: <code>MemorySaver</code>(인메모리) / 운영: <code>SqliteSaver</code>(<code>~/.uxermanager/agent.db</code>) — 앱 재시작에도 진행 중 턴 복구</td></tr>
+    <tr><td>무한 루프 방지</td><td><code>graph.compile(...)</code> 또는 호출 시 <code>recursion_limit</code> 지정. 초과 시 <code>clarify</code></td></tr>
+    <tr><td>TTL · 정리</td><td>오래된 thread는 배경 작업으로 정리(또는 Sqlite에 보존 후 수동 삭제)</td></tr>
+    <tr><td>동시성</td><td>thread_id 별 독립 — 여러 탭/다이어그램이 충돌 없이 병행</td></tr>
+  </table>
+  <div class="box warn">
+    <div class="t">⚠️ 상태 드리프트 방어</div>
+    interrupt↔resume 사이 사용자가 ERD를 직접 수정할 수 있다. <code>erd_context</code>에 <b>버전 토큰</b>을 포함하고,
+    resume 결과에도 버전을 실어 보내 그래프가 불일치를 감지하면 <code>describe_table</code>로 <b>재조회</b>하도록 한다.
+  </div>
+
+  <!-- 10 -->
+  <h2 id="flow"><span class="n">10.</span>데이터 흐름 시퀀스</h2>
+  <h4>ANSWER 경로 (행동 불필요 → 직접 스트리밍)</h4>
+  <div class="fig">
+    <svg viewBox="0 0 940 432" font-family="'Pretendard','Segoe UI',sans-serif">
+      <defs>
+        <marker id="aB" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#5b9dff"/></marker>
+        <marker id="aG" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#3fcf8e"/></marker>
+        <marker id="aR" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c8596"/></marker>
+      </defs>
+
+      <!-- streaming band -->
+      <rect x="16" y="214" width="908" height="100" rx="11" fill="#3fcf8e" opacity="0.05"/>
+      <rect x="26" y="206" width="280" height="18" rx="9" fill="#11211a" stroke="#1f4a36"/>
+      <text x="38" y="219" fill="#8df0bf" font-size="11">스트리밍 · stream_mode="messages" · 토큰 단위</text>
+
+      <!-- lifelines -->
+      <line x1="80"  y1="62" x2="80"  y2="372" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="300" y1="62" x2="300" y2="372" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="560" y1="62" x2="560" y2="372" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+      <line x1="820" y1="62" x2="820" y2="372" stroke="#2a2f3a" stroke-width="1.4" stroke-dasharray="3 5"/>
+
+      <!-- activations -->
+      <rect x="556" y="132" width="8" height="200" rx="2" fill="#34406b"/>
+      <rect x="816" y="196" width="8" height="52"  rx="2" fill="#2f5d49"/>
+
+      <!-- 1 -->
+      <line x1="80" y1="100" x2="296" y2="100" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#aB)"/>
+      <text x="188" y="93" text-anchor="middle" fill="#cdd5e3" font-size="10.5">“정규화가 뭐야?”</text>
+      <!-- 2 -->
+      <line x1="300" y1="132" x2="556" y2="132" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#aB)"/>
+      <text x="430" y="125" text-anchor="middle" fill="#cdd5e3" font-size="10.5">POST /agent/stream · query + context</text>
+      <!-- gate decision note -->
+      <rect x="476" y="150" width="168" height="22" rx="7" fill="#241f12" stroke="#f0b429"/>
+      <text x="560" y="165" text-anchor="middle" fill="#ffd97a" font-size="10">START → gate → route = "answer"</text>
+      <!-- 4 answer -> openai -->
+      <line x1="564" y1="196" x2="816" y2="196" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#aB)"/>
+      <text x="690" y="189" text-anchor="middle" fill="#cdd5e3" font-size="10.5">answer 노드 · ChatOpenAI.astream()</text>
+      <!-- openai self-loop (token generation repeat) -->
+      <path d="M824,224 C860,222 860,250 826,248" fill="none" stroke="#3fcf8e" stroke-width="1.6" marker-end="url(#aG)"/>
+      <text x="866" y="240" fill="#8df0bf" font-size="9.5">⟳ 토큰 생성</text>
+      <!-- 5 stream o->g -->
+      <line x1="816" y1="240" x2="566" y2="240" stroke="#3fcf8e" stroke-width="1.8" stroke-dasharray="2 3" marker-end="url(#aG)"/>
+      <text x="690" y="234" text-anchor="middle" fill="#8df0bf" font-size="10">◀ 토큰 스트림</text>
+      <!-- 6 stream g->p -->
+      <line x1="556" y1="270" x2="304" y2="270" stroke="#3fcf8e" stroke-width="1.8" stroke-dasharray="2 3" marker-end="url(#aG)"/>
+      <text x="430" y="264" text-anchor="middle" fill="#8df0bf" font-size="10">◀ SSE token 중계</text>
+      <!-- 7 stream p->u -->
+      <line x1="300" y1="300" x2="84" y2="300" stroke="#3fcf8e" stroke-width="1.8" stroke-dasharray="2 3" marker-end="url(#aG)"/>
+      <text x="192" y="294" text-anchor="middle" fill="#8df0bf" font-size="10">토큰 실시간 표시: “정규화란…”</text>
+      <!-- END note -->
+      <rect x="510" y="328" width="100" height="22" rx="7" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="560" y="343" text-anchor="middle" fill="#bcd4ff" font-size="10">answer → END</text>
+      <!-- no-side-effect emphasis -->
+      <rect x="80" y="328" width="360" height="22" rx="7" fill="#11211a" stroke="#3fcf8e" stroke-dasharray="5 4"/>
+      <text x="260" y="343" text-anchor="middle" fill="#8df0bf" font-size="10">상태 변경 0 · 드래프트 미생성 · saveState() 미호출 · undo 무영향</text>
+
+      <!-- headers -->
+      <g font-size="11.5">
+        <rect x="37"  y="20" width="86"  height="42" rx="9" fill="#1d2129" stroke="#2a2f3a"/>
+        <text x="80"  y="38" text-anchor="middle" fill="#e6e9ef">🧑 사용자</text>
+        <text x="80"  y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">user</text>
+        <rect x="245" y="20" width="110" height="42" rx="9" fill="#1d2129" stroke="#5b9dff"/>
+        <text x="300" y="38" text-anchor="middle" fill="#bcd4ff">🖥️ Agent 패널</text>
+        <text x="300" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">client</text>
+        <rect x="492" y="20" width="136" height="42" rx="9" fill="#14171e" stroke="#7c5cff"/>
+        <text x="560" y="38" text-anchor="middle" fill="#cdb8ff">⬡ 프록시 · LangGraph</text>
+        <text x="560" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">/agent/stream · gate·answer</text>
+        <rect x="768" y="20" width="104" height="42" rx="9" fill="#11141a" stroke="#3fcf8e"/>
+        <text x="820" y="38" text-anchor="middle" fill="#8df0bf">☁️ OpenAI</text>
+        <text x="820" y="53" text-anchor="middle" fill="#6b7689" font-size="9.5">ChatOpenAI</text>
+      </g>
+
+      <!-- legend -->
+      <g font-size="10" transform="translate(80,398)">
+        <line x1="0" y1="0" x2="22" y2="0" stroke="#5b9dff" stroke-width="2" marker-end="url(#aB)"/>
+        <text x="28" y="3.5" fill="#9aa3b2">요청 / 호출</text>
+        <line x1="150" y1="0" x2="172" y2="0" stroke="#3fcf8e" stroke-width="1.8" stroke-dasharray="2 3" marker-end="url(#aG)"/>
+        <text x="178" y="3.5" fill="#9aa3b2">토큰 스트림 (stream)</text>
+        <rect x="340" y="-6" width="13" height="13" rx="3" fill="#11211a" stroke="#3fcf8e" stroke-dasharray="5 4"/>
+        <text x="359" y="3.5" fill="#9aa3b2">부수효과 없음</text>
+      </g>
+    </svg>
+    <div class="figcap">그림 6 — <b>ANSWER 경로</b>: <code>gate</code>가 <code>route="answer"</code>로 분기하면 툴·계획·드래프트 없이 <code>answer</code> 노드가 OpenAI 토큰을 <b>실시간 스트리밍</b>하고 <code>END</code>. 상태 변경이 전혀 없어 undo 스택에 영향을 주지 않는다.</div>
+  </div>
+  <h4>ACT 경로 (행동 필요 → plan-execute, interrupt 왕복)</h4>
+  <p>그림 3(§6.3) 참조 — gate→plan→(interrupt 데이터조회)→execute→replan→respond, 모든 실행은 interrupt로 클라이언트 위임.</p>
+
+  <!-- 11 -->
+  <h2 id="integ"><span class="n">11.</span>기존 코드 통합</h2>
+  <table>
+    <tr><th width="260">파일</th><th>변경 / 신규</th></tr>
+    <tr><td><code>proxy/python/requirements.txt</code></td><td><b>의존성 추가</b>: <code>langgraph</code>, <code>langchain-openai</code>, <code>langchain-core</code> · <span class="tag ctrl">향후</span> <code>langchain-mcp-adapters</code></td></tr>
+    <tr><td><code>proxy/python/agent/graph.py</code></td><td><b>신규</b> — StateGraph 정의(노드·엣지·compile·checkpointer)</td></tr>
+    <tr><td><code>proxy/python/agent/nodes.py</code></td><td><b>신규</b> — gate·plan·execute(location 라우팅)·replan·answer·respond 노드</td></tr>
+    <tr><td><code>proxy/python/agent/tools_client.py</code></td><td><b>신규</b> — <code>location="client"</code> ERD 툴 스키마(스텁) — <code>interrupt</code> 위임용</td></tr>
+    <tr><td><code>proxy/python/agent/tools_proxy.py</code></td><td><b>신규</b> — <code>location="proxy"</code> DB 연계 툴(<code>run_sql</code>·<code>fetch_db_schema</code>) 실제 구현 + <span class="tag ctrl">향후</span> MCP 툴 로딩</td></tr>
+    <tr><td><code>proxy/python/routers/agent.py</code></td><td><b>신규</b> — <code>/stream</code>·<code>/resume</code>·<code>/key</code> (astream SSE 중계)</td></tr>
+    <tr><td><code>proxy/python/main.py</code></td><td>라우터 등록 1줄</td></tr>
+    <tr><td><code>js/agent/runtime.js</code></td><td><b>신규</b> — SSE 수신, interrupt 처리(툴 병렬 실행), resume 회신, 드래프트·커밋</td></tr>
+    <tr><td><code>js/agent/tools/*.js</code></td><td><b>신규</b> — 툴 실제 구현(기존 함수 헤드리스 래핑)</td></tr>
+    <tr><td><code>js/agent/panel.js</code></td><td><b>신규</b> — 입력 UI·토큰 렌더·계획 미리보기·승인</td></tr>
+    <tr><td><code>js/import.js</code> <code>runAISchemaGen</code></td><td>리팩터: 직접 fetch → <code>create_entity</code> 툴 + 그래프 경유로 흡수</td></tr>
+    <tr><td><code>js/state.js</code> <code>saveState</code></td><td>재사용 — <code>respond</code>(그래프 종료) 신호 시 1회 커밋(원자적 undo)</td></tr>
+    <tr><td><code>index.html</code></td><td>신규 스크립트 로드 + Agent 패널 + 단축키</td></tr>
+  </table>
+  <div class="box warn">
+    <div class="t">⚠️ 하네스 준수 (CLAUDE.md)</div>
+    실제 구현은 <code>feature-dev</code> 스킬로 진행. 신규 단축키는 <code>shortcuts.js</code> 동기화, OpenAI 키는 백업 그룹(<code>aiKey</code>) 통합 검증 대상.
+    의존성·라우터 추가에 따라 <code>README.md</code> §25·§27 및 <code>proxy/python/README.md</code>(엔드포인트·파일구조·의존성) 갱신 필요.
+  </div>
+
+  <!-- 12 -->
+  <h2 id="err"><span class="n">12.</span>오류 · 검증 · 롤백</h2>
+  <table>
+    <tr><th width="170">계층</th><th>방어</th></tr>
+    <tr><td>계획 수립</td><td><code>with_structured_output(Plan)</code>로 스키마 강제. 카탈로그 외 툴은 LLM 바인딩에서 애초에 선택 불가</td></tr>
+    <tr><td>인자 검증</td><td>클라이언트 <code>runtime.js</code>가 실행 직전 JSON Schema 재검증. 실패 시 resume에 error 결과 → <code>replan</code>이 보정</td></tr>
+    <tr><td>실행 격리</td><td>모든 write는 클라이언트 <b>드래프트</b>에만. 그래프가 <code>respond</code>에 도달해야 실제 상태 커밋</td></tr>
+    <tr><td>원자적 커밋</td><td><code>respond</code> 신호 1회 → <code>ENTITIES</code>/<code>RELATIONS</code> 교체 + <code>saveState()</code> → undo로 통째 되돌리기</td></tr>
+    <tr><td>적응형 재계획</td><td>툴 <b>오류(경성)</b>·결과 <b>이탈(연성)</b>을 <code>replan</code>이 감지 → <code>revise</code>(보정)·<code>alternative</code>(대체 수단)·<code>escalate</code>(사용자)·<code>abort</code>(안전 종료). 무의미한 진행 차단. 상세 §6.4</td></tr>
+    <tr><td>무한 루프 방지</td><td><code>replan_count</code> 상한 + <code>recursion_limit</code> → 동일 실패 반복 시 <code>escalate</code>로 사람에게 위임</td></tr>
+    <tr><td>위험 작업</td><td><code>delete_*</code>·DML/DDL <code>run_sql</code>은 별도 <b>승인 interrupt</b>로 사용자 확인 후 진행</td></tr>
+    <tr><td>중단 복구</td><td>SqliteSaver면 앱 재시작 후에도 <code>thread_id</code>로 중단 지점 재개 가능</td></tr>
+  </table>
+
+  <!-- 13 -->
+  <h2 id="sec"><span class="n">13.</span>보안</h2>
+  <ul>
+    <li><b>키 격리</b>: OpenAI 키는 프록시 키스토어(AES-256-GCM, <code>~/.uxermanager</code>)에만. <code>ChatOpenAI</code>가 서버에서 사용 — 브라우저 노출 없음.</li>
+    <li><b>CORS 화이트리스트</b>: 기존 <code>ALLOWED_ORIGINS</code> 유지.</li>
+    <li><b>SQL 가드</b>: <code>run_sql</code>은 기본 읽기 전용 화이트리스트, DML/DDL은 승인 interrupt + 감사 로그(<code>write_audit_log</code>).</li>
+    <li><b>프롬프트 인젝션 완화</b>: LLM은 상태를 직접 못 바꾼다 — 모든 변경은 카탈로그 툴 + 클라이언트 드래프트 + 승인 게이트를 거친다.</li>
+    <li><b>관측·감사</b>: 그래프 단계·툴콜·SQL은 <code>astream</code> 이벤트로 표시되고 감사 로그에 기록.</li>
+    <li><b>로컬 only</b>: 그래프·Checkpointer는 <code>127.0.0.1</code> 프록시 안에서만 동작.</li>
+  </ul>
+
+  <!-- 14 -->
+  <h2 id="roadmap"><span class="n">14.</span>구현 로드맵</h2>
+  <table>
+    <tr><th width="80">단계</th><th>산출물</th><th>검증</th></tr>
+    <tr><td><b>M1</b></td><td><code>langgraph</code>·<code>langchain-openai</code> 도입. <code>gate</code>+<code>answer</code> 노드 + <code>/agent/stream</code>. 키 보관</td><td>"정규화가 뭐야?" → 토큰 스트리밍</td></tr>
+    <tr><td><b>M2</b></td><td><code>plan</code>+<code>execute</code>(interrupt)+<code>replan</code>+<code>respond</code> + Checkpointer. 클라 <code>runtime.js</code> + 툴 3종</td><td>"테이블2+관계+정렬" interrupt 왕복 동작</td></tr>
+    <tr><td><b>M3</b></td><td>Agent 패널 UI·계획 미리보기·승인·단축키. 병렬 배치(<code>Send</code>/batch)</td><td>자연어 → 화면 반영 E2E</td></tr>
+    <tr><td><b>M4</b></td><td>읽기 툴 해소 루프(<code>describe_table</code> 등) + <b>프록시 DB 연계 툴</b>(<code>run_sql</code>·<code>fetch_db_schema</code>, <code>ToolNode</code>) + 위험작업 승인 interrupt</td><td>"운영 DB 스키마 가져와 ERD 생성" 클라·프록시 혼합 동작</td></tr>
+    <tr><td><b>M5</b></td><td>SqliteSaver 영속·중단복구, 감사·오류 강화, README/단축키/백업 동기화</td><td>하네스 검증 통과</td></tr>
+    <tr><td><b>M6</b> <span class="tag ctrl">향후</span></td><td><b>MCP 연계</b> — <code>langchain-mcp-adapters</code>로 MCP 서버 툴을 프록시 툴 카탈로그에 편입(사내 API·검색·표준용어 등)</td><td>MCP 툴이 계획에 자동 포함·실행</td></tr>
+  </table>
+
+  <hr>
+  <p class="sub">
+    본 문서는 LangChain/LangGraph 기반 설계안(v0.2)이다. 실제 구현은 <code>feature-dev</code> 스킬을 통해 진행하며,
+    단축키 동기화·백업 통합·README 3종 동기화 규칙(CLAUDE.md)을 준수한다.
+  </p>
+</main>
+</div>
+</body>
+</html>
