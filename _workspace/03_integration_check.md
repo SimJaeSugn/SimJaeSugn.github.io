@@ -1,98 +1,73 @@
-# 통합 검사 결과 — autoOptimizeRelationsV2() 우선순위 재설계
-
-검사 일시: 2026-05-29
-대상 파일: js/layout.js (전체 1084줄)
+# Integration Check — 포워드 엔지니어링 엔티티 우클릭 기능
+## 재검사일: 2026-05-29 (직접 코드 확인)
 
 ---
 
-## 검증 1: `_v2NudgeWithCrossingCheck` 구현 정확성
+## 검증 1: data-idx 정합성
 
-| 검사 포인트 | 결과 | 근거 (라인) |
-| --- | --- | --- |
-| 함수 삽입 여부 | PASS | layout.js 405번째 줄에 정의 |
-| bend null 시 `_v2CountCrossings` 0 반환 | PASS | `_v2CountCrossings`→`buildFullWpts`→`if (!bfw) return 0` 경로 (canvas.js 215). bend.wpts가 null이어도 buildFullWpts는 `rel.bend?.wpts \|\| []`로 빈 배열 처리(canvas.js 231) |
-| 복원 깊은 복사 `b.map(p => [p[0], p[1]])` | PASS | layout.js 418: `b.map(p => [p[0], p[1]])` — 2D 점 배열 깊은 복사 올바름 |
-| 반환값 `overlaps` 전달 | PASS | layout.js 421: `return overlaps;` — `_nudgeOverlapPass`의 반환값 그대로 반환 |
+- 상태: **OK**
+- 근거: `js/forward_engineer.js` line 289  
+  `const i = ENTITIES.indexOf(ent);`  
+  `entsToRender`가 `ENTITIES.filter(ent => ent.id === restrictEntityId)`로 걸러진 부분 배열이더라도, `data-idx` 값은 항상 원본 ENTITIES 배열 기준 인덱스를 사용함.  
+  → `_feRun` / `_fePreview`의 `selectedIdxs.includes(i)` 필터가 정확한 엔티티를 선택함.
 
-### 검증 1 결과: PASS
+## 검증 2: showCtxMenu 전체 id 토글 배열에 ctx-fe-ent 포함
 
----
+- 상태: **OK**
+- 근거: `js/ui.js` line 1104  
+  `['ctx-add-ent','ctx-edit-ent','ctx-dup-ent','ctx-copy-diag','ctx-color-ent','ctx-sel-related','ctx-fe-ent', ...]`  
+  → 배열 첫 줄에 `ctx-fe-ent` 포함. 다른 컨텍스트(캔버스, 관계, 섹션 등)에서는 CTX_VISIBILITY에 없으므로 `visible[id]`가 undefined → `display:none` 처리됨. 잔상 없음.
 
-## 검증 2: V2 nudge 호출 2곳 교체 확인
+## 검증 3: CTX_VISIBILITY entity 모드에 ctx-fe-ent: 1 등록
 
-| 호출 위치 | 예상값 | 실제값 | 결과 |
-| --- | --- | --- | --- |
-| `runRound` 내 (layout.js 473) | `_v2NudgeWithCrossingCheck(14, 2)` | `_v2NudgeWithCrossingCheck(14, 2)` | PASS |
-| `nudgeIterate` 내 (layout.js 498) | `_v2NudgeWithCrossingCheck(14, 2)` | `_v2NudgeWithCrossingCheck(14, 2)` | PASS |
-| V1 호출 (layout.js 305) | `_nudgeOverlapPass(NUDGE, TOL)` — 변경 없음 | `_nudgeOverlapPass(NUDGE, TOL)` | PASS |
+- 상태: **OK**
+- 근거: `js/ui.js` line 1092  
+  `entity: { 'ctx-edit-ent':1, ..., 'ctx-sel-related':1, 'ctx-fe-ent':1, 'ctx-sep-ent':1, ... }`  
+  → entity 모드에서 정상 표시됨.
 
-### 검증 2 결과: PASS
+## 검증 4: ctxFn 래퍼 경유 동작
 
----
+- 상태: **OK**
+- 근거:
+  - `window.ctxFn` 래퍼 (`js/ui.js` line 1998–2002):  
+    `focusEnt`, `unfocusEnt` 두 액션만 가로챔. `forwardEng`는 가로채지 않음.
+  - → `window._ctxFnOrig(action)` 경로로 원본 `ctxFn`에 정상 도달.
+  - 원본 `ctxFn` line 1538:  
+    `if (action === 'forwardEng') { if (ctxTargetEntity) openForwardEngineerForEntity(ctxTargetEntity.id); return; }`  
+    → `ctxTargetEntity` 존재 여부 확인 후 호출. null 안전.
 
-## 검증 3: `_v2RouteWithFaceCycle` pct 확장 로직
+## 검증 5: openForwardEngineerForEntity 내 _feShowStep2(entityId) 호출
 
-| 검사 포인트 | 결과 | 근거 (라인) |
-| --- | --- | --- |
-| `bestCross > 0`일 때만 pct 확장 진입 | PASS | layout.js 732: `if (bestCross > 0) { ... }` |
-| `cross === 0` 즉시 탈출 (16조합 루프) | PASS | layout.js 727: `if (cross === 0) break;` — 16조합 `for...of` 루프 탈출 |
-| pct 확장 `break outer` 동작 | PASS | layout.js 744: `if (cross === 0) break outer;` — outer 레이블로 중첩 루프 완전 탈출 |
-| pct 확장에서 `fromFace/toFace`를 bestFrom/bestTo로 설정 | PASS | layout.js 736: `rel.bend.fromFace = bestFrom; rel.bend.toFace = bestTo;` |
-| 최종 복원 시 bestFrom/bestTo 적용 | PASS | layout.js 751: `rel.bend.fromFace = bestFrom; rel.bend.toFace = bestTo;` |
+- 상태: **OK**
+- 근거: `js/forward_engineer.js` line 68–116  
+  - line 68: `ENTITIES.find(e => e.id === entityId)` — 없는 엔티티 사전 가드  
+  - line 115: `await _feShowStep2(entityId)` — restrictEntityId를 올바르게 전달  
+  - `_feShowStep2` line 284–286: `restrictEntityId`가 있으면 `ENTITIES.filter(ent => ent.id === restrictEntityId)` 사용
 
-### 검증 3 결과: PASS
+## 단축키 동기화
 
----
+- 상태: N/A
+- 상세: 새 단축키 없음 — 컨텍스트 메뉴 항목만 추가
 
-## 검증 4: `_v2BuildGrid` anchor 격자선 확장
+## 백업 통합 (export/import/ui)
 
-| 검사 포인트 | 결과 | 근거 (라인) |
-| --- | --- | --- |
-| 0.25/0.5/0.75 pct × 4 face anchor 루프 존재 | PASS | layout.js 615-622: `for (const pct of [0.25, 0.5, 0.75])` + `['right','left','top','bottom'].forEach(face => ...)` |
-| 포트 anchor 수집 루프와 중복/충돌 없음 | PASS | 포트 루프(606-613)는 현재 rel.bend 기반. pct 루프(615-622)는 모든 엔티티×면×pct. 동일 좌표가 Set에 중복 삽입되어도 Set 특성상 중복 제거됨. 충돌 없음 |
-| `_V2_GRID_LIMIT=4000` 상한 적용 | PASS | layout.js 431: `const _V2_GRID_LIMIT = 4000;`. layout.js 653: `const maxDim = Math.ceil(Math.sqrt(_V2_GRID_LIMIT));` — thinArr로 X·Y 각 축 maxDim 이하로 제한 |
+- export.js: N/A
+- import.js: N/A
+- ui.js (_BK_GROUPS): N/A
+- 상세: 새 localStorage 키, 데이터 배열, UI 설정값 없음
 
-### 검증 4 결과: PASS
+## 상태 저장/로드
 
----
+- 상태: N/A
+- 상세: state.js에 새 변수 없음
 
-## 검증 5: 전체 V2 흐름 우선순위 1 보장
+## 렌더링 연동
 
-### 체인 확인
-
-```text
-autoOptimizeRelationsV2()
-  └─ _runOptimizeV2()
-       ├─ _v2BuildGrid()               ← 격자 구성
-       └─ runRound() [반복]
-            ├─ _v2RouteWithFaceCycle() ← 라우팅 (관통 hard-constraint: 16조합×pct 확장)
-            ├─ _v2SimplifyWpts()
-            └─ _v2NudgeWithCrossingCheck() ← nudge (관통 증가 시 롤백)
-
-  수렴 실패 시 → _v2FinishUp()
-       └─ nudgeIterate() [반복]
-            ├─ _v2NudgeWithCrossingCheck()  ← nudge 롤백
-            └─ _fixEntityCrossingsForRel()  ← 잔여 관통 보정
-```
-
-### 한 문장 요약
-
-라우팅(`_v2RouteWithFaceCycle`)이 관통 hard-constraint를 최소화한 최적 경로를 확정하고, nudge(`_v2NudgeWithCrossingCheck`)는 겹침 분리를 시도하되 관통이 증가하면 롤백하며, finishUp(`_v2FinishUp`)은 nudge 롤백 + 잔여 관통 보정 보조 패스를 추가 수행함으로써, 전체 체인에서 관통 제거가 겹침 제거보다 항상 상위 우선순위로 보장된다.
-
-### 검증 5 결과: PASS
+- 상태: N/A
+- 상세: 캔버스에 새 시각 요소 없음
 
 ---
-
-## 최종 상태
-
-| 검증 | 결과 |
-| --- | --- |
-| 검증 1: `_v2NudgeWithCrossingCheck` 구현 정확성 | PASS |
-| 검증 2: V2 nudge 호출 2곳 교체 | PASS |
-| 검증 3: `_v2RouteWithFaceCycle` pct 확장 로직 | PASS |
-| 검증 4: `_v2BuildGrid` anchor 격자선 확장 | PASS |
-| 검증 5: 전체 V2 흐름 우선순위 1 보장 | PASS |
 
 ## 최종 상태: PASS
 
-수정 사항 없음 — 5개 검증 항목 모두 코드가 설계 의도와 일치함.
+모든 5개 검증 항목 이상 없음. 수정 불필요.

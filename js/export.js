@@ -387,19 +387,115 @@ function openDDLModal() {
 function closeDDLModal() { document.getElementById('ddlOverlay').classList.remove('active'); }
 function copyDDL() { navigator.clipboard.writeText(document.getElementById('ddlContent').textContent); showToast('DDL이 클립보드에 복사되었습니다.'); }
 
-function generateDDL(dialect) {
+/**
+ * DDL 순수 생성 함수 (DOM 비의존)
+ * @param {string} dialect - 'mysql' | 'postgresql' | 'oracle' | 'mssql'
+ * @param {Array}  entities - 엔티티 배열 (기본: 전역 ENTITIES)
+ * @param {Object} opts - { includeFK: true, includeIndex: true, includeComment: true }
+ * @returns {{ sqls: string[], text: string }}
+ */
+// ── 크로스-DB 타입 정규화 ─────────────────────────────────────────
+function _normalizeColType(rawType, dialect) {
+  if (!rawType) return dialect === 'oracle' ? 'VARCHAR2(255)' : 'VARCHAR(255)';
+
+  // 타입 파라미터 분리: "character varying(100)" → base="character varying", param="(100)"
+  const m = rawType.trim().match(/^([a-zA-Z][a-zA-Z0-9 _]*)(\(.*\))?/);
+  if (!m) return rawType;
+  const base = m[1].trim().toLowerCase();
+  const param = m[2] || '';
+
+  // 정규화 테이블: [PostgreSQL 계열] → {mysql, postgresql, oracle, mssql}
+  const map = {
+    // 문자형
+    'character varying':   { mysql:`VARCHAR${param||'(255)'}`, postgresql:`CHARACTER VARYING${param||'(255)'}`, oracle:`VARCHAR2${param||'(255)'}`, mssql:`NVARCHAR${param||'(255)'}` },
+    'varchar':             { mysql:`VARCHAR${param||'(255)'}`, postgresql:`VARCHAR${param||'(255)'}`,           oracle:`VARCHAR2${param||'(255)'}`, mssql:`NVARCHAR${param||'(255)'}` },
+    'char':                { mysql:`CHAR${param||'(1)'}`,     postgresql:`CHAR${param||'(1)'}`,                oracle:`CHAR${param||'(1)'}`,        mssql:`NCHAR${param||'(1)'}` },
+    'character':           { mysql:`CHAR${param||'(1)'}`,     postgresql:`CHAR${param||'(1)'}`,                oracle:`CHAR${param||'(1)'}`,        mssql:`NCHAR${param||'(1)'}` },
+    'bpchar':              { mysql:'CHAR(1)',                  postgresql:'CHAR(1)',                            oracle:'CHAR(1)',                     mssql:'NCHAR(1)' },
+    'text':                { mysql:'TEXT',                     postgresql:'TEXT',                              oracle:'CLOB',                        mssql:'NVARCHAR(MAX)' },
+    'clob':                { mysql:'LONGTEXT',                 postgresql:'TEXT',                              oracle:'CLOB',                        mssql:'NVARCHAR(MAX)' },
+    'nvarchar':            { mysql:`VARCHAR${param||'(255)'}`, postgresql:`VARCHAR${param||'(255)'}`,          oracle:`NVARCHAR2${param||'(255)'}`,  mssql:`NVARCHAR${param||'(255)'}` },
+    'nvarchar2':           { mysql:`VARCHAR${param||'(255)'}`, postgresql:`VARCHAR${param||'(255)'}`,          oracle:`NVARCHAR2${param||'(255)'}`,  mssql:`NVARCHAR${param||'(255)'}` },
+    'varchar2':            { mysql:`VARCHAR${param||'(255)'}`, postgresql:`VARCHAR${param||'(255)'}`,          oracle:`VARCHAR2${param||'(255)'}`,   mssql:`NVARCHAR${param||'(255)'}` },
+    // 정수형
+    'integer':             { mysql:'INT',                      postgresql:'INTEGER',                           oracle:'NUMBER(10)',                  mssql:'INT' },
+    'int':                 { mysql:'INT',                      postgresql:'INTEGER',                           oracle:'NUMBER(10)',                  mssql:'INT' },
+    'int4':                { mysql:'INT',                      postgresql:'INTEGER',                           oracle:'NUMBER(10)',                  mssql:'INT' },
+    'bigint':              { mysql:'BIGINT',                   postgresql:'BIGINT',                            oracle:'NUMBER(19)',                  mssql:'BIGINT' },
+    'int8':                { mysql:'BIGINT',                   postgresql:'BIGINT',                            oracle:'NUMBER(19)',                  mssql:'BIGINT' },
+    'smallint':            { mysql:'SMALLINT',                 postgresql:'SMALLINT',                          oracle:'NUMBER(5)',                   mssql:'SMALLINT' },
+    'int2':                { mysql:'SMALLINT',                 postgresql:'SMALLINT',                          oracle:'NUMBER(5)',                   mssql:'SMALLINT' },
+    'tinyint':             { mysql:'TINYINT',                  postgresql:'SMALLINT',                          oracle:'NUMBER(3)',                   mssql:'TINYINT' },
+    'serial':              { mysql:'INT',                      postgresql:'SERIAL',                            oracle:'NUMBER(10)',                  mssql:'INT' },
+    'bigserial':           { mysql:'BIGINT',                   postgresql:'BIGSERIAL',                         oracle:'NUMBER(19)',                  mssql:'BIGINT' },
+    // 소수형
+    'numeric':             { mysql:`DECIMAL${param||'(18,4)'}`,postgresql:`NUMERIC${param||'(18,4)'}`,        oracle:`NUMBER${param||'(18,4)'}`,   mssql:`DECIMAL${param||'(18,4)'}` },
+    'decimal':             { mysql:`DECIMAL${param||'(18,4)'}`,postgresql:`NUMERIC${param||'(18,4)'}`,        oracle:`NUMBER${param||'(18,4)'}`,   mssql:`DECIMAL${param||'(18,4)'}` },
+    'number':              { mysql:`DECIMAL${param||'(18,4)'}`,postgresql:`NUMERIC${param||'(18,4)'}`,        oracle:`NUMBER${param||''}`,         mssql:`DECIMAL${param||'(18,4)'}` },
+    'real':                { mysql:'FLOAT',                    postgresql:'REAL',                              oracle:'BINARY_FLOAT',               mssql:'REAL' },
+    'float':               { mysql:`FLOAT${param}`,            postgresql:`FLOAT${param}`,                    oracle:'BINARY_FLOAT',               mssql:`FLOAT${param}` },
+    'float4':              { mysql:'FLOAT',                    postgresql:'REAL',                              oracle:'BINARY_FLOAT',               mssql:'REAL' },
+    'float8':              { mysql:'DOUBLE',                   postgresql:'DOUBLE PRECISION',                  oracle:'BINARY_DOUBLE',              mssql:'FLOAT' },
+    'double precision':    { mysql:'DOUBLE',                   postgresql:'DOUBLE PRECISION',                  oracle:'BINARY_DOUBLE',              mssql:'FLOAT' },
+    'double':              { mysql:'DOUBLE',                   postgresql:'DOUBLE PRECISION',                  oracle:'BINARY_DOUBLE',              mssql:'FLOAT' },
+    // 날짜/시간
+    'date':                { mysql:'DATE',                     postgresql:'DATE',                              oracle:'DATE',                       mssql:'DATE' },
+    'time':                { mysql:'TIME',                     postgresql:'TIME',                              oracle:'TIMESTAMP',                  mssql:'TIME' },
+    'timestamp':           { mysql:'DATETIME',                 postgresql:'TIMESTAMP',                         oracle:'TIMESTAMP',                  mssql:'DATETIME2' },
+    'timestamp without time zone': { mysql:'DATETIME',         postgresql:'TIMESTAMP',                         oracle:'TIMESTAMP',                  mssql:'DATETIME2' },
+    'timestamp with time zone':    { mysql:'DATETIME',         postgresql:'TIMESTAMPTZ',                       oracle:'TIMESTAMP WITH TIME ZONE',   mssql:'DATETIMEOFFSET' },
+    'timestamptz':         { mysql:'DATETIME',                 postgresql:'TIMESTAMPTZ',                       oracle:'TIMESTAMP WITH TIME ZONE',   mssql:'DATETIMEOFFSET' },
+    'datetime':            { mysql:'DATETIME',                 postgresql:'TIMESTAMP',                         oracle:'TIMESTAMP',                  mssql:'DATETIME2' },
+    'datetime2':           { mysql:'DATETIME',                 postgresql:'TIMESTAMP',                         oracle:'TIMESTAMP',                  mssql:'DATETIME2' },
+    // 불리언
+    'boolean':             { mysql:'TINYINT(1)',               postgresql:'BOOLEAN',                           oracle:'NUMBER(1)',                  mssql:'BIT' },
+    'bool':                { mysql:'TINYINT(1)',               postgresql:'BOOLEAN',                           oracle:'NUMBER(1)',                  mssql:'BIT' },
+    'bit':                 { mysql:`BIT${param}`,              postgresql:'BOOLEAN',                           oracle:'NUMBER(1)',                  mssql:`BIT${param}` },
+    // 바이너리/LOB
+    'bytea':               { mysql:'BLOB',                     postgresql:'BYTEA',                             oracle:'BLOB',                       mssql:'VARBINARY(MAX)' },
+    'blob':                { mysql:'BLOB',                     postgresql:'BYTEA',                             oracle:'BLOB',                       mssql:'VARBINARY(MAX)' },
+    'binary':              { mysql:`BINARY${param}`,           postgresql:'BYTEA',                             oracle:'RAW(2000)',                  mssql:`BINARY${param}` },
+    'varbinary':           { mysql:`VARBINARY${param||'(255)'}`,postgresql:'BYTEA',                           oracle:'RAW(2000)',                  mssql:`VARBINARY${param||'(255)'}` },
+    // JSON/기타
+    'json':                { mysql:'JSON',                     postgresql:'JSON',                              oracle:'CLOB',                       mssql:'NVARCHAR(MAX)' },
+    'jsonb':               { mysql:'JSON',                     postgresql:'JSONB',                             oracle:'CLOB',                       mssql:'NVARCHAR(MAX)' },
+    'xml':                 { mysql:'TEXT',                     postgresql:'XML',                               oracle:'XMLTYPE',                    mssql:'XML' },
+    'uuid':                { mysql:'VARCHAR(36)',               postgresql:'UUID',                              oracle:'VARCHAR2(36)',               mssql:'UNIQUEIDENTIFIER' },
+  };
+
+  const entry = map[base];
+  if (entry) return entry[dialect] || entry.mysql;
+
+  // 매핑 없으면 원본 그대로 (대문자화)
+  return (m[1].toUpperCase() + param);
+}
+
+// defaultValue 정규화: ::type 캐스트 제거 + 이미 따옴표로 감싸진 값 반환
+function _sanitizeDefault(dv) {
+  if (!dv) return dv;
+  // ::type 캐스트 제거 (모든 DB — PostgreSQL도 없어도 동작)
+  dv = dv.replace(/::[a-zA-Z0-9_[\] ]+/g, '').trim();
+  return dv;
+}
+
+function buildDDL(dialect, entities, opts) {
+  entities = entities || ENTITIES;
+  opts = Object.assign({ includeFK: true, includeIndex: true, includeComment: true }, opts);
+
   const esc = s => (s || '').replace(/'/g, "''");
   const isMssql = dialect === 'mssql';
   const lines = [];
+  const sqls = [];
 
-  ENTITIES.forEach(ent => {
+  entities.forEach(ent => {
     const tbl = ent.physicalName || ent.id;
     const lname = ent.logicalName || ent.id;
     const desc = ent.description || '';
     const tblComment = [lname, desc].filter(Boolean).join(' - ');
 
-    lines.push(`-- ${tblComment}`);
-    lines.push(`CREATE TABLE ${tbl} (`);
+    const createLines = [];
+    createLines.push(`-- ${tblComment}`);
+    createLines.push(`CREATE TABLE ${tbl} (`);
 
     const pkCols = ent.attrs.filter(a => a.kind === 'pk').map(a => a.physicalName || a.logicalName || 'col');
     const isCompositePK = pkCols.length > 1;
@@ -407,92 +503,137 @@ function generateDDL(dialect) {
     const colCommentLines = [];
     ent.attrs.forEach(a => {
       const col = a.physicalName || a.logicalName || 'col';
-      let type = a.type || 'VARCHAR';
-      if (a.autoIncrement && dialect === 'postgresql') {
-        type = type.match(/BIGINT/i) ? 'BIGSERIAL' : 'SERIAL';
+      // DB별 타입 정규화
+      let type = _normalizeColType(a.type, dialect);
+      // autoIncrement: SERIAL/BIGSERIAL은 이미 _normalizeColType에서 처리되므로 추가 체크
+      if (a.autoIncrement) {
+        if (dialect === 'postgresql') {
+          type = /BIGINT/i.test(a.type || '') || /bigserial/i.test(type) ? 'BIGSERIAL' : 'SERIAL';
+        } else if (dialect === 'oracle') {
+          // oracle은 GENERATED ALWAYS AS IDENTITY를 컬럼 정의 뒤에 추가
+          type = _normalizeColType(a.type, dialect);
+        }
       }
       let def = `  ${col} ${type}`;
       if (a.autoIncrement) {
-        if (dialect === 'mysql')      def += ' AUTO_INCREMENT';
-        else if (isMssql)             def += ' IDENTITY(1,1)';
+        if (dialect === 'mysql')       def += ' AUTO_INCREMENT';
+        else if (isMssql)              def += ' IDENTITY(1,1)';
         else if (dialect === 'oracle') def += ' GENERATED ALWAYS AS IDENTITY';
       }
       if (a.notNull || a.kind === 'pk') def += ' NOT NULL';
       if (a.unique) def += ' UNIQUE';
-      if (a.defaultValue) def += ` DEFAULT '${esc(a.defaultValue)}'`;
+      if (a.defaultValue && !a.autoIncrement) {
+        let dv = _sanitizeDefault(a.defaultValue);
+        // nextval(...) → 시퀀스 참조 기본값: PostgreSQL은 SERIAL이 처리, 다른 DB는 생략
+        if (/^nextval\s*\(/i.test(dv)) {
+          if (dialect === 'postgresql') {
+            // SERIAL로 타입을 교체해 시퀀스 자동 생성
+            def = def.replace(/^(\s*\S+\s+)\S+/, `$1SERIAL`);
+          }
+          // 다른 DB: nextval 기본값 생략 (시퀀스 없음)
+        } else if (/^'.*'$/.test(dv)) {
+          // 이미 따옴표로 감싸진 SQL 문자열 리터럴 → 그대로 사용
+          def += ` DEFAULT ${dv}`;
+        } else {
+          // SQL 표현식(함수호출, 키워드, 숫자)은 따옴표 없이, 평범한 값은 따옴표로
+          const isSqlExpr = /\(/.test(dv) || /^(true|false|null|current_|now|sysdate|getdate|sys)/i.test(dv) || /^\d/.test(dv);
+          def += isSqlExpr ? ` DEFAULT ${dv}` : ` DEFAULT '${esc(dv)}'`;
+        }
+      }
       if (a.kind === 'pk' && !isCompositePK) def += ' PRIMARY KEY';
 
-      const colComment = [a.logicalName, a.description].filter(Boolean).join(' - ');
-      if (dialect === 'mysql') {
-        if (colComment) def += ` COMMENT '${esc(colComment)}'`;
-      } else if (!isMssql) {
-        if (colComment) colCommentLines.push(`COMMENT ON COLUMN ${tbl}.${col} IS '${esc(colComment)}';`);
+      if (opts.includeComment) {
+        const colComment = [a.logicalName, a.description].filter(Boolean).join(' - ');
+        if (dialect === 'mysql') {
+          if (colComment) def += ` COMMENT '${esc(colComment)}'`;
+        } else if (!isMssql) {
+          if (colComment) colCommentLines.push(`COMMENT ON COLUMN ${tbl}.${col} IS '${esc(colComment)}';`);
+        }
       }
       colLines.push(def);
     });
     if (isCompositePK) colLines.push(`  PRIMARY KEY (${pkCols.join(', ')})`);
 
-    lines.push(colLines.join(',\n'));
+    createLines.push(colLines.join(',\n'));
 
     if (dialect === 'mysql') {
-      lines.push(`) ENGINE=InnoDB CHARACTER SET utf8mb4${tblComment ? ` COMMENT='${esc(tblComment)}'` : ''};`);
+      createLines.push(`) ENGINE=InnoDB CHARACTER SET utf8mb4${(opts.includeComment && tblComment) ? ` COMMENT='${esc(tblComment)}'` : ''};`);
     } else if (isMssql) {
-      lines.push(`);`);
-      lines.push(`GO`);
-      if (tblComment) {
-        lines.push(`EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${esc(tblComment)}', @level0type=N'Schema', @level0name=N'dbo', @level1type=N'Table', @level1name=N'${tbl}';`);
-        lines.push(`GO`);
+      createLines.push(`);`);
+      createLines.push(`GO`);
+      if (opts.includeComment && tblComment) {
+        createLines.push(`EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${esc(tblComment)}', @level0type=N'Schema', @level0name=N'dbo', @level1type=N'Table', @level1name=N'${tbl}';`);
+        createLines.push(`GO`);
       }
-      ent.attrs.forEach(a => {
-        const col = a.physicalName || a.logicalName || 'col';
-        const colComment = [a.logicalName, a.description].filter(Boolean).join(' - ');
-        if (colComment) {
-          lines.push(`EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${esc(colComment)}', @level0type=N'Schema', @level0name=N'dbo', @level1type=N'Table', @level1name=N'${tbl}', @level2type=N'Column', @level2name=N'${col}';`);
-          lines.push(`GO`);
-        }
-      });
+      if (opts.includeComment) {
+        ent.attrs.forEach(a => {
+          const col = a.physicalName || a.logicalName || 'col';
+          const colComment = [a.logicalName, a.description].filter(Boolean).join(' - ');
+          if (colComment) {
+            createLines.push(`EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${esc(colComment)}', @level0type=N'Schema', @level0name=N'dbo', @level1type=N'Table', @level1name=N'${tbl}', @level2type=N'Column', @level2name=N'${col}';`);
+            createLines.push(`GO`);
+          }
+        });
+      }
     } else {
-      lines.push(`);`);
-      if (tblComment) lines.push(`COMMENT ON TABLE ${tbl} IS '${esc(tblComment)}';`);
-      colCommentLines.forEach(l => lines.push(l));
+      createLines.push(`);`);
+      if (opts.includeComment && tblComment) createLines.push(`COMMENT ON TABLE ${tbl} IS '${esc(tblComment)}';`);
+      colCommentLines.forEach(l => createLines.push(l));
     }
-    lines.push('');
+    createLines.push('');
+
+    sqls.push(createLines.join('\n'));
+    createLines.forEach(l => lines.push(l));
   });
 
-  const fkLines = [];
-  ENTITIES.forEach(ent => {
-    const tbl = ent.physicalName || ent.id;
-    ent.attrs.filter(a => a.kind === 'fk' && a.ref?.entity).forEach(a => {
-      const col = a.physicalName || a.logicalName || 'col';
-      const refEnt = ENTITIES.find(e => e.id === a.ref.entity);
-      if (!refEnt) return;
-      const refTbl = refEnt.physicalName || refEnt.id;
-      const refCol = a.ref.attr || col;
-      fkLines.push(`ALTER TABLE ${tbl} ADD CONSTRAINT FK_${tbl}_${col} FOREIGN KEY (${col}) REFERENCES ${refTbl}(${refCol});`);
+  if (opts.includeFK) {
+    const fkLines = [];
+    entities.forEach(ent => {
+      const tbl = ent.physicalName || ent.id;
+      ent.attrs.filter(a => a.kind === 'fk' && a.ref?.entity).forEach(a => {
+        const col = a.physicalName || a.logicalName || 'col';
+        const refEnt = entities.find(e => e.id === a.ref.entity);
+        if (!refEnt) return;
+        const refTbl = refEnt.physicalName || refEnt.id;
+        const refCol = a.ref.attr || col;
+        const fkSql = `ALTER TABLE ${tbl} ADD CONSTRAINT FK_${tbl}_${col} FOREIGN KEY (${col}) REFERENCES ${refTbl}(${refCol});`;
+        fkLines.push(fkSql);
+        sqls.push(fkSql);
+      });
     });
-  });
-  if (fkLines.length) {
-    lines.push('-- FK');
-    fkLines.forEach(l => lines.push(l));
-    lines.push('');
+    if (fkLines.length) {
+      lines.push('-- FK');
+      fkLines.forEach(l => lines.push(l));
+      lines.push('');
+    }
   }
 
-  const idxLines = [];
-  ENTITIES.forEach(ent => {
-    const tbl = ent.physicalName || ent.id;
-    (ent.indexes || []).forEach(idx => {
-      if (!idx.columns || !idx.columns.length) return;
-      const unique = idx.unique ? 'UNIQUE ' : '';
-      const name = idx.name || `IDX_${tbl}_${idx.columns.join('_')}`;
-      idxLines.push(`CREATE ${unique}INDEX ${name} ON ${tbl} (${idx.columns.join(', ')});`);
+  if (opts.includeIndex) {
+    const idxLines = [];
+    entities.forEach(ent => {
+      const tbl = ent.physicalName || ent.id;
+      (ent.indexes || []).forEach(idx => {
+        if (!idx.columns || !idx.columns.length) return;
+        const unique = idx.unique ? 'UNIQUE ' : '';
+        const name = idx.name || `IDX_${tbl}_${idx.columns.join('_')}`;
+        const idxSql = `CREATE ${unique}INDEX ${name} ON ${tbl} (${idx.columns.join(', ')});`;
+        idxLines.push(idxSql);
+        sqls.push(idxSql);
+      });
     });
-  });
-  if (idxLines.length) {
-    lines.push('-- INDEX');
-    idxLines.forEach(l => lines.push(l));
+    if (idxLines.length) {
+      lines.push('-- INDEX');
+      idxLines.forEach(l => lines.push(l));
+    }
   }
 
-  document.getElementById('ddlContent').textContent = lines.join('\n');
+  return { sqls, text: lines.join('\n') };
+}
+window.buildDDL = buildDDL;
+
+function generateDDL(dialect) {
+  const { text } = buildDDL(dialect, ENTITIES, { includeFK: true, includeIndex: true, includeComment: true });
+  document.getElementById('ddlContent').textContent = text;
 }
 
 // ── Markdown 내보내기 ────────────────────────────────────────

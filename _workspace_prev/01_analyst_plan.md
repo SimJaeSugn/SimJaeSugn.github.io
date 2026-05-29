@@ -1,175 +1,127 @@
-# autoOptimizeRelationsV2() 관계선 엔티티 관통 — 근본 원인 분석 및 수정 계획
+# 01 Analyst Plan — 엔티티 우클릭 컨텍스트 메뉴에 "포워드 엔지니어링" 추가
 
-대상 파일:
-- `js/layout.js` (V2 영역 404~901라인)
-- `js/canvas.js` (`obstacleOnSeg` 145, `faceAnchor` 160, `buildFullWpts` 212, `_fixEntityCrossingsForRel` 471)
-
----
-
-## 0. 요약 (TL;DR)
-
-V2는 A* 격자 라우터로 직교 경로를 찾지만 **관통이 잔존**한다. 근본 원인은 4가지가 복합적으로 작동한다.
-
-1. **A* 실패 시 폴백(`_v2SpineRoute`)이 관통을 전혀 재검증하지 않고 경로를 그대로 확정**한다. (layout.js:727~731, 806~842) → 관통 경로가 그대로 살아남는 최대 원인.
-2. **수렴 루프가 관통 있는 관계선을 재라우팅할 때 포트 면(fromFace/toFace)을 절대 바꾸지 않는다.** usage cost만 올린다. (layout.js:442~447, 462~463) → 동일 면·동일 격자에서 A*가 매번 같은(혹은 동일하게 막힌) 경로를 재생산 → 탈출 불가.
-3. **Hanan 격자의 `blocked`는 노드(꼭짓점)만 막고, 간선(edge) 자체가 엔티티를 가로지르는 경우는 `blocked.has()`로 못 막는다.** 간선 검사는 `obstacleOnSeg`에만 의존하는데, **격자 thinning(`thinArr`)으로 엔티티 경계 좌표선이 누락되면** 한 격자 간선이 엔티티를 통째로 건너뛰어도 `obstacleOnSeg`가 잡되, A*가 실패하면 (원인 1로) 폴백이 관통을 확정한다.
-4. **`_v2FinishUp`의 `_fixEntityCrossingsForRel`는 우회 공간(canL/canR 또는 above/below 범위)이 없으면 아무 것도 못 한다.** (canvas.js:528~539) 빽빽한 배치에서 무한정 같은 시도를 6회 반복 후 포기 → 관통 잔존.
-
-핵심: **포트 면을 고정한 채 같은 격자에서만 재시도**하므로, 출발/도착 면 조합을 순환(4×4)하며 관통 0이 될 때까지 재라우팅하는 로직이 없다. 이것이 "관통이 0이 될 때까지 반복"이라는 기대 동작을 충족 못 하는 설계상 결함이다.
+## 요청 요약
+- 엔티티 우클릭 컨텍스트 메뉴에 "포워드 엔지니어링" 항목 추가.
+- 클릭 시 **해당 엔티티 1개만** 대상으로 포워드 엔지니어링 실행.
+- 기존 `openForwardEngineerModal()`의 1단계(옵션) → 엔티티 선택 흐름을 건너뛰고, **해당 엔티티만 선택된 상태로 2단계(충돌처리 + 미리보기)에 바로 진입**.
 
 ---
 
-## 1. A* 라우터의 obstacleOnSeg 호출이 실제로 관통을 막는가?
-
-### 코드 확인 (layout.js:702~724)
-이웃 탐색 루프:
-```
-for (const [dx, dy] of dirs) {
-  ...
-  if (blocked.has(nKey)) continue;                                  // 706: 노드만 검사
-  if (obstacleOnSeg(xs[cur.xi], ys[cur.yi], xs[nxi], ys[nyi], exIds)) continue;  // 709: 간선 검사
-  ...
-}
-```
-
-- **간선(edge) 통과는 709라인에서 `obstacleOnSeg`로 실제 검사된다.** 즉 "blocked는 노드만 보고 간선은 안 본다"는 우려는 절반만 맞다. 706은 노드, 709는 간선을 본다.
-- `obstacleOnSeg`(canvas.js:145~154)는 세그먼트 bbox와 엔티티 rect의 AABB 겹침(1px 마진)을 본다. **축정렬 격자 간선에 대해서는 관통을 올바르게 검출한다.**
-- `exIds`는 `_v2AStarRoute(rel, grid, usage, exIds)` 호출 시 `[rel.from, rel.to]`로 전달된다(layout.js:447). 함수 내부에서 그대로 `obstacleOnSeg(..., exIds)`에 넘긴다. → **출발/도착 엔티티 ID가 올바르게 들어간다. 자기 엔티티를 장애물로 오인하지 않는다.**
-
-### 결론
-**A* 자체의 간선 관통 검사는 정상 작동한다.** A*가 경로를 *찾으면* 그 경로는 관통이 없다(격자 간선 단위에서). 문제는 A*가 **실패할 때**와 **격자가 너무 성겨서 우회로가 격자상에 존재하지 않을 때**다 → 원인 2·3으로 연결.
-
-추가 미세 결함:
-- **startNode를 제외하면 `prevDir`를 갱신해 push하지만(722), turn penalty 계산 시 `cur.prevDir`만 본다.** 같은 노드를 다른 방향에서 재방문할 때 방향별 g가 분리되지 않아(gScore 키가 노드 단위) 최적 꺾임 경로를 놓칠 수 있으나, 관통 자체와는 무관(품질 문제).
-- **startDir 강제가 실제로 적용되지 않는다.** startNode.prevDir에 startDir을 넣지만, 첫 확장에서 출발 면과 반대 방향으로도 이동 가능 → 포트에서 엔티티 안쪽으로 파고드는 첫 세그먼트가 생길 수 있다. 다만 obstacleOnSeg가 exIds로 자기 엔티티를 제외하므로 자기 엔티티 관통은 검출 안 됨 → **포트에서 곧장 자기 몸체를 가로지르는 첫 간선이 허용**될 수 있다(시각적 관통처럼 보임). 보강 필요.
+## 탐색한 파일
+- `index.html` (274~304): 컨텍스트 메뉴(`#ctxMenu`) HTML 구조 — 항목 추가 위치.
+- `index.html` (119): 메뉴바의 기존 포워드엔지니어링 진입점 패턴.
+- `index.html` (964~984): 스크립트 로드 순서 확인(canvas.js → ui.js → db_connect.js → forward_engineer.js).
+- `js/canvas.js` (2406~2421): `contextmenu` 이벤트 핸들러, hitTest로 엔티티 판정 → `ctxTargetEntity` 세팅 후 `showCtxMenu(...,'entity')`.
+- `js/ui.js` (1084~1120): `ctxTargetEntity` 선언, `CTX_VISIBILITY` 가시성 맵, `showCtxMenu()`.
+- `js/ui.js` (1516~1558): `ctxFn()` 액션 디스패처.
+- `js/ui.js` (1986~2001): `showCtxMenu`/`ctxFn` **래퍼 패턴**(`_showCtxMenuOrig`, `_ctxFnOrig`) — 포커스 모드 항목이 여기서 가시성·액션을 확장.
+- `js/forward_engineer.js` (전체): 진입 흐름(`openForwardEngineerModal` → `_feRenderStep1Modal` → `_feNextStep` → `_feShowStep2` → `_feRun`), 모듈 스코프 상태.
+- `js/db_connect.js` (6, 8, 17, 27): `MW_URL`, `_mwPing`, `_mwGetConfig`, `_showMwNotRunning`.
+- `js/state.js` (204): `entDisplayName(e)`.
 
 ---
 
-## 2. _v2SpineRoute 폴백이 관통을 유발하는가?
-
-### 코드 확인 (layout.js:727~731, 806~842)
-```
-if (!found) {
-  _v2SpineRoute(rel);   // 729
-  return;               // 730  ← 관통 재검증 없이 즉시 반환
-}
-```
-`_v2SpineRoute`(806~842):
-- 같은 축(fromH===toH)이면 `_v2ClearSpineX/Y`로 스파인 1개를 장애물 회피 시도(최대 12회).
-- 혼합 축이면 corner L-shape 시도 후 막히면 스파인.
-- **그러나 `_v2ClearSpineX/Y`(845~875)는 단일 스파인 좌표 하나만 좌우/상하로 밀어보는 방식**이고, 12회 안에 깨끗한 위치를 못 찾으면 **마지막 후보 좌표를 그대로 반환**한다(루프 break 없이 종료). 반환 경로가 관통하는지 최종 확인하지 않는다.
-- `_v2SpineRoute`는 **반환 후 관통 카운트(`_v2CountCrossings`)를 호출하지 않는다.** 폴백 경로의 관통 여부는 다음 라운드 `runRound`의 검증 단계(layout.js:452)에서야 집계되지만, 그때도 **재라우팅은 같은 면으로 다시 A*만 호출**(원인 2)하므로 폴백이 다시 발생하면 동일 관통이 반복된다.
-
-### 결론
-**폴백은 관통을 유발/잔존시키는 직접 원인이다.** 폴백 직후 관통 재검증 + 포트 면 교체 재시도가 없어, 한 번 폴백에 빠진 관계선은 라운드를 반복해도 동일 경로로 고착된다.
+## 영향 분석
+- **단축키 변경**: 없음. (컨텍스트 메뉴 항목만 추가, shortcuts.js 무관)
+- **새 localStorage 키**: 없음.
+- **새 데이터 배열/상태 변수**: 없음. 기존 모듈 스코프 상태(`_feSelectedEntities`, `_feConflicts`, `_feExistingTables`, `_feDialect`, `_feDetectedDialect`)와 `ctxTargetEntity` 재사용.
+- **기타 파급 효과**:
+  - 백업(export/import) 무관 — 데이터 구조 변경 없음.
+  - `feature-dev` 통합 검사(단축키 동기화/백업)는 해당 없음.
+  - 미들웨어(`middleware/README.md`) 무관 — 미들웨어 코드 변경 없음.
 
 ---
 
-## 3. 수렴 루프에서 포트 면을 바꾸는가? → 안 바꾼다 (핵심 결함)
+## 현재 구조 핵심 정리
 
-### 코드 확인 (layout.js:439~466)
-```
-const toRoute = round === 1
-  ? RELATIONS.slice()
-  : RELATIONS.filter(rel => _v2CountCrossings(rel, [rel.from, rel.to]) > 0);  // 444
+### 1. 우클릭 컨텍스트 메뉴 (위치 확정)
+- **이벤트 핸들러**: `js/canvas.js:2407` `canvas.addEventListener('contextmenu', ...)`.
+  - `hitTest(w.x,w.y)` 성공 시 `ctxTargetEntity = hitEnt` 설정 후 `showCtxMenu(e.clientX, e.clientY, 'entity')` 호출 (line 2416).
+- **HTML 구조**: `index.html:275` `<div id="ctxMenu">` 내부에 `<div class="ctx-item" id="..." onclick="ctxFn('액션')">` 항목 나열.
+  - 엔티티 항목 예: `ctx-edit-ent`, `ctx-dup-ent`, `ctx-copy-diag`, `ctx-color-ent`, `ctx-sel-related`, `ctx-del-ent`.
+- **가시성 제어**: `js/ui.js:1090` `CTX_VISIBILITY` 맵. mode별로 표시할 항목 id를 1로 명시. `entity` 모드(line 1092)에 표시 항목 등록 필요.
+  - `showCtxMenu()`(line 1100)는 line 1104~1110의 **하드코딩된 전체 id 배열**을 순회하며 `visible[id]`에 따라 display를 토글. → 새 항목 id를 **이 배열에도 추가**해야 hide/show가 정상 동작(미추가 시 display 토글 대상에서 누락되어 잔상 가능).
+- **래퍼 패턴**: `js/ui.js:1987~2001`에서 `showCtxMenu`/`ctxFn`를 한 번 감싸 포커스 모드 항목(`ctx-focus-ent`/`ctx-unfocus-ent`)을 추가. 이 항목들은 `CTX_VISIBILITY`에 없고, 래퍼에서 직접 display 제어 + `ctxFn` 래퍼에서 액션 처리.
+  - → **신규 항목도 동일하게 두 방식 중 하나를 택일.** 본 계획은 일관성과 단순성을 위해 **CTX_VISIBILITY/ctxFn 기본 경로**(포커스 모드가 아닌 일반 항목 방식)를 사용.
 
-toRoute.forEach(rel => {
-  _v2AStarRoute(rel, grid, usage, [rel.from, rel.to]);   // 447  ← 동일 fromFace/toFace 사용
-  _v2SimplifyWpts(rel);
-});
-...
-_v2UpdateUsage(usage, RELATIONS, grid);   // 463  ← usage cost만 갱신
-```
-- 재라우팅은 `rel.bend.fromFace/toFace`를 그대로 둔 채 `_v2AStarRoute`만 다시 호출한다.
-- 라운드 간 유일한 변화는 **usage 비용**(같은 간선 재사용에 +40)뿐이다. usage는 *겹침* 완화용이지 관통 해소용이 아니다.
-- A*는 결정적이고 격자/면이 동일하므로, 관통이 발생한 경우 → **A*가 또 실패 → 또 폴백 → 동일 관통**. 또는 A*가 성공해도 동일 비용 지형에서 동일 경로를 반환.
+### 2. forward_engineer.js 진입 구조
+- `_feStep`(0=미개방,1=옵션,2=엔티티선택)으로 단계 관리.
+- `openForwardEngineerModal()` (line 21):
+  1. `_mwPing()` 가드 (line 22) → 미실행 시 `_showMwNotRunning()`.
+  2. `_mwGetConfig()` 가드 (line 27) → config 없으면 "DB 접속정보 없음" 모달.
+  3. dialect 자동 감지 (line 52~55).
+  4. 상태 초기화(`_feStep=1`, `_feSelectedEntities=[]`, `_feConflicts={}`, `_feExistingTables=[]`) (line 57~60).
+  5. `_feRenderStep1Modal()` (line 62) — 모달 DOM 생성(없을 때만) 후 `_feResetToStep1()`.
+- `_feShowStep2()` (line 202):
+  - `MW_URL/schema/tables` 조회 → `_feExistingTables` 채움.
+  - `#feEntityList`에 **ENTITIES 전체**를 체크박스 리스트로 렌더(`.feEntityChk`, `data-pname`, `data-idx`, 기본 `checked`).
+  - `_feUpdateConflictUI()` 호출, step1 숨김/step2 표시, `_feStep=2`.
+- `_fePreview()`(364)·`_feRun()`(407): `document.querySelectorAll('.feEntityChk:checked')`의 `data-idx`/`data-pname`로 대상 산출 → `buildDDL` + `_feGetPreDDL`.
 
-### 결론
-**포트 면 순환(4×4 조합) 재시도 로직이 전혀 없다.** 이것이 "관통 0까지 경로를 바꿔가며 반복"이라는 기대 동작을 구조적으로 불가능하게 만드는 가장 본질적인 결함이다.
+> **핵심 관찰**: 2단계 진입 후 로직(`_fePreview`/`_feRun`/`_feUpdateConflictUI`)은 전부 **DOM 체크박스(`.feEntityChk`)** 를 단일 진실 소스로 사용. 따라서 단일 엔티티 진입은 "step2 모달을 띄우되 `#feEntityList`를 해당 엔티티 1개만으로 렌더하면" 기존 로직을 그대로 재사용 가능. 별도 상태 분기 불필요.
 
----
-
-## 4. _v2FinishUp에서 _fixEntityCrossingsForRel가 효과 없는 케이스
-
-### 코드 확인 (layout.js:476~488, canvas.js:471~542)
-- `_fixEntityCrossingsForRel`는 최대 6회 시도(canvas.js:476).
-- 수직 세그먼트 우회(canvas.js:519~539): `canL = left >= lo`, `canR = right <= hi`. **출발/도착 X 범위(lo~hi) 안에 우회 X가 없으면 `canL`,`canR` 모두 false** → `_routeAroundBlockingObs`로 상/하 우회 시도.
-- `_routeAroundBlockingObs`(canvas.js:545~)는 **fromFace/toFace를 top/bottom으로 강제 변경**하지만, 변경 후 그 경로가 *다른* 엔티티를 새로 관통하는지는 검사하지 않는다.
-- 빽빽한 배치: above/below 모두 다른 엔티티가 있으면 어디로 우회하든 관통. 6회 시도 동안 같은 obs만 반복 처리하고 빠져나오지 못함 → **관통 잔존 확정**.
-- 또한 `_v2FinishUp`의 nudge 루프는 `_fixEntityCrossingsForRel` 후 다시 `_v2AStarRoute`(격자 기반)를 호출하지 않으므로, 격자 최적해로 복귀할 기회가 없다.
-
-### 결론
-밀집 배치에서 우회 공간 부재 시 잔존. 이는 **마지막 안전망이지 1차 해결책이 아니어야** 한다. 근본 해결은 1차 라우팅 단계(원인 2·3)에서 포트 면 순환으로 해소하는 것.
+### 3. 미들웨어 ping/config 가드
+- 단일 엔티티 진입도 결국 `MW_URL/schema/tables`(line 213) 호출과 `MW_URL/execute/stream` 실행을 수행하므로, **`_mwPing` + `_mwGetConfig` 가드가 동일하게 필요**.
+- 또한 dialect 자동 감지(`_feDetectedDialect`)가 config에서 나오므로 config 로드는 필수.
+- → 신규 진입 함수도 `openForwardEngineerModal()`과 **동일한 가드/감지/초기화 시퀀스**를 거친 뒤, step1을 건너뛰고 step2를 단일 엔티티로 렌더해야 한다.
 
 ---
 
-## 5. Hanan 격자 blocked 노드 판정 + exIds 전달
+## 구현 계획
 
-### 코드 확인 (layout.js:574~624)
-- `_v2BuildGrid`는 좌표 집합에 `e.x-GAP, e.x, e.x+W, e.x+W+GAP` / `e.y-GAP ... e.y+eh+GAP`를 넣는다(581~582). GAP 포함 정상.
-- blocked 판정(615): `px > e.x && px < e.x+W && py > e.y && py < e.y+eh` — **strict 부등호**. 경계선(e.x, e.x+W) 위 노드는 blocked 아님 → 엔티티 표면을 따라 도는 노드는 허용. 의도대로 정상.
-- **문제 1 — thinArr 누락(599~606):** 노드 수 상한(`_V2_GRID_LIMIT=4000`, maxDim≈63) 초과 시 `thinArr`로 좌표선을 솎아낸다. 이때 **엔티티 경계 좌표선(e.x, e.x+W 등)이 보존된다는 보장이 없다.** 경계선이 솎이면:
-  - blocked 판정이 엉성해져 엔티티 내부를 통과하는 노드 쌍이 생기고,
-  - 한 격자 간선이 엔티티를 통째로 가로질러도 `obstacleOnSeg`는 잡지만(709) → A* 실패 → 폴백 → 관통.
-  - 즉 큰 다이어그램에서 관통이 더 빈번해진다.
-- **문제 2 — exIds 전달:** 격자는 전 관계 공유(layout.js:429), blocked도 **모든 엔티티 기준 공유**(라우팅별 exIds 미반영). 따라서 **출발/도착 엔티티의 경계/포트 노드가 blocked로 막힐 수 있다.** 포트 anchor 좌표는 xs/ys에 추가되지만(586~593), 그 좌표가 다른 엔티티 내부면 blocked 처리됨. 출발/도착 자기 엔티티 표면 노드는 strict 부등호 덕에 대체로 안전하나, **포트가 인접 엔티티에 가까우면 startKey/goalKey가 blocked 노드로 snap될 수 있다.** 이 경우 A*는 시작부터 막혀 즉시 실패 → 폴백 → 관통.
-  - 간선 검사(709)는 exIds를 옳게 쓰지만, **노드 blocked(706)는 exIds를 못 쓴다.** start/goal 노드가 자기 엔티티가 아닌 인접 엔티티 때문에 막히는 엣지 케이스 존재.
+### 파일: `js/forward_engineer.js`
+**신규 함수 `openForwardEngineerForEntity(entityId)` 추가** (위치: `openForwardEngineerModal()` 정의 직후, 약 line 64 `}` 다음 / `closeForwardEngineerModal` 앞).
 
-### 결론
-- 경계 strict 판정 자체는 정상.
-- **thinArr가 엔티티 경계 좌표를 보존하지 않는 점**과 **start/goal 노드가 공유 blocked에 걸릴 수 있는 점**이 A* 실패율을 높여 폴백·관통을 유발한다.
+- 내용:
+  1. `entityId`로 `ENTITIES`에서 대상 엔티티 조회. 없으면 `showToast('엔티티를 찾을 수 없습니다.')` 후 return.
+  2. `await _mwPing()` 가드 → 실패 시 `_showMwNotRunning(); return;`.
+  3. `await _mwGetConfig()` 가드 → 실패 시 `openForwardEngineerModal()`과 동일한 "DB 접속정보 없음" 모달 표시 후 return.
+     - 코드 중복 회피를 위해 가드+config 모달 부분을 `_feEnsureMwReady()` 같은 내부 헬퍼로 추출하여 `openForwardEngineerModal()`과 공유하는 것을 권장(implementer가 중복 최소화). 단, 위험을 줄이려면 최소 변경으로 동일 블록 복제도 허용.
+  4. dialect 감지: `const dbType = config.dbType || 'mysql'; _feDetectedDialect = _feDialectMap[dbType] || 'mysql'; _feDialect = _feDetectedDialect;` (line 52~55와 동일).
+  5. 상태 초기화: `_feSelectedEntities = []; _feConflicts = {}; _feExistingTables = [];` (line 58~60와 동일). `_feStep`는 `_feShowStep2`에서 2로 설정되므로 임시로 1 불필요하나, 안전하게 `_feStep = 1;` 설정 후 진행.
+  6. `_feRenderStep1Modal()` 호출하여 모달 DOM 보장(`feOverlay` 생성/리셋). 단 step1 UI는 노출하지 않을 것이므로, 이어서 곧바로 step2를 단일 엔티티로 렌더.
+  7. `document.getElementById('feOverlay').classList.add('active');`.
+  8. **단일 엔티티 step2 렌더**: 새 옵션 인자를 받는 방식으로 `_feShowStep2(restrictEntityId)`를 확장하거나, 단일 엔티티용 렌더 분기를 둔다(아래 `_feShowStep2` 변경 참조).
+  9. dialect 셀렉트(`#feDialectSel`)는 step1에 있고 step2에서 숨겨지므로, 단일 엔티티 진입 시 `_feDialect`는 자동 감지값으로 고정됨(사용자가 dialect를 못 고름). → 허용. (요청이 "엔티티 선택 단계만 건너뛰고 2단계로 바로 진입"이므로 dialect는 감지값 사용이 자연스러움.)
+
+**기존 함수 `_feShowStep2()` 변경** (line 202): **선택적 인자 `restrictEntityId`** 추가.
+- 시그니처: `async function _feShowStep2(restrictEntityId = null)`.
+- line 233 `ENTITIES.map(...)` 렌더 대상을 분기:
+  - `restrictEntityId`가 있으면 해당 엔티티만 리스트에 렌더. 단, **`data-idx`는 반드시 `ENTITIES` 원본 인덱스(`ENTITIES.indexOf(ent)`)** 로 유지 — `_fePreview`/`_feRun`이 `data-idx`로 `ENTITIES.filter((ent,i)=>selectedIdxs.includes(i))`(line 378, 421) 처리하기 때문. 부분 배열의 0 인덱스를 쓰면 잘못된 엔티티가 선택됨. **버그 주의(확인 필요)**.
+  - 구현 예: `const renderList = restrictEntityId ? ENTITIES.filter(e => e.id === restrictEntityId) : ENTITIES;` 후 `renderList.map(ent => { const i = ENTITIES.indexOf(ent); ... data-idx="${i}" ... })`.
+- 단일 엔티티 모드에서는 `#feSelectAllBtn`(전체 선택 버튼)을 숨기는 것이 UX상 자연스러움: line 259 `feSelectAllBtn.style.display=''` 를 `restrictEntityId ? 'none' : ''` 로 조정(선택 사항, 권장).
+- 나머지(충돌 UI, step1 숨김/step2 표시, 버튼 상태, `_feStep=2`)는 기존 그대로.
+
+**`_feNextStep()` 영향 검토** (line 192): 단일 엔티티 진입은 step1을 거치지 않고 바로 step2 상태가 되며, `feNextBtn.onclick`은 `_feShowStep2` 내부에서 `_feNextStep`으로 설정됨(line 263). `_feStep===2`이므로 "실행" 버튼 클릭 시 `_feRun()` 정상 동작. → 변경 불필요.
+
+### 파일: `index.html`
+**컨텍스트 메뉴 항목 추가** (위치: `#ctxMenu` 내 엔티티 그룹, line 281 `ctx-sel-related` 다음 또는 line 278 `ctx-dup-ent` 부근 — 엔티티 액션 묶음 내).
+- 추가:
+  `<div class="ctx-item" id="ctx-fe-ent" onclick="ctxFn('forwardEng')"><span class="ctx-ico">📤</span>포워드 엔지니어링</div>`
+- (메뉴바 항목 line 119와 동일 아이콘 📤 사용으로 일관성 유지.)
+
+### 파일: `js/ui.js`
+**(a) CTX_VISIBILITY entity 모드에 신규 id 등록** (line 1092):
+- `entity: { ..., 'ctx-sel-related':1, 'ctx-fe-ent':1, 'ctx-sep-ent':1, ... }` — `ctx-fe-ent`:1 추가.
+
+**(b) showCtxMenu 토글 id 배열에 신규 id 추가** (line 1104~1110):
+- 하드코딩된 id 배열에 `'ctx-fe-ent'` 추가(엔티티 그룹 라인 근처). 누락 시 display 토글 대상에서 빠져 다른 모드에서 잔상으로 보일 수 있음. **반드시 추가.**
+
+**(c) ctxFn 디스패처에 액션 추가** (line 1516~1558, `ctxFn` 본문):
+- `if (action === 'forwardEng') { if (ctxTargetEntity) openForwardEngineerForEntity(ctxTargetEntity.id); return; }` 추가.
+- 주의: `ctxFn` 최상단(line 1517)에서 `hideCtxMenu()` 호출되므로 메뉴는 자동으로 닫힘. `forwardEng` 분기는 그 이후 어디서든 배치 가능(단 `ctxTargetEntity` 참조 시점이 hideCtxMenu 이후여도 변수는 유효).
+- **래퍼(`window.ctxFn`, line 1997) 경유 확인 필요**: `index.html`의 `onclick="ctxFn(...)"`은 전역 `ctxFn`(= 래퍼)을 호출. 래퍼는 `focusEnt`/`unfocusEnt`만 가로채고 나머지는 `_ctxFnOrig(action)`(원본)로 위임(line 2000). → `forwardEng`를 **원본 `ctxFn`(line 1516)에 추가하면 래퍼 통해 정상 도달**. 별도 래퍼 수정 불필요.
 
 ---
 
-# 수정 계획 (파일:라인 기준)
+## 구현 순서 권장
+1. `js/forward_engineer.js`: `_feShowStep2(restrictEntityId)` 인자화 + `openForwardEngineerForEntity(entityId)` 신설 (+ 선택적 `_feEnsureMwReady()` 추출).
+2. `index.html`: `#ctxMenu`에 `ctx-fe-ent` 항목 추가.
+3. `js/ui.js`: `CTX_VISIBILITY.entity`에 `ctx-fe-ent` 등록 + `showCtxMenu` 토글 배열에 추가 + `ctxFn`에 `forwardEng` 분기 추가.
 
-## 수정 A — 포트 면 순환(4×4) 재라우팅 (핵심)
-**위치:** `js/layout.js` `_runOptimizeV2`의 `runRound` (439~466), `_v2AStarRoute`(627~753) 호출부.
-
-1. `_v2AStarRoute`를 **성공/실패 + 관통수**를 반환하도록 변경:
-   - 반환값 `{ ok, crossings }`. A* 성공이어도 최종 wpts에 대해 `_v2CountCrossings(rel,[rel.from,rel.to])`로 관통 재집계.
-2. 새 함수 `_v2RouteWithFaceCycle(rel, grid, usage)` 추가:
-   - 후보 면 조합 생성: 1순위 = 현재 `_v2AssignPorts`가 정한 면, 그 다음 fromFace∈{right,left,bottom,top} × toFace∈{...} 전체(자기참조 제외).
-   - **상대 엔티티 방향과 모순되는 명백히 나쁜 조합은 후순위**(예: dx>0인데 fromFace=left)로 정렬해 탐색량 축소.
-   - 각 조합마다 `rel.bend.fromFace/toFace` 설정 → `rel.bend.wpts=null` → `_v2AStarRoute` → 관통 0이면 즉시 채택하고 break.
-   - 모든 조합이 관통>0이면 **관통 최소 조합**을 채택(잔존 최소화).
-3. `runRound`의 `toRoute.forEach`(446~449)에서 `_v2AStarRoute` 직접 호출을 `_v2RouteWithFaceCycle`로 교체.
-
-## 수정 B — 폴백 경로 관통 재검증 + 면 교체 (원인 2)
-**위치:** `js/layout.js:727~731`(`_v2AStarRoute`의 `!found` 분기), `_v2SpineRoute`(806~842).
-
-1. `_v2SpineRoute` 끝에서 `_v2CountCrossings`로 관통 검사. 0이 아니면 반환값에 관통수 포함(수정 A의 면 순환이 받아 다음 조합 시도).
-2. `_v2ClearSpineX/Y`(845~875): 12회 내 깨끗한 좌표를 못 찾으면 **마지막 후보가 아니라 "관통 최소" 후보를 추적해 반환**하도록 변경(현재는 무조건 마지막 x/y 반환).
-3. 폴백 자체가 면 순환 루프(수정 A) 안에서 호출되므로, 폴백 관통도 다음 면 조합으로 자연히 탈출.
-
-## 수정 C — 격자 thinArr가 엔티티 경계 좌표 보존 (원인 5-문제1)
-**위치:** `js/layout.js:598~606`(`thinArr`).
-
-1. 엔티티 경계 핵심 좌표(`e.x, e.x+W, e.y, e.y+eh` 및 GAP 변형, 포트 anchor)를 **"must-keep" 집합**으로 따로 모은다.
-2. `thinArr`를 must-keep을 항상 포함하도록 수정: 솎기는 must-keep이 아닌 보조 좌표에서만 수행. must-keep만으로 maxDim 초과 시 GAP 좌표부터 양보.
-3. 이로써 blocked 판정·간선 관통 검출이 큰 다이어그램에서도 정확 → A* 실패율 감소.
-
-## 수정 D — start/goal 노드 blocked 예외 + 출발 면 방향 강제 (원인 1 보강, 원인 5-문제2)
-**위치:** `js/layout.js:653~706`.
-
-1. `blocked` 검사를 라우팅별로 보정: start/goal 노드 키는 **무조건 통행 허용**(`if (blocked.has(nKey) && nKey!==startKey && nKey!==goalKey) continue;`). 706라인 수정.
-2. 출발/도착 면 방향 강제: 첫 확장에서 출발 노드는 `startDir`과 일치하는 이웃만, 도착 노드 진입은 `toFace` 반대 방향만 허용하도록 가드 추가 → 포트에서 자기 몸체로 파고드는 첫 세그먼트 제거.
-3. 자기 엔티티 표면 인접 노드가 인접 엔티티 blocked에 걸려도 start/goal 예외로 진입 가능.
-
-## 수정 E — 통합 수렴 루프를 "관통 0까지" 반복하도록 강화 (원인 2·4)
-**위치:** `js/layout.js:439~466`(`runRound`), `_v2FinishUp`(472~509).
-
-1. `runRound` 종료 조건(459)은 유지하되, 매 라운드 재라우팅을 **수정 A의 면 순환 버전**으로 수행하므로 라운드마다 실제로 경로 위상이 바뀐다.
-2. `_V2_MAX_ROUND`(409, 현재 8)는 유지하되, **라운드 간 관통이 줄지 않으면(stall) 면 순환 후보 우선순위를 셔플**하거나 `_fixEntityCrossingsForRel`를 조기 투입.
-3. `_v2FinishUp`(480~488)의 잔존 관통 보정 후, 보정된 관계선을 **다시 `_v2RouteWithFaceCycle`로 1회 재라우팅**해 격자 최적해 복귀 기회 부여.
-4. 최종 토스트(499~502)에서 잔존 관통수를 정확히 보고(현재 로직 유지).
-
-## 수정 우선순위
-1. **수정 A + B** (포트 면 순환 + 폴백 재검증) — 관통의 80% 이상 해소 예상. 단독으로도 기대 동작에 가장 근접.
-2. **수정 D** (start/goal blocked 예외 + 면 방향 강제) — A* 실패율·자기 관통 감소.
-3. **수정 C** (thinArr 보존) — 대형 다이어그램 정확도.
-4. **수정 E** (수렴 루프/마무리 강화) — 잔존 최소화·안정성.
-
-## 검증 방법
-- 빽빽한 배치 샘플(엔티티 8~15개, 좌우/상하 인접)에서 `autoOptimizeRelationsV2()` 실행 후 `RELATIONS.reduce((s,r)=>s+_v2CountCrossings(r,[r.from,r.to]),0) === 0` 확인.
-- 면 순환이 모든 조합 소진 시에도 무한 루프 없이 "관통 최소" 채택 후 종료하는지 확인(`_V2_MAX_ROUND` 상한 준수).
+## 검증 포인트 (integration-checker / reviewer 주의)
+- **data-idx 정합성**: 단일 엔티티 모드에서 `data-idx`가 `ENTITIES` 원본 인덱스여야 `_fePreview`/`_feRun`의 `includes(i)` 필터가 올바른 엔티티를 집음. (가장 큰 회귀 위험 지점)
+- **showCtxMenu 토글 배열 누락 금지**: 신규 id를 line 1104~1110 배열에 반드시 포함.
+- **가드 동작**: 미들웨어 미실행/Config 없음 시 단일 진입에서도 동일하게 차단되는지.
+- **dialect**: 단일 진입 시 자동 감지값 고정(사용자 변경 UI 없음) — 의도된 동작으로 간주.
+- 백업/단축키/미들웨어 README: 영향 없음(변경 불필요).

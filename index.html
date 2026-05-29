@@ -116,6 +116,7 @@
         <div class="mb-sep"></div>
         <div class="mb-grp">Remote</div>
         <div class="mb-item" onclick="mbClose();openReverseEngineerModal()"><span class="mb-ico">🔄</span><span class="mb-text">리버스엔지니어링</span></div>
+        <div class="mb-item" onclick="mbClose();openForwardEngineerModal()"><span class="mb-ico">📤</span><span class="mb-text">포워드엔지니어링</span></div>
       </div>
     </div>
 
@@ -278,6 +279,7 @@
   <div class="ctx-item" id="ctx-copy-diag" onclick="ctxFn('copyToDiag')"><span class="ctx-ico">⎘</span>다이어그램으로 복사</div>
   <div class="ctx-item" id="ctx-color-ent" onclick="ctxFn('colorEnt')"><span class="ctx-ico">🎨</span>헤더 색상 변경</div>
   <div class="ctx-item" id="ctx-sel-related" onclick="ctxFn('selRelated')"><span class="ctx-ico">⊡</span>관련 엔티티 선택</div>
+  <div class="ctx-item" id="ctx-fe-ent" onclick="ctxFn('forwardEng')"><span class="ctx-ico">📤</span>포워드 엔지니어링</div>
   <div class="ctx-sep" id="ctx-sep-ent"></div>
   <div class="ctx-item" id="ctx-add-note" onclick="ctxFn('addNote')"><span class="ctx-ico">📝</span>메모 추가</div>
   <div class="ctx-item danger" id="ctx-del-note" onclick="ctxFn('delNote')"><span class="ctx-ico">✕</span>메모 삭제</div>
@@ -980,6 +982,7 @@
 <script src="js/db_connect.js"></script>
 <script src="js/profile_manager.js"></script>
 <script src="js/reverse_engineer.js"></script>
+<script src="js/forward_engineer.js"></script>
 <script src="js/main.js"></script>
 
 <!-- ── Status Bar ───────────────────────────── -->
