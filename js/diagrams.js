@@ -24,6 +24,7 @@ function confirmNewDiag() {
   diagrams.push(d);
   activeDiagramId = d.id;
   loadDiagramIntoWorkspace(d);
+  pasteCount = 0;
   renderDiagramPanel();
   updateZoomLabel();
   render();
@@ -35,6 +36,7 @@ function switchDiagram(id) {
   flushCurrentState();
   activeDiagramId = id;
   loadDiagramIntoWorkspace(getActiveDiagram());
+  pasteCount = 0;
   renderDiagramPanel();
   updateZoomLabel();
   render();

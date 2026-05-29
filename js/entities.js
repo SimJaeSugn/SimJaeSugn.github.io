@@ -511,9 +511,18 @@ function pasteEntity() {
 }
 
 // ── 다이어그램 간 복사 ────────────────────────────────────────────
-let _copyDiagEntity = null;
+let _copyDiagEntities = [];
 function openCopyDiagModal(entity) {
-  _copyDiagEntity = entity;
+  if (selectedEntities.size > 0) {
+    _copyDiagEntities = [...selectedEntities].map(id => ENTITIES.find(e => e.id === id)).filter(Boolean);
+  } else if (entity) {
+    _copyDiagEntities = [entity];
+  } else if (selectedEntity) {
+    _copyDiagEntities = [selectedEntity];
+  } else {
+    _copyDiagEntities = [];
+  }
+  if (!_copyDiagEntities.length) { showToast('복사할 엔티티가 없습니다.'); return; }
   const others = diagrams.filter(d => d.id !== activeDiagramId);
   if (!others.length) { showToast('다른 다이어그램이 없습니다.'); return; }
   const list = document.getElementById('copyDiagList');
@@ -527,15 +536,17 @@ function openCopyDiagModal(entity) {
 function closeCopyDiagModal() { document.getElementById('copyDiagOverlay').classList.remove('active'); }
 function confirmCopyToDiag(diagId) {
   const target = diagrams.find(d => d.id === diagId);
-  if (!target || !_copyDiagEntity) return;
-  const copy = JSON.parse(JSON.stringify(_copyDiagEntity));
-  copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
-  copy.x += 30; copy.y += 30;
-  if (target.entities.find(e => e.id === copy.id)) copy.id += '_copy';
-  target.entities.push(copy);
+  if (!target || !_copyDiagEntities.length) return;
+  _copyDiagEntities.forEach((orig, i) => {
+    const copy = JSON.parse(JSON.stringify(orig));
+    copy.id = 'entity_' + Date.now().toString(36) + i.toString(36) + Math.random().toString(36).slice(2, 5);
+    copy.attrs = copy.attrs.map(a => ({ ...a, ref: null }));
+    copy.x += 30; copy.y += 30;
+    target.entities.push(copy);
+  });
   closeCopyDiagModal();
   saveState();
-  showToast(`'${entDisplayName(_copyDiagEntity)}' → '${target.name}' 복사 완료`);
+  showToast(`${_copyDiagEntities.length}개 엔티티 → '${target.name}' 복사 완료`);
 }
 
 // ── FK 컬럼 자동 생성 ────────────────────────────────────────────
