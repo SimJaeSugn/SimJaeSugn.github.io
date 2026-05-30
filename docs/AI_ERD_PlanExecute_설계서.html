@@ -1153,7 +1153,7 @@ llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_
     <tr><th width="64">단계</th><th>핵심 목표</th><th width="90">그룹</th><th width="120">선행</th></tr>
     <tr><td><b>M1</b></td><td>OpenAI 연동 + <b>ANSWER 경로</b> (직접 답변 스트리밍)</td><td>코어</td><td>—</td></tr>
     <tr><td><b>M2</b></td><td><b>plan-execute 루프</b> + <code>interrupt</code> 클라 위임 + 커밋</td><td>코어</td><td>M1</td></tr>
-    <tr><td><b>M3</b></td><td>Agent 패널 UX(미리보기·승인·진행) + <b>병렬</b></td><td>코어</td><td>M2</td></tr>
+    <tr><td><b>M3</b></td><td>Agent 패널 UX(미리보기·승인·진행) + <b>병렬</b> + <b>멀티턴 대화 메모리</b></td><td>코어</td><td>M2</td></tr>
     <tr><td><b>M4</b></td><td><b>프록시 DB 연계</b> + 데이터 해소 + 위험작업 승인 + 적응형 재계획</td><td>연계</td><td>M2 (M3 권장)</td></tr>
     <tr><td><b>M5</b></td><td>영속·중단복구·감사·오류 견고화 + 하네스 동기화</td><td>운영</td><td>M3·M4</td></tr>
     <tr><td><b>M6</b> <span class="tag ctrl">향후</span></td><td><b>MCP 연계</b> — 외부 시스템 툴 편입</td><td>확장</td><td>M4</td></tr>
@@ -1203,6 +1203,7 @@ llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_
       <li><b>진행 표시</b>: 노드·스텝별 상태 스트리밍(<code>astream</code> <code>updates</code>) → 패널에 단계별 진행 렌더</li>
       <li><b>병렬</b>: 의존성 없는 스텝을 한 <code>interrupt</code>에 batch로 → 클라 <code>Promise.allSettled</code> (또는 <code>Send</code> 팬아웃)</li>
       <li><b>단축키</b>: Agent 패널 토글 — <code>shortcuts.js</code> 동기화(하네스)</li>
+      <li><b>멀티턴 대화 메모리</b>: <code>thread_id</code> 재사용 + <code>add_messages</code> 누적, 노드가 최근 k턴(<code>HISTORY_WINDOW</code>)을 LLM에 전달 → "아까 만든 거 수정" 류 후속 명령 지원. <code>past_steps</code>는 턴마다 리셋, 오류·중단 시 thread 리셋. (영속은 M5 SqliteSaver)</li>
     </ul>
     <table>
       <tr><th width="110">산출물</th><td><code>js/agent/panel.js</code> 확장 · <code>shortcuts.js</code> · <code>css/panel.css</code></td></tr>
@@ -1299,6 +1300,8 @@ llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_
     <tr><td>VS-3.3</td><td>실행 진행 중 관찰</td><td>스텝별 상태(대기→실행→완료)가 패널에 실시간 갱신</td></tr>
     <tr><td>VS-3.4</td><td>"독립 테이블 3개 만들어줘"</td><td>한 배치로 <b>병렬</b> 실행(순차 대비 단축) · 3개 모두 반영</td></tr>
     <tr><td>VS-3.5</td><td>지정 단축키 입력</td><td>Agent 패널 토글 · 단축키 목록/커스터마이즈 화면에 노출</td></tr>
+    <tr><td>VS-3.6</td><td>"회원 테이블 만들어줘" → 이어서 "방금 만든 거에 이메일 컬럼 추가"</td><td>두 번째 명령이 직전 대화를 참조해 <b>회원 테이블</b>에 적용(멀티턴) · 같은 <code>thread_id</code> 유지</td></tr>
+    <tr><td>VS-3.7</td><td>오류/중단 후 새 질의</td><td>thread 리셋 → 새 대화로 시작(미해소 interrupt 잔존 없음)</td></tr>
   </table>
 
   <h4>M4 — DB 연계 · 데이터 해소 · 승인 · 적응형 재계획</h4>

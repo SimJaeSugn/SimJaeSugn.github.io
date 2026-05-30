@@ -71,7 +71,8 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /execute/stream | SQL SSE 스트림 |
 | GET | /schema/tables | 테이블·뷰 목록 |
 | GET | /schema | 전체 스키마 (테이블·뷰·FK) |
-| POST | /agent/stream | 자연어 질의 → 응답 SSE 스트림 (meta·token·done·error) — Python 프록시 전용 |
+| POST | /agent/stream | 자연어 질의 → 그래프 실행 SSE (meta·token·interrupt·done·error) — Python 프록시 전용 |
+| POST | /agent/resume | interrupt 결과 회신 → 그래프 재개 SSE (툴 실행 위임 루프) |
 | GET | /agent/key | OpenAI 키 설정 여부 |
 | POST | /agent/key | OpenAI 키 저장 (AES-256-GCM 암호화) |
 
@@ -95,9 +96,9 @@ proxy/python/
 │   ├── schema.py          ← /schema 라우터
 │   └── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
 ├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
-│   ├── graph.py           ← StateGraph 조립 (gate → answer)
-│   ├── nodes/             ← gate.py(의도 분기) · answer.py(직접 응답 스트리밍)
-│   └── common/            ← state · schemas · prompts · llm · keys(OpenAI 키)
+│   ├── graph.py           ← StateGraph 조립 (gate → answer | plan → execute → replan → respond)
+│   ├── nodes/             ← gate · answer · plan · execute(interrupt) · replan · respond
+│   └── common/            ← state · schemas(Plan/Step) · prompts · llm · keys(OpenAI 키)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅
 │   └── adapters/

@@ -1,23 +1,21 @@
-"""answer 노드 — 툴 없이 직접 응답 (토큰 스트리밍).
+"""answer 노드 — 툴 없이 직접 응답 (토큰 스트리밍). 멀티턴 히스토리 반영.
 
 LLM 호출이 노드 안에서 일어나므로, 라우터가 graph.astream(stream_mode="messages")
 로 구동하면 이 노드의 토큰이 실시간으로 흘러나간다.
 """
 from agent.common.llm import MODEL_MAIN, get_llm
 from agent.common.prompts import ANSWER_ACT_NOTE, ANSWER_SYSTEM, context_brief
-from agent.common.state import AgentState, last_user_text
+from agent.common.state import AgentState, recent_messages
 
 
 def answer_node(state: AgentState) -> dict:
-    user_msg = last_user_text(state)
     system = ANSWER_SYSTEM
     if state.get("route") == "act":
-        # M1: 행동 경로 미구현 — 안내를 덧붙인다 (M2에서 plan 노드로 대체)
+        # M1 잔재: 행동 경로가 answer 로 온 경우 안내(M2부터 act 는 plan 으로 감)
         system += ANSWER_ACT_NOTE
+    system += "\n\n[현재 ERD]\n" + context_brief(state.get("erd_context"))
     llm = get_llm(MODEL_MAIN)
-    msgs = [
-        ("system", system),
-        ("user", f"[현재 ERD]\n{context_brief(state.get('erd_context'))}\n\n[질문]\n{user_msg}"),
-    ]
-    resp = llm.invoke(msgs)  # stream_mode="messages" 로 토큰이 중계됨
+    # 시스템(현재 ERD) + 최근 대화 히스토리(마지막이 현재 질문)
+    msgs = [("system", system)] + recent_messages(state)
+    resp = llm.invoke(msgs)  # stream_mode="messages" 로 토큰 중계
     return {"messages": [resp], "response": resp.content}

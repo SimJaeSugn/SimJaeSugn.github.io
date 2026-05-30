@@ -62,7 +62,19 @@ document.addEventListener('keydown', e => {
 
   const ctrl = e.ctrlKey || e.metaKey;
   if (matchSC(e, 'search'))  { e.preventDefault(); openSearch(); return; }
-  if (matchSC(e, 'copy'))    { e.preventDefault(); copyEntity(); }
+  if (matchSC(e, 'copy'))    {
+    // 렌더된 텍스트(예: Agent 채팅 말풍선)가 선택돼 있으면
+    // 엔티티 복사 대신 선택 텍스트를 클립보드에 복사한다.
+    const _sel = (window.getSelection && window.getSelection().toString()) || '';
+    if (_sel.trim()) {
+      e.preventDefault();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(_sel).catch(() => { try { document.execCommand('copy'); } catch {} });
+      } else { try { document.execCommand('copy'); } catch {} }
+      return;
+    }
+    e.preventDefault(); copyEntity();
+  }
   if (matchSC(e, 'paste'))   {
     e.preventDefault();
     // 아무것도 선택되지 않은 상태: 클립보드 텍스트가 콤마 구분 항목이면
