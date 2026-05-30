@@ -96,8 +96,8 @@ proxy/python/
 │   ├── schema.py          ← /schema 라우터
 │   └── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
 ├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
-│   ├── graph.py           ← StateGraph 조립 (gate → answer | plan → execute → replan → respond)
-│   ├── nodes/             ← gate · answer · plan · execute(interrupt) · replan · respond
+│   ├── graph.py           ← StateGraph (gate → answer | plan → approve → execute → replan → respond)
+│   ├── nodes/             ← gate · answer · plan · approve(계획 승인) · execute(interrupt) · replan · respond
 │   └── common/            ← state · schemas(Plan/Step) · prompts · llm · keys(OpenAI 키)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅

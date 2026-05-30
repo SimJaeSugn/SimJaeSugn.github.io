@@ -94,7 +94,13 @@
       "Bash(dir \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\")",
       "PowerShell(git *)",
       "Bash(python -m py_compile agent/__init__.py agent/common/__init__.py agent/common/state.py agent/common/schemas.py agent/common/keys.py agent/common/llm.py agent/common/prompts.py agent/nodes/__init__.py agent/nodes/gate.py agent/nodes/answer.py agent/graph.py routers/agent.py main.py)",
-      "Bash(python -m py_compile agent/nodes/plan.py)"
+      "Bash(python -m py_compile agent/nodes/plan.py)",
+      "Bash(python -m py_compile agent/common/state.py agent/common/schemas.py agent/common/prompts.py agent/tools_proxy.py agent/nodes/exec_proxy.py agent/nodes/replan.py agent/nodes/plan.py agent/graph.py)",
+      "Bash(python -m py_compile agent/common/prompts.py agent/nodes/answer.py)",
+      "Bash(python -m py_compile agent/nodes/approve.py)",
+      "Bash(python -m py_compile agent/common/prompts.py)",
+      "Bash(python -m py_compile agent/common/prompts.py agent/nodes/respond.py agent/nodes/replan.py)",
+      "Bash(python -m py_compile agent/graph.py agent/common/prompts.py agent/common/state.py agent/nodes/replan.py agent/nodes/respond.py)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

@@ -32,8 +32,16 @@ class AgentState(TypedDict, total=False):
     route: Optional[Literal["act", "answer"]]
     # 실행 계획 — 남은 스텝 목록 [{id, tool, args}]
     plan: list
+    # 계획 승인 여부 (approve 노드 — 사용자 승인 후 execute)
+    approved: Optional[bool]
+    # 클라이언트가 제공한 사용 가능한 툴 카탈로그 [{name, desc, params, danger}] (thread 1회 조회·캐시)
+    tool_catalog: list
     # 실행 결과 [{step, result}] — 턴 단위(gate 가 None 으로 리셋, execute 가 누적)
     past_steps: Annotated[list, _add_or_reset]
+    # 적응형 재계획 횟수(무한 루프 방지) · replan 분기 결과 · 사유
+    replan_count: int
+    replan_route: Optional[str]
+    replan_reason: Optional[str]
     # 최종 응답 텍스트 (스트리밍과 별개로 보관)
     response: Optional[str]
 

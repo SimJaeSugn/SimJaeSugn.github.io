@@ -14,6 +14,7 @@ const SC_DEFAULTS = {
   dup:     { ctrl: true,  shift: false, alt: false, key: 'd',      label: '복제' },
   selAll:  { ctrl: true,  shift: false, alt: false, key: 'a',      label: '전체 선택' },
   del:     { ctrl: false, shift: false, alt: false, key: 'Delete', label: '삭제' },
+  toggleAgent: { ctrl: true, shift: true, alt: false, key: 'a',    label: 'Agent 패널 토글' },
 };
 
 let _scMap = {};

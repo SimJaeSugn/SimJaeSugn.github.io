@@ -93,6 +93,7 @@
   <a href="#resolve" class="sub">양방향 데이터 해소</a>
   <a href="#adapt" class="sub">적응형 재계획</a>
   <a href="#hitl" class="sub">휴먼 인 더 루프</a>
+  <a href="#toolfetch" class="sub">계획 전 툴 조회</a>
   <a href="#tools">7. 툴 카탈로그</a>
   <a href="#openai">8. LangChain · OpenAI 연동</a>
   <a href="#ckpt">9. Checkpointer · 세션</a>
@@ -335,7 +336,8 @@ graph = g.compile(checkpointer=MemorySaver())   <span class="cm"># thread_id 별
     <tr><th width="110">노드</th><th>역할 · LangChain 사용</th></tr>
     <tr><td><b>gate</b> <span class="tag ctrl">분기</span></td><td>경량 모델(<code>gpt-4o-mini</code>)에 카탈로그·ERD 요약만 주고 <code>with_structured_output(RouteDecision)</code>로 <code>act</code>/<code>answer</code> 판정. 모호하면 <code>answer</code>(보수적).</td></tr>
     <tr><td><b>answer</b> <span class="tag read">답변</span></td><td>툴 없이 <code>ChatOpenAI(...).astream()</code> — 토큰을 그대로 흘려보냄. ERD 요약을 프롬프트에 포함해 읽기성 질문("PK 없는 테이블 있어?")도 답변. 상태 변경 없음.</td></tr>
-    <tr><td><b>plan</b> <span class="tag ctrl">계획</span></td><td><code>with_structured_output(Plan)</code>로 스텝 목록 생성. 카탈로그 범위 밖이면 <code>clarify</code> 스텝. <code>state["plan"]</code>에 저장.</td></tr>
+    <tr><td><b>fetch_tools</b> <span class="tag ctrl">툴조회</span></td><td>계획 수립 전 <code>interrupt({type:"tools_request"})</code>로 <b>클라이언트에서 툴 카탈로그를 받아온다</b>(클라가 단일 소스). 멀티턴 thread에선 1회만 조회·캐시(<code>state["tool_catalog"]</code>). §6.6 참조.</td></tr>
+    <tr><td><b>plan</b> <span class="tag ctrl">계획</span></td><td><code>with_structured_output(Plan)</code>로 스텝 목록 생성. <b>프롬프트의 툴 목록은 <code>fetch_tools</code>가 받아온 카탈로그에서 주입</b>하며, 카탈로그 밖 툴은 걸러낸다. <code>state["plan"]</code>에 저장.</td></tr>
     <tr><td><b>execute</b> <span class="tag write">실행위임</span></td><td>다음 스텝(들)의 툴콜을 만들고 툴 <code>location</code>으로 분기 — <b>client</b>면 <code><b>interrupt({tool_calls})</b></code>로 클라 위임 후 <code>Command(resume=results)</code>로 재개, <b>proxy</b>(DB·MCP)면 <code>ToolNode</code>로 그래프 안 직접 실행. 결과를 <code>past_steps</code>·<code>messages</code>에 기록. §6·§7 참조.</td></tr>
     <tr><td><b>replan</b> <span class="tag ctrl">재계획</span></td><td>결과를 <b>목표 대비 평가</b>해 5갈래로 분기 — <code>continue</code>/<code>revise</code>/<code>alternative</code>(execute로) · <code>done</code>/<code>escalate</code>/<code>abort</code>(respond로). 툴 오류·기대 이탈 시 <b>대체 수단으로 계획 수정</b>. 상세 §6.4.</td></tr>
     <tr><td><b>respond</b> <span class="tag read">응답</span></td><td>수행 요약을 스트리밍 응답. 클라는 이 시점 신호로 드래프트를 <b>커밋</b>(<code>saveState()</code> 1회).</td></tr>
@@ -786,6 +788,27 @@ g.add_conditional_edges(<span class="st">"replan"</span>, should_continue, {
     기본 UX는 "계획 1회 승인", 위험 작업은 추가 승인이며, 거부 시 <code>replan</code>이 축소·대체안을 제시한다.
   </div>
 
+  <h3 id="toolfetch">6.6 계획 전 툴 카탈로그 조회 — 클라이언트가 단일 소스</h3>
+  <p>
+    플래너가 어떤 툴을 쓸 수 있는지는 <b>클라이언트가 결정</b>한다(실제 구현이 클라에 있으므로). 그래서 <code>gate</code>가 <code>act</code>로 분기하면,
+    <b>계획을 세우기 전에</b> <code>fetch_tools</code> 노드가 <code>interrupt({type:"tools_request"})</code>로 <b>클라이언트에 툴 카탈로그를 요청</b>하고,
+    돌아온 목록으로 <code>plan</code>이 계획을 수립한다. 같은 interrupt 메커니즘(§6.1)을 재사용한다.
+  </p>
+  <ul>
+    <li><b>단일 소스</b>: 툴 추가/삭제는 클라 <code>AGENT_TOOL_CATALOG</code> 한 곳만 바꾸면 됨 — 프록시 프롬프트·enum 수정 불필요. <code>Step.tool</code>도 동적 <code>str</code>로 두고, 카탈로그 밖 툴은 <code>plan</code>이 걸러낸다.</li>
+    <li><b>thread 캐시</b>: 멀티턴에선 <code>state["tool_catalog"]</code>에 보관해 <b>thread당 1회만</b> 조회(이후 턴은 재사용).</li>
+    <li><b>카탈로그 형태</b>: <code>[{name, desc, params, danger}]</code> — <code>danger</code>는 미리보기에서 <code>⚠</code> 표시·승인 강조에 활용.</li>
+    <li><b>폴백</b>: 조회 실패 시 프록시의 기본 툴 설명(<code>FALLBACK_TOOLS_TEXT</code>)으로 계획 가능.</li>
+  </ul>
+  <div class="fig">
+    <div class="ascii">gate(act) → fetch_tools ──⚡interrupt(tools_request)──▶ 클라
+                  ▲                                        │
+                  └────── resume([{name,desc,params,danger}]) ◀┘
+                          ▼
+                        plan (카탈로그로 계획) → approve → execute → …</div>
+    <div class="figcap">계획 전 클라이언트에서 툴 카탈로그를 받아 단일 소스로 사용. (thread당 1회 조회·캐시)</div>
+  </div>
+
   <!-- 7 -->
   <h2 id="tools"><span class="n">7.</span>툴 카탈로그 — 이중 런타임</h2>
   <p>
@@ -850,7 +873,14 @@ g.add_conditional_edges(<span class="st">"replan"</span>, should_continue, {
     <tr><td><code>auto_layout</code> / <code>optimize_relations</code> / <code>align_entities</code></td><td><span class="tag write">write</span></td><td><code>autoLayout</code>·<code>autoOptimizeRelationsV2</code>·<code>alignEntities</code></td></tr>
     <tr><td><code>describe_table</code> / <code>find_tables</code> / <code>list_relations</code></td><td><span class="tag read">read</span></td><td><code>state.js</code>·<code>onSearchInput</code> (해소 루프용)</td></tr>
     <tr><td><code>generate_ddl</code> / <code>normalize_diagnose</code> / <code>query_erd</code></td><td><span class="tag read">read</span></td><td><code>generateDDL</code>·<code>runNormalizeDiagnosis</code></td></tr>
+    <tr><td><code>describe_tool</code> <span class="pill">구현</span></td><td><span class="tag read">read</span></td><td>단일 소스 <code>AGENT_TOOL_DEFS</code> — 특정/전체 툴의 이름·종류·설명·파라미터·위험여부·상세 반환</td></tr>
   </table>
+  <div class="box acc">
+    <div class="t">단일 소스(SSOT) — 툴 정보 중복 방지</div>
+    클라이언트의 모든 툴 정보는 <code>js/agent_tools.js</code>의 <b><code>AGENT_TOOL_DEFS</code> 한 곳</b>에서만 정의한다
+    (<code>name·kind·desc·params·danger·detail·run</code>). 실행 맵(<code>AGENT_TOOLS</code>), 프록시로 보내는 카탈로그(<code>AGENT_TOOL_CATALOG</code>),
+    미리보기 라벨 폴백, <code>describe_tool</code> 응답이 모두 이 배열에서 <b>파생</b>되므로 — 툴 추가/변경 시 한 곳만 고치면 모든 참조처에 일관 반영된다(데이터 정합성).
+  </div>
 
   <h3>7.2 프록시 툴 — DB 연계 · MCP <span class="tag ext">external</span></h3>
   <p>프록시 툴은 본문에 실제 로직을 담아 <b>그래프 안에서 직접 실행</b>한다. <code>ToolNode</code> 또는 <code>execute</code> 노드가 종류로 구분해 호출한다.</p>
@@ -1149,20 +1179,36 @@ llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_
   </p>
 
   <h3>14.1 개요</h3>
+  <p class="sub">구현 현황 (2026-05-30 기준): <b>M1~M4 구현 완료</b> · 엔티티·관계·<b>컬럼 전체 CRUD</b> + 읽기 툴(find/describe/list) + <code>describe_tool</code> · <b>프록시 DB 연계</b>(run_sql·fetch_db_schema, exec_proxy) · <b>적응형 재계획</b>(replan 4분기) · 계획 전 툴 조회·역량 인지 답변·단일 소스 카탈로그·멀티턴 · 병렬(Send)·SqliteSaver(M5)·MCP(M6) 예정.</p>
   <table>
-    <tr><th width="64">단계</th><th>핵심 목표</th><th width="90">그룹</th><th width="120">선행</th></tr>
-    <tr><td><b>M1</b></td><td>OpenAI 연동 + <b>ANSWER 경로</b> (직접 답변 스트리밍)</td><td>코어</td><td>—</td></tr>
-    <tr><td><b>M2</b></td><td><b>plan-execute 루프</b> + <code>interrupt</code> 클라 위임 + 커밋</td><td>코어</td><td>M1</td></tr>
-    <tr><td><b>M3</b></td><td>Agent 패널 UX(미리보기·승인·진행) + <b>병렬</b> + <b>멀티턴 대화 메모리</b></td><td>코어</td><td>M2</td></tr>
-    <tr><td><b>M4</b></td><td><b>프록시 DB 연계</b> + 데이터 해소 + 위험작업 승인 + 적응형 재계획</td><td>연계</td><td>M2 (M3 권장)</td></tr>
-    <tr><td><b>M5</b></td><td>영속·중단복구·감사·오류 견고화 + 하네스 동기화</td><td>운영</td><td>M3·M4</td></tr>
-    <tr><td><b>M6</b> <span class="tag ctrl">향후</span></td><td><b>MCP 연계</b> — 외부 시스템 툴 편입</td><td>확장</td><td>M4</td></tr>
+    <tr><th width="64">단계</th><th width="92">상태</th><th>핵심 목표</th><th width="80">그룹</th><th width="110">선행</th></tr>
+    <tr><td><b>M1</b></td><td><span class="tag read">✅ 완료</span></td><td>OpenAI 연동 + <b>ANSWER 경로</b> (직접 답변 스트리밍)</td><td>코어</td><td>—</td></tr>
+    <tr><td><b>M2</b></td><td><span class="tag read">✅ 완료</span></td><td><b>plan-execute 루프</b> + <code>interrupt</code> 클라 위임 + 커밋 · <b>전체 CRUD 툴</b>(엔티티·관계·컬럼 생성/수정/삭제 + auto_layout + describe_tool)</td><td>코어</td><td>M1</td></tr>
+    <tr><td><b>M3</b></td><td><span class="tag read">✅ 완료</span><sup>*</sup></td><td>Agent 패널 UX(미리보기·승인·진행) + <b>멀티턴</b> + 단축키 + <b>계획 전 툴 조회</b>(fetch_tools) + 역량 인지 답변</td><td>코어</td><td>M2</td></tr>
+    <tr><td><b>M4</b></td><td><span class="tag read">✅ 완료</span><sup>†</sup></td><td><b>프록시 DB 연계</b>(run_sql·fetch_db_schema) + 데이터 해소(find/describe/list) + 위험작업 승인 + 적응형 재계획</td><td>연계</td><td>M2 (M3 권장)</td></tr>
+    <tr><td><b>M5</b></td><td><span class="pill">예정</span></td><td>영속·중단복구·감사·오류 견고화 + 하네스 동기화</td><td>운영</td><td>M3·M4</td></tr>
+    <tr><td><b>M6</b> <span class="tag ctrl">향후</span></td><td><span class="pill">예정</span></td><td><b>MCP 연계</b> — 외부 시스템 툴 편입</td><td>확장</td><td>M4</td></tr>
   </table>
+  <p class="sub"><sup>*</sup> M3 병렬 배치(<code>Send</code>)는 보류 — 아래 † 참조.<br>
+  <sup>†</sup> M4 DB 연계 툴(<code>run_sql</code>·<code>fetch_db_schema</code>)은 구현됐으나 <b>실행 검증에는 DB 연결이 필요</b>하다(이 환경에선 미검증). <b>병렬(Send)</b>은 여전히 이연 — exec_proxy가 프록시 스텝을 순차 실행하며, 독립 스텝 병렬화는 후속 최적화.</p>
+
+  <div class="box ok">
+    <div class="t">✅ 현재까지 구현된 항목 (M1~M4)</div>
+    <ul>
+      <li><b>경로</b>: ANSWER(직접 스트리밍) · ACT(gate→fetch_tools→plan→approve→<b>exec_proxy</b>→execute→replan→respond)</li>
+      <li><b>클라 툴(단일 소스 <code>AGENT_TOOL_DEFS</code>)</b>: create/update/delete_entity · create/delete_relation · add/update/remove_attribute · auto_layout · <b>읽기</b> find_tables·describe_table·list_relations·describe_tool</li>
+      <li><b>프록시 툴(서버, <code>exec_proxy</code>)</b>: <code>fetch_db_schema</code>·<code>run_sql</code> — DB 어댑터·schema 재사용</li>
+      <li><b>적응형 재계획</b>: <code>replan</code> 4분기(continue/done/escalate/abort) + LLM 재계획기(예: 스키마 받아 create_entity 생성, 실패 시 대체) · <code>MAX_REPLAN</code> 상한</li>
+      <li><b>HITL</b>: 계획 미리보기·승인 카드 + 진행 체크리스트 · 위험 작업(삭제·run_sql) <code>⚠</code> 표시·승인 게이트</li>
+      <li><b>툴 디스커버리·멀티턴·역량 인지 답변·드래프트 원자 커밋·키 암호화·단축키</b>(M1~M3)</li>
+    </ul>
+    <div style="margin-top:6px;color:var(--mut);font-size:12.5px">미구현(M5~): 병렬(Send) · SqliteSaver 영속·중단복구 · MCP. · M4 DB 툴은 <b>DB 연결 시 검증</b> 가능.</div>
+  </div>
 
   <h3>14.2 마일스톤 상세</h3>
 
   <div class="box acc">
-    <div class="t">M1 · 코어 — 직접 응답 스트리밍 <span class="pill">선행: 없음</span></div>
+    <div class="t">M1 · 코어 — 직접 응답 스트리밍 <span class="tag read">✅ 완료</span></div>
     <p><b>목표</b> — OpenAI 연동 토대를 깔고, 상태를 건드리지 않는 <b>ANSWER 경로</b>만으로 가장 빠르게 동작을 확인한다.</p>
     <b>주요 작업</b>
     <ul>
@@ -1179,14 +1225,14 @@ llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_
   </div>
 
   <div class="box acc">
-    <div class="t">M2 · 코어 — plan-execute 루프 + interrupt <span class="pill">선행: M1</span></div>
+    <div class="t">M2 · 코어 — plan-execute 루프 + interrupt <span class="tag read">✅ 완료</span> <span class="pill">선행: M1</span></div>
     <p><b>목표</b> — <b>ACT 경로</b>를 세운다: 계획 수립 → 클라이언트 툴 위임 실행 → 재계획 → 원자적 커밋.</p>
     <b>주요 작업</b>
     <ul>
       <li><b>노드</b>: <code>plan</code>(<code>with_structured_output(Plan)</code>) · <code>execute</code>(client 툴 → <code>interrupt</code>) · <code>replan</code>(<code>continue</code>/<code>done</code> 우선) · <code>respond</code></li>
       <li><b>영속</b>: <code>MemorySaver</code> Checkpointer + <code>thread_id</code> · <code>/agent/resume</code>(<code>Command(resume)</code>)</li>
       <li><b>클라 런타임</b>: <code>interrupt</code> 수신 → 툴 실행(<b>드래프트</b>) → <code>resume</code>; <code>respond</code> 신호 시 <b>커밋</b>(<code>saveState()</code> 1회)</li>
-      <li><b>툴 3종</b>: <code>create_entity</code>·<code>create_relation</code>·<code>auto_layout</code> (<code>entities.js</code>·<code>relations.js</code>·<code>layout.js</code> 헤드리스 래핑)</li>
+      <li><b>CRUD 툴</b>: <code>create_entity</code>·<code>create_relation</code>·<code>auto_layout</code> + <code>delete_entity</code>·<code>delete_relation</code>·<code>add_attribute</code>·<code>update_entity</code> (드래프트 기반, 기존 함수 규칙 재사용)</li>
     </ul>
     <table>
       <tr><th width="110">산출물</th><td><code>agent/nodes.py</code>(plan·execute·replan·respond) · <code>agent/tools_client.py</code> · <code>js/agent/tools/*.js</code> · <code>runtime.js</code> 확장</td></tr>
@@ -1195,7 +1241,7 @@ llm_fast = ChatOpenAI(model=<span class="st">"gpt-4o-mini"</span>, api_key=load_
   </div>
 
   <div class="box acc">
-    <div class="t">M3 · 코어 — Agent 패널 UX + 병렬 <span class="pill">선행: M2</span></div>
+    <div class="t">M3 · 코어 — Agent 패널 UX + 멀티턴 <span class="tag read">✅ 완료</span> <span class="pill">선행: M2</span></div>
     <p><b>목표</b> — 사용자 경험을 완성한다: 실행 전 <b>계획 미리보기·승인</b>, 진행 상황 표시, 독립 스텝 <b>병렬</b> 처리.</p>
     <b>주요 작업</b>
     <ul>

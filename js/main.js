@@ -53,6 +53,12 @@ document.addEventListener('keydown', e => {
     if (typeof openCmdPalette === 'function') openCmdPalette();
     return;
   }
+  // Agent 패널 토글 (기본 Ctrl+Shift+A) — 입력 필드 포커스 중에도 동작
+  if (typeof matchSC === 'function' && matchSC(e, 'toggleAgent')) {
+    e.preventDefault();
+    if (typeof toggleAgentPanel === 'function') toggleAgentPanel();
+    return;
+  }
   // 입력 필드 포커스 중에는 이하 단축키 무시
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;

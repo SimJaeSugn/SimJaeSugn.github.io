@@ -38,12 +38,66 @@
 }
 .agent-msg.user .agent-msg-ava { background: var(--ac-dim); }
 .agent-msg-bubble {
-  padding: 8px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.55;
+  padding: 8px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.45;
   color: var(--tx-main); word-break: break-word; white-space: pre-wrap;
   max-width: calc(100% - 38px);
 }
-.agent-msg.agent .agent-msg-bubble { background: var(--bg-surface); border-top-left-radius: 4px; }
+/* Agent 말풍선은 markdown(HTML)이라 pre-wrap 시 블록 사이 줄바꿈이 빈 줄로 보임 → normal */
+.agent-msg.agent .agent-msg-bubble { background: var(--bg-surface); border-top-left-radius: 4px; white-space: normal; }
 .agent-msg.user  .agent-msg-bubble { background: var(--ac); color: #fff; border-top-right-radius: 4px; }
+
+/* 말풍선 내 markdown 렌더 (Agent 응답) */
+.agent-msg-bubble > :first-child { margin-top: 0; }
+.agent-msg-bubble > :last-child { margin-bottom: 0; }
+.agent-msg-bubble p { margin: 3px 0; }
+.agent-msg-bubble h1, .agent-msg-bubble h2, .agent-msg-bubble h3,
+.agent-msg-bubble h4, .agent-msg-bubble h5, .agent-msg-bubble h6 {
+  font-size: 13px; font-weight: 700; margin: 7px 0 3px; line-height: 1.3; color: var(--ac);
+}
+.agent-msg-bubble ul, .agent-msg-bubble ol { margin: 3px 0; padding-left: 18px; }
+.agent-msg-bubble li { margin: 1px 0; }
+.agent-msg-bubble code {
+  font-family: 'Cascadia Code','Consolas','D2Coding',monospace; font-size: 11.5px;
+  background: var(--bg-surface2); padding: 1px 5px; border-radius: 4px; word-break: break-word;
+}
+.agent-msg-bubble pre {
+  background: var(--bg-surface2); border: 1px solid var(--bd2); border-radius: 7px;
+  padding: 8px 10px; margin: 6px 0; overflow-x: auto;
+}
+.agent-msg-bubble pre code { background: none; padding: 0; font-size: 11.5px; line-height: 1.5; }
+.agent-msg-bubble pre::-webkit-scrollbar { height: 6px; }
+.agent-msg-bubble pre::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+.agent-msg-bubble table { border-collapse: collapse; margin: 6px 0; font-size: 11.5px; }
+.agent-msg-bubble th, .agent-msg-bubble td { border: 1px solid var(--bd2); padding: 3px 7px; text-align: left; }
+.agent-msg-bubble th { background: var(--bg-surface2); }
+.agent-msg-bubble a { color: var(--ac); text-decoration: underline; }
+.agent-msg-bubble blockquote {
+  border-left: 3px solid var(--bd2); margin: 5px 0; padding: 2px 10px; color: var(--tx-sub);
+}
+.agent-msg-bubble hr { border: none; border-top: 1px solid var(--bd2); margin: 8px 0; }
+/* 사용자 말풍선(흰 글자)에서 코드 가독성 보정 */
+.agent-msg.user .agent-msg-bubble code,
+.agent-msg.user .agent-msg-bubble pre { background: rgba(0,0,0,0.18); color: #fff; }
+
+/* 계획 미리보기 / 진행 체크리스트 */
+.agent-plan { border: 1px solid var(--bd2); border-radius: 9px; padding: 8px 10px; margin-bottom: 6px; background: var(--bg-surface2); }
+.agent-plan-title { font-size: 11.5px; font-weight: 700; color: var(--ac); margin-bottom: 6px; cursor: pointer; }
+.agent-plan-title::after { content: ' ▾'; font-weight: normal; opacity: .55; }
+/* 최종 결과 후: 계획/체크리스트 접기(제목만, 클릭 시 펼침) */
+.agent-plan.collapsed { background: transparent; border-color: transparent; padding: 0; margin-bottom: 3px; }
+.agent-plan.collapsed .agent-plan-title { margin-bottom: 0; font-size: 11px; opacity: .7; }
+.agent-plan.collapsed .agent-plan-title::after { content: ' ▸'; }
+.agent-plan.collapsed .agent-step { display: none; }
+.agent-plan.collapsed .agent-plan-actions { display: none; }
+.agent-step { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; padding: 2px 0; color: var(--tx-main); }
+.agent-step-ico { flex-shrink: 0; width: 14px; text-align: center; }
+.agent-plan-actions { display: flex; gap: 6px; margin-top: 8px; }
+.agent-btn { flex: 1; border: none; border-radius: 7px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.12s, opacity 0.12s; }
+.agent-btn-ok { background: var(--ac); color: #fff; }
+.agent-btn-ok:hover { background: var(--ac-hover); }
+.agent-btn-cancel { background: var(--bg-surface); color: var(--tx-sub); border: 1px solid var(--bd2); }
+.agent-btn-cancel:hover { color: var(--tx-main); }
+.agent-reply:empty { display: none; }
 
 /* 입력 중 표시 */
 .agent-typing { display: inline-flex; gap: 3px; align-items: center; padding: 2px 0; }
