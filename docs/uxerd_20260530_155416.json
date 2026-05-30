@@ -1,0 +1,2594 @@
+{
+  "version": 2,
+  "diagrams": [
+    {
+      "id": "diag_mpr2qo9exjo",
+      "name": "기본 ERD",
+      "entities": [
+        {
+          "id": "vendor",
+          "logicalName": "밴더",
+          "physicalName": "TB_VNDR",
+          "description": "밴더 정보",
+          "x": 60,
+          "y": 80,
+          "attrs": [
+            {
+              "logicalName": "밴더ID",
+              "physicalName": "VNDR_ID",
+              "type": "VARCHAR(20)",
+              "kind": "pk",
+              "description": "밴더 고유 식별자",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더명",
+              "physicalName": "VNDR_NM",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "설명",
+              "physicalName": "EXPLN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "Y/N",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "user",
+          "logicalName": "사용자",
+          "physicalName": "TB_USER",
+          "description": "시스템 사용자 계정",
+          "x": 924.0255817761233,
+          "y": 24.125925144983512,
+          "attrs": [
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(20)",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자명",
+              "physicalName": "USER_NM",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "이메일주소",
+              "physicalName": "EML_ADDR",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "비밀번호",
+              "physicalName": "PSWD",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "해시 저장",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "역할코드",
+              "physicalName": "ROLE_CD",
+              "type": "CHAR(4)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "hyperparam",
+          "logicalName": "하이퍼파라미터",
+          "physicalName": "TB_HYPR_PRMTR",
+          "description": "LLM 파라미터 설정",
+          "x": 982.952423117272,
+          "y": 578.5491677210475,
+          "attrs": [
+            {
+              "logicalName": "파라미터순번",
+              "physicalName": "PRMTR_SN",
+              "type": "BIGINT",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "온도",
+              "physicalName": "TEMP",
+              "type": "FLOAT",
+              "kind": "normal",
+              "description": "0~2",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "Top-P",
+              "physicalName": "TOP_P",
+              "type": "FLOAT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "최대토큰",
+              "physicalName": "MAX_TKN",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "빈도패널티",
+              "physicalName": "FREQ_PENL",
+              "type": "FLOAT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "존재패널티",
+              "physicalName": "EXST_PENL",
+              "type": "FLOAT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "activemodel",
+          "logicalName": "사용자별활성모델",
+          "physicalName": "TB_ACTV_MDL",
+          "description": "사용자가 선택한 활성 모델",
+          "x": 505.82447097110537,
+          "y": 555.7595487672571,
+          "attrs": [
+            {
+              "logicalName": "활성모델순번",
+              "physicalName": "ACTV_MDL_SN",
+              "type": "BIGINT",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델순번",
+              "physicalName": "MDL_SN",
+              "type": "BIGINT",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "model",
+                "attr": "MDL_SN"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "agentconfig",
+          "logicalName": "에이전트설정",
+          "physicalName": "TB_AIAGT_CFG",
+          "description": "RAG 에이전트 검색 설정",
+          "x": 1426.3914368223257,
+          "y": 488.4195403937449,
+          "attrs": [
+            {
+              "logicalName": "에이전트설정순번",
+              "physicalName": "AIAGT_CFG_SN",
+              "type": "BIGINT",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "Top-K",
+              "physicalName": "TOP_K",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "검색 후보 수",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "Top-N",
+              "physicalName": "TOP_N",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "리랭킹 결과 수",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "청크크기",
+              "physicalName": "CHUNK_SZ",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "리랭킹여부",
+              "physicalName": "RERNK_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "벡터모드코드",
+              "physicalName": "VCTR_MODE_CD",
+              "type": "CHAR(4)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "prompt",
+          "logicalName": "프롬프트",
+          "physicalName": "TB_PRMPT",
+          "description": "사용자 정의 프롬프트",
+          "x": 1485.8388678827098,
+          "y": 97.26346595275453,
+          "attrs": [
+            {
+              "logicalName": "프롬프트순번",
+              "physicalName": "PRMPT_SN",
+              "type": "BIGINT",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트명",
+              "physicalName": "PRMPT_NM",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트내용",
+              "physicalName": "PRMPT_CN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트유형",
+              "physicalName": "PRMPT_TYPE_CD",
+              "type": "CHAR(4)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "apikey",
+          "logicalName": "API키정보",
+          "physicalName": "TB_API_KEY",
+          "description": "API 키 관리",
+          "x": 422.7107311114364,
+          "y": 99.18160782697686,
+          "attrs": [
+            {
+              "logicalName": "API키순번",
+              "physicalName": "APIKEY_SN",
+              "type": "BIGINT",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더ID",
+              "physicalName": "VNDR_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "vendor",
+                "attr": "VNDR_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "키명",
+              "physicalName": "KEY_NM",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "API키값",
+              "physicalName": "API_KEY_VAL",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "암호화 저장",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "model",
+          "logicalName": "모델",
+          "physicalName": "TB_MDL",
+          "description": "AI 모델 정보",
+          "x": 56.56585956590112,
+          "y": 380,
+          "attrs": [
+            {
+              "logicalName": "모델순번",
+              "physicalName": "MDL_SN",
+              "type": "BIGINT",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더ID",
+              "physicalName": "VNDR_ID",
+              "type": "VARCHAR(20)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "vendor",
+                "attr": "VNDR_ID"
+              },
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델명",
+              "physicalName": "MDL_NM",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델코드",
+              "physicalName": "MDL_CD",
+              "type": "VARCHAR",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델유형코드",
+              "physicalName": "MDL_TYPE_CD",
+              "type": "CHAR(4)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "설명",
+              "physicalName": "EXPLN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "DATETIME",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "member",
+          "logicalName": "회원",
+          "physicalName": "member",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "회원ID",
+              "physicalName": "MEMBER_ID",
+              "type": "INT",
+              "kind": "pk",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            },
+            {
+              "logicalName": "이름",
+              "physicalName": "NAME",
+              "type": "VARCHAR(255)",
+              "kind": "normal",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            },
+            {
+              "logicalName": "이메일",
+              "physicalName": "EMAIL",
+              "type": "VARCHAR(255)",
+              "kind": "normal",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            },
+            {
+              "logicalName": "전화번호",
+              "physicalName": "PHONE",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            }
+          ],
+          "indexes": [],
+          "isView": false,
+          "x": 72.43167273480037,
+          "y": 724.8633454696006
+        },
+        {
+          "id": "order",
+          "logicalName": "주문",
+          "physicalName": "order",
+          "description": "",
+          "attrs": [
+            {
+              "logicalName": "주문ID",
+              "physicalName": "ORDER_ID",
+              "type": "INT",
+              "kind": "pk",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            },
+            {
+              "logicalName": "회원ID",
+              "physicalName": "MEMBER_ID",
+              "type": "INT",
+              "kind": "fk",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            },
+            {
+              "logicalName": "주문일자",
+              "physicalName": "ORDER_DATE",
+              "type": "DATE",
+              "kind": "normal",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            },
+            {
+              "logicalName": "총액",
+              "physicalName": "TOTAL_AMOUNT",
+              "type": "DECIMAL(10,2)",
+              "kind": "normal",
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "",
+              "description": "",
+              "ref": null
+            }
+          ],
+          "indexes": [],
+          "isView": false,
+          "x": 539.8563182665039,
+          "y": 866.2736228279547
+        }
+      ],
+      "relations": [
+        {
+          "from": "vendor",
+          "to": "model",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "bottom",
+            "toFace": "top",
+            "fromPct": 0.5,
+            "toPct": 0.5,
+            "wpts": []
+          }
+        },
+        {
+          "from": "vendor",
+          "to": "apikey",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "right",
+            "toFace": "left",
+            "fromPct": 0.5,
+            "toPct": 0.5,
+            "wpts": [
+              [
+                430,
+                205.18160782697686
+              ]
+            ]
+          }
+        },
+        {
+          "from": "model",
+          "to": "activemodel",
+          "card": "1:1",
+          "bend": {
+            "fromFace": "right",
+            "toFace": "left",
+            "fromPct": 0.5,
+            "toPct": 0.5,
+            "wpts": [
+              [
+                430,
+                497
+              ]
+            ]
+          }
+        },
+        {
+          "from": "user",
+          "to": "activemodel",
+          "card": "1:1",
+          "bend": {
+            "fromFace": "left",
+            "toFace": "right",
+            "fromPct": 0.6666666666666666,
+            "toPct": 0.5,
+            "wpts": [
+              [
+                740,
+                165.45925847831683
+              ],
+              [
+                740,
+                628.7595487672571
+              ]
+            ]
+          }
+        },
+        {
+          "from": "user",
+          "to": "hyperparam",
+          "card": "1:1",
+          "bend": {
+            "fromFace": "bottom",
+            "toFace": "top",
+            "fromPct": 0.09628872610197096,
+            "toPct": 0.5,
+            "wpts": [
+              [
+                952.4307559762048,
+                472.87994947524453
+              ]
+            ]
+          }
+        },
+        {
+          "from": "user",
+          "to": "agentconfig",
+          "card": "1:1",
+          "bend": {
+            "fromFace": "bottom",
+            "toFace": "top",
+            "fromPct": 0.6666666666666666,
+            "toPct": 0.5,
+            "wpts": [
+              [
+                1170.69224844279,
+                236.1259251449835
+              ],
+              [
+                1120.69224844279,
+                408.15325853604315
+              ],
+              [
+                1573.8914368223257,
+                408.15325853604315
+              ]
+            ]
+          }
+        },
+        {
+          "from": "user",
+          "to": "apikey",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "left",
+            "toFace": "right",
+            "fromPct": 0.3333333333333333,
+            "toPct": 0.5,
+            "wpts": [
+              [
+                725,
+                205.18160782697686
+              ]
+            ]
+          }
+        },
+        {
+          "from": "user",
+          "to": "prompt",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "right",
+            "toFace": "left",
+            "fromPct": 0.5,
+            "toPct": 0.5,
+            "wpts": []
+          }
+        },
+        {
+          "from": "member",
+          "to": "order",
+          "card": "1:N"
+        }
+      ],
+      "vx": -82.31030507820253,
+      "vy": 5.484966179522871,
+      "scale": 0.6337825010001157,
+      "sections": [],
+      "notes": [],
+      "notesV2": [],
+      "collapsed": []
+    },
+    {
+      "id": "diag_mprnc99jzlu",
+      "name": "111",
+      "entities": [
+        {
+          "id": "agentconfig",
+          "logicalName": "에이전트설정",
+          "physicalName": "TB_AIAGT_CFG",
+          "description": "RAG 에이전트 검색 설정",
+          "x": 1264.0446753324436,
+          "y": 279.7821219072757,
+          "attrs": [
+            {
+              "logicalName": "에이전트설정순번",
+              "physicalName": "AIAGT_CFG_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "청크토큰수",
+              "physicalName": "CHUNK_TKN_CNT",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "검색 후보 수",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "500"
+            },
+            {
+              "logicalName": "청크오버랩",
+              "physicalName": "CHUNK_OVLP",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "리랭킹 결과 수",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "100"
+            },
+            {
+              "logicalName": "최소청크크기",
+              "physicalName": "MIN_CHUNK_SZ",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "이 값 미만의 청크는 인접 청크에 병합.",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "50"
+            },
+            {
+              "logicalName": "리랭킹여부",
+              "physicalName": "RERNK_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "리랭커 적용 여부",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'Y'"
+            },
+            {
+              "logicalName": "유사도임계값",
+              "physicalName": "SIML_THRS_VL",
+              "type": "NUMERIC",
+              "kind": "normal",
+              "description": "유사도 검색시 Threshold 값 (0.0~1.0)",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "0.5"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "orange",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "prompt",
+          "logicalName": "프롬프트",
+          "physicalName": "TB_PRMPT",
+          "description": "사용자 정의 프롬프트",
+          "x": 1268.0433304249702,
+          "y": 50.249168882276635,
+          "attrs": [
+            {
+              "logicalName": "사용자프롬프트일련번호",
+              "physicalName": "USER_PRMPT_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트일련번호",
+              "physicalName": "PRMPT_SN",
+              "type": "INTEGER",
+              "kind": "fk",
+              "description": "프롬프트중 사용자가 재정의한 프롬프트의 일련번호",
+              "ref": {
+                "entity": "prompt_copy",
+                "attr": "PRMPT_SN"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트내용",
+              "physicalName": "PRMPT_CN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "프롬프트내용",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "orange",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "user",
+          "logicalName": "사용자",
+          "physicalName": "TB_USER",
+          "description": "시스템 사용자 계정",
+          "x": 812.984288428853,
+          "y": 49.001102362332674,
+          "attrs": [
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자명",
+              "physicalName": "USER_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'USER'"
+            },
+            {
+              "logicalName": "비밀번호",
+              "physicalName": "PSWD",
+              "type": "VARCHAR(255)",
+              "kind": "normal",
+              "description": "해시 저장",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'Y'"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "green",
+          "indexes": [
+            {
+              "name": "TB_USER_INDEX",
+              "columns": [
+                "USER_ID"
+              ],
+              "unique": false
+            }
+          ],
+          "rowCount": 1,
+          "isView": false
+        },
+        {
+          "id": "apikey",
+          "logicalName": "API키정보",
+          "physicalName": "TB_API_KEY",
+          "description": "API 키 관리",
+          "x": 397.98497617112344,
+          "y": 47.50775442120917,
+          "attrs": [
+            {
+              "logicalName": "API키일련번호",
+              "physicalName": "APIKEY_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "API키일련번호",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더일련번호",
+              "physicalName": "VNDR_SN",
+              "type": "INTEGER",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "vendor",
+                "attr": "VNDR_SN"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "키유형코드",
+              "physicalName": "KEY_TYPE_CD",
+              "type": "VARCHAR(10)",
+              "kind": "normal",
+              "description": "KEY,ORG,ETC",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "API키값",
+              "physicalName": "API_KEY_VAL",
+              "type": "VARCHAR(255)",
+              "kind": "normal",
+              "description": "암호화 저장",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "활성여부",
+              "physicalName": "ACTVTN_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "Y,N ( USER_ID , VNDR_ID 별로 하나만 활성화 가능 )",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'N'"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "purple",
+          "indexes": [],
+          "rowCount": 2,
+          "isView": false
+        },
+        {
+          "id": "activemodel",
+          "logicalName": "사용자별활성모델",
+          "physicalName": "TB_ACTV_MDL",
+          "description": "사용자가 선택한 활성 모델",
+          "x": 395.62323335084034,
+          "y": 302.330059152012,
+          "attrs": [
+            {
+              "logicalName": "활성모델일련번호",
+              "physicalName": "ACTV_MDL_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델일련번호",
+              "physicalName": "MDL_SN",
+              "type": "INTEGER",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "model",
+                "attr": "MDL_SN"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "TB_USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "사용자 참조",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델유형코드",
+              "physicalName": "MDL_TYPE_CD",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "모델 유형코드 ( LLM / EMBEDDING )",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'LLM'"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "purple",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "hyperparam",
+          "logicalName": "하이퍼파라미터",
+          "physicalName": "TB_HYPR_PRMTR",
+          "description": "LLM 파라미터 설정",
+          "x": 394.61821898742204,
+          "y": 491.1523638828148,
+          "attrs": [
+            {
+              "logicalName": "파라미터일련번호",
+              "physicalName": "PRMTR_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": true,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "온도",
+              "physicalName": "TEMP",
+              "type": "NUMERIC",
+              "kind": "normal",
+              "description": "0~2",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "1",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "Top-P",
+              "physicalName": "TOP_P",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "0~1",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "0",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "Top-K",
+              "physicalName": "TOP_K",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "0~2",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "20",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "최대토큰",
+              "physicalName": "MAX_TKN",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "500",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "제한컨텍스트수",
+              "physicalName": "LMT_CTX_CNT",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "LLM에 전달할 최근 턴수",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "10",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "타임아웃분",
+              "physicalName": "TMOUT_MI",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "분단위",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "defaultValue": "30",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "defaultValue": "",
+              "autoIncrement": false
+            }
+          ],
+          "colorTag": "purple",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "vectordbcfg",
+          "logicalName": "벡터DB설정",
+          "physicalName": "TB_VCTR_CFG",
+          "description": "사용자별 벡터DB설정",
+          "x": 399.6707075980031,
+          "y": 789.9746686136177,
+          "attrs": [
+            {
+              "logicalName": "백터설정일련번호",
+              "physicalName": "VCTR_CFG_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용자ID",
+              "physicalName": "USER_ID",
+              "type": "VARCHAR(50)",
+              "kind": "fk",
+              "description": "",
+              "ref": {
+                "entity": "user",
+                "attr": "USER_ID"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "호스트IP주소",
+              "physicalName": "HST_IP_ADDR",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'0.0.0.1'"
+            },
+            {
+              "logicalName": "서버포트번호",
+              "physicalName": "SRVR_PORT_NO",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "컬렉션명",
+              "physicalName": "CLT_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "purple",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "vectordbcfg_copy",
+          "logicalName": "공통벡터DB설정",
+          "physicalName": "TB_CMM_VCTR_CFG",
+          "description": "유시스 공통 벡터DB설정",
+          "x": -95.70327929556336,
+          "y": 947.198580554903,
+          "attrs": [
+            {
+              "logicalName": "백터설정일련번호",
+              "physicalName": "VCTR_CFG_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "호스트IP주소",
+              "physicalName": "HST_IP_ADDR",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'0.0.0.1'"
+            },
+            {
+              "logicalName": "서버포트번호",
+              "physicalName": "SRVR_PORT_NO",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "컬렉션명",
+              "physicalName": "",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "teal",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "prompt_copy",
+          "logicalName": "공통프롬프트",
+          "physicalName": "TB_CMM_PRMPT",
+          "description": "서비스가 공통으로 제공하는 프롬프트",
+          "x": -94.79509619419244,
+          "y": 692.2536805166098,
+          "attrs": [
+            {
+              "logicalName": "프롬프트일련번호",
+              "physicalName": "PRMPT_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "프롬프트명",
+              "physicalName": "PRMPT_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "예) 응답생성 LLM 시스템 프롬프트",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'기본 프롬프트명'"
+            },
+            {
+              "logicalName": "프롬프트내용",
+              "physicalName": "PRMPT_CN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "Y,N",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'N'"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "teal",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "model",
+          "logicalName": "공통모델",
+          "physicalName": "TB_CMM_MDL",
+          "description": "AI 모델 정보",
+          "x": -96.28267438135127,
+          "y": 304.0105882402756,
+          "attrs": [
+            {
+              "logicalName": "모델일련번호",
+              "physicalName": "MDL_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "모델일련번호",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더일련번호",
+              "physicalName": "VNDR_SN",
+              "type": "INTEGER",
+              "kind": "fk",
+              "description": "밴더아이디",
+              "ref": {
+                "entity": "vendor",
+                "attr": "VNDR_SN"
+              },
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델명",
+              "physicalName": "MDL_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "모델명 (표시용)",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델코드",
+              "physicalName": "MDL_CD",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "API 호출 코드 (예: gpt-4.1-mini)",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "모델유형코드",
+              "physicalName": "MDL_TYPE_CD",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "모델 유형코드 ( LLM / EMBEDDING )",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "LLM"
+            },
+            {
+              "logicalName": "설명",
+              "physicalName": "EXPLN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "모델 설명",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "사용여부 Y,N",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "Y"
+            },
+            {
+              "logicalName": "연결유형코드",
+              "physicalName": "LNKG_TYPE_CD",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "로컬 , 외부API",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "외부API"
+            },
+            {
+              "logicalName": "지원언어코드",
+              "physicalName": "SPRT_LANG_CD",
+              "type": "VARCHAR(20)",
+              "kind": "normal",
+              "description": "다국어 , 한국어",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "다국어"
+            },
+            {
+              "logicalName": "벡터차원수",
+              "physicalName": "VCTR_DIM_CNT",
+              "type": "INTEGER",
+              "kind": "normal",
+              "description": "768 , 512 , 1024 등 벡터 차원수",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "1024"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "등록일시",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "수정일시",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "teal",
+          "indexes": [],
+          "isView": false
+        },
+        {
+          "id": "vendor",
+          "logicalName": "공통밴더",
+          "physicalName": "TB_CNN_VNDR",
+          "description": "밴더 정보",
+          "x": -94.63298513703208,
+          "y": 50.363880440023664,
+          "attrs": [
+            {
+              "logicalName": "밴더일련번호",
+              "physicalName": "VNDR_SN",
+              "type": "INTEGER",
+              "kind": "pk",
+              "description": "밴더 고유 식별자",
+              "ref": null,
+              "notNull": true,
+              "unique": true,
+              "autoIncrement": true,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "밴더명",
+              "physicalName": "VNDR_NM",
+              "type": "VARCHAR(100)",
+              "kind": "normal",
+              "description": "AI 모델 제공자 명칭",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "설명",
+              "physicalName": "EXPLN",
+              "type": "TEXT",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "사용여부",
+              "physicalName": "USE_YN",
+              "type": "CHAR(1)",
+              "kind": "normal",
+              "description": "Y/N",
+              "ref": null,
+              "notNull": true,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": "'Y'"
+            },
+            {
+              "logicalName": "등록일시",
+              "physicalName": "REG_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            },
+            {
+              "logicalName": "수정일시",
+              "physicalName": "MDF_DT",
+              "type": "TIMESTAMP",
+              "kind": "normal",
+              "description": "",
+              "ref": null,
+              "notNull": false,
+              "unique": false,
+              "autoIncrement": false,
+              "defaultValue": ""
+            }
+          ],
+          "colorTag": "teal",
+          "indexes": [],
+          "isView": false
+        }
+      ],
+      "relations": [
+        {
+          "from": "vendor",
+          "to": "apikey",
+          "card": "1:N",
+          "bend": {
+            "toFace": "left",
+            "toPct": 0.10154177451559074,
+            "fromFace": "right",
+            "fromPct": 0.12138130809244513,
+            "wpts": []
+          },
+          "lineStyle": "dashed",
+          "label": "사용자별 밴더 API 키 설정",
+          "labelOffset": {
+            "dx": -12.226864414711542,
+            "dy": -12.226864414711514
+          },
+          "cardOffset": {
+            "dx": -13.973559331098897,
+            "dy": -27.94711866219776
+          }
+        },
+        {
+          "from": "model",
+          "to": "activemodel",
+          "card": "1:N",
+          "bend": {
+            "toFace": "left",
+            "toPct": 0.48714989564647615,
+            "fromFace": "right",
+            "fromPct": 0.2628748704743441,
+            "wpts": []
+          },
+          "lineStyle": "dashed"
+        },
+        {
+          "from": "user",
+          "to": "hyperparam",
+          "card": "1:1",
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.6,
+            "toFace": "right",
+            "toPct": 0.056931969471844646,
+            "wpts": [
+              [
+                989.984288428853,
+                505.72694806760705
+              ]
+            ]
+          },
+          "lineStyle": "dashed"
+        },
+        {
+          "from": "user",
+          "to": "agentconfig",
+          "card": "1:1",
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.4,
+            "toFace": "left",
+            "toPct": 0.440977703036232,
+            "wpts": [
+              [
+                930.984288428853,
+                382.970904417754
+              ]
+            ]
+          },
+          "lineStyle": "dashed",
+          "cardOffset": {
+            "dx": -22.777444542050716,
+            "dy": -26.373883153953614
+          }
+        },
+        {
+          "from": "user",
+          "to": "apikey",
+          "card": "1:N",
+          "bend": {
+            "toFace": "right",
+            "toPct": 0.13317327344449842,
+            "fromFace": "left",
+            "fromPct": 0.15086496628438176,
+            "wpts": []
+          },
+          "lineStyle": "dashed",
+          "label": "사용자별 밴더 API 키 설정",
+          "cardOffset": {
+            "dx": 0.8733474581936207,
+            "dy": 25.327076287616727
+          },
+          "labelOffset": {
+            "dx": 1.746694916387355,
+            "dy": 0
+          }
+        },
+        {
+          "from": "user",
+          "to": "prompt",
+          "card": "1:N",
+          "bend": {
+            "toFace": "left",
+            "toPct": 0.13805324277807424,
+            "fromFace": "right",
+            "fromPct": 0.151659845592692,
+            "wpts": []
+          },
+          "lineStyle": "dashed"
+        },
+        {
+          "from": "prompt_copy",
+          "to": "prompt",
+          "card": "1:N",
+          "bend": {
+            "fromFace": "left",
+            "fromPct": 0.554490966054051,
+            "toFace": "top",
+            "toPct": 0.47820131322808695,
+            "wpts": [
+              [
+                -185.9054455223628,
+                785.4081628136904
+              ],
+              [
+                -185.9054455223628,
+                -30.254249412085223
+              ],
+              [
+                1407.2290127483213,
+                -30.254249412085223
+              ]
+            ]
+          },
+          "lineStyle": "dashed",
+          "label": "기본 프롬프트 제공",
+          "labelOffset": {
+            "dx": 729.6669183854133,
+            "dy": -42.09740975005583
+          },
+          "cardOffset": {
+            "dx": 652.6701690980327,
+            "dy": -30.686120066091952
+          }
+        },
+        {
+          "from": "user",
+          "to": "vectordbcfg",
+          "card": "1:1",
+          "lineStyle": "dashed",
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.8,
+            "toFace": "right",
+            "toPct": 0.10723126142844422,
+            "wpts": [
+              [
+                1048.984288428853,
+                810.3486082850221
+              ]
+            ]
+          },
+          "cardOffset": {
+            "dx": -11.98812870634265,
+            "dy": 2.397625741268598
+          }
+        },
+        {
+          "from": "vendor",
+          "to": "model",
+          "card": "1:N",
+          "lineStyle": "dashed",
+          "label": "밴더별 모델",
+          "labelOffset": {
+            "dx": -47.89633842988025,
+            "dy": -9.750271895828178
+          },
+          "cardOffset": {
+            "dx": 23.828418943096963,
+            "dy": -22.233910231260325
+          },
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.494641883073685,
+            "toFace": "top",
+            "toPct": 0.4982139610245617,
+            "wpts": [
+              [
+                51.286370369705,
+                297.2349891124993
+              ],
+              [
+                50.69044412089444,
+                297.2349891124993
+              ]
+            ]
+          }
+        },
+        {
+          "from": "user",
+          "to": "activemodel",
+          "card": "1:N",
+          "lineStyle": "dashed",
+          "bend": {
+            "fromFace": "bottom",
+            "fromPct": 0.2,
+            "toFace": "right",
+            "toPct": 0.5,
+            "wpts": [
+              [
+                871.984288428853,
+                386.330059152012
+              ]
+            ]
+          }
+        }
+      ],
+      "vx": 437.4611933407664,
+      "vy": 220.6359134228137,
+      "scale": 0.7703019404190006,
+      "sections": [
+        {
+          "id": "sec_mpgf08v0a1",
+          "name": "유시스공통",
+          "x": -155.80377249684415,
+          "y": 8.074078573764961,
+          "w": 404.85032285153545,
+          "h": 1171.704590965587,
+          "colorIdx": 0
+        },
+        {
+          "id": "sec_mpgf89u4q0",
+          "name": "에이전트",
+          "x": 1154.794135262223,
+          "y": 7.657038235914836,
+          "w": 466.37813420693215,
+          "h": 561.964822220699,
+          "colorIdx": 0
+        },
+        {
+          "id": "sec_mpgfbwn8sg",
+          "name": "사용자벌 모델설정",
+          "x": 354.96136455844237,
+          "y": 2.874087888056806,
+          "w": 379.0769152389005,
+          "h": 1170.0872996252556,
+          "colorIdx": 0
+        },
+        {
+          "id": "sec_mphomcx9da",
+          "name": "사용자",
+          "x": 756.1742449782859,
+          "y": 5.419211133808972,
+          "w": 380.28068091715454,
+          "h": 294.10870396055793,
+          "colorIdx": 0
+        }
+      ],
+      "notes": [
+        {
+          "id": "note_mphwa4lcfwh",
+          "x": -535.8391472504663,
+          "y": -20.26999928053754,
+          "w": 327.5528953135762,
+          "h": 432.59300837068025,
+          "text": "# BSSS 데이터\n## 사용자 \n- 사용자 ID\n- 비밀번호\n\n\n## 카테고리\n| **순번** | **논리** |**물리** |\n|----|--|---|\n| 순번 | 논리 | 물리 |\n\n```sql\nselect * from dual;\n```\n\n테스트 테이블\n식별자,이름 , 비번, 등록일자\n\n",
+          "color": "#f9e2af",
+          "mode": "markdown"
+        }
+      ],
+      "notesV2": [],
+      "collapsed": []
+    }
+  ],
+  "activeDiagramId": "diag_mprnc99jzlu"
+}

@@ -100,7 +100,8 @@
       "Bash(python -m py_compile agent/nodes/approve.py)",
       "Bash(python -m py_compile agent/common/prompts.py)",
       "Bash(python -m py_compile agent/common/prompts.py agent/nodes/respond.py agent/nodes/replan.py)",
-      "Bash(python -m py_compile agent/graph.py agent/common/prompts.py agent/common/state.py agent/nodes/replan.py agent/nodes/respond.py)"
+      "Bash(python -m py_compile agent/graph.py agent/common/prompts.py agent/common/state.py agent/nodes/replan.py agent/nodes/respond.py)",
+      "Bash(python -m py_compile agent/nodes/respond.py agent/common/prompts.py)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
