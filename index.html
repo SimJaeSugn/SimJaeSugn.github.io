@@ -31,11 +31,11 @@
         <div class="mb-item" onclick="mbClose();openDDLModal()"><span class="mb-ico">🗄</span><span class="mb-text">DDL 생성</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(true)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (섹션 포함)</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(false)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (섹션 제외)</span></div>
+        <div class="mb-item" onclick="mbClose();downloadImage(true,true)"><span class="mb-ico">🖼</span><span class="mb-text">이미지 내보내기 (고해상도 2x)</span></div>
         <div class="mb-item" onclick="mbClose();downloadSVG()"><span class="mb-ico">⬡</span><span class="mb-text">SVG 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportMarkdown()"><span class="mb-ico">📄</span><span class="mb-text">Markdown 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportHTML()"><span class="mb-ico">🌐</span><span class="mb-text">HTML 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportPDF()"><span class="mb-ico">🖨</span><span class="mb-text">인쇄 / PDF 저장</span></div>
-        <div class="mb-item" onclick="mbClose();resetExportDir()"><span class="mb-ico">📁</span><span class="mb-text">내보내기 폴더 재설정</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">불러오기</div>
         <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico">📂</span><span class="mb-text">JSON 불러오기</span></div>
@@ -43,74 +43,51 @@
         <div class="mb-item" onclick="mbClose();openDDLImportModal()"><span class="mb-ico">⬆</span><span class="mb-text">DDL 가져오기</span></div>
       </div>
     </div>
-    <div class="toolbox-body">
-        <div class="tb-dropdown">
-          <button class="btn-primary" onclick="tbToggle(event,'ddAdd')">＋ 추가 ▾</button>
-          <div class="tb-dropdown-menu" id="ddAdd">
-            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAddEntityModal()">📋 엔티티 추가</div>
-            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAddRelationModal()">⟷ 관계 추가</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddAdd');openAISchemaModal()">🤖 AI 스키마 생성</div>
-          </div>
-        </div>
-        <div class="tb-dropdown">
-          <button class="btn" onclick="tbToggle(event,'ddExport')">⬇ 내보내기 ▾</button>
-          <div class="tb-dropdown-menu" id="ddExport">
-            <div class="tb-dd-item" onclick="tbClose('ddExport');exportFullBackup()">💾 전체 백업 내보내기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');importFullBackup()">📥 전체 백업 불러오기</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');exportData()">⬇ JSON 내보내기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');importData()">⬆ JSON 불러오기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');openDDLImportModal()">⬆ DDL 가져오기</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');openDDLModal()">🗄 DDL 생성</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadImage(true)">🖼 이미지 (섹션 포함)</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadImage(false)">🖼 이미지 (섹션 제외)</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');downloadSVG()">⬡ SVG 내보내기</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');exportMarkdown()">📄 Markdown 내보내기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');exportHTML()">🌐 HTML 내보내기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');exportPDF()">🖨 인쇄 / PDF 저장</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');generateShareUrl()">🔗 공유 URL 생성</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddExport');resetExportDir()">📁 내보내기 폴더 재설정</div>
-          </div>
-        </div>
-        <div class="tb-dropdown">
-          <button class="btn" onclick="tbToggle(event,'ddTools')">⚙ 도구 ▾</button>
-          <div class="tb-dropdown-menu" id="ddTools">
-            <div class="tb-dd-item" onclick="tbClose('ddTools');resetView()">↺ 뷰 초기화</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');fitAll()">⊟ 전체 맞춤</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('hierarchical')">⋹ 계층형 배치</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('grid')">⊞ 격자형 배치</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');autoLayout('circular')">◯ 원형 배치</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');deOverlapLines('관계선 겹침 해소 중...')">⇌ 선 겹침 해소</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" id="ddItemSnap" onclick="tbClose('ddTools');toggleGridSnap()">⊞ 스냅 켜기</div>
-            <div class="tb-dd-item" id="ddItemSection" onclick="tbClose('ddTools');toggleSectionMode()">▣ 섹션 모드</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openThemeModal()">🎨 테마 변경</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openRtcModal()">🔗 P2P 실시간 협업</div>
-            <div class="tb-dd-item" id="ddItemBcSync" onclick="tbClose('ddTools');toggleBcSync()">📡 탭 동기화 끄기</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');saveSnapshot()">📷 스냅샷 저장</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openSnapshotListModal()">📋 스냅샷 목록</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openTimelineModal()">⏱ 타임라인 슬라이더</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openSqlRunner()">🗄 SQL 실행기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openJoinExplorer()">🔗 JOIN 경로 탐색기</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');runNormalizeDiagnosis()">⚠ 정규화 진단</div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');clearNormDiagnosis()">✓ 진단 배지 제거</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item" onclick="tbClose('ddTools');openTemplateModal()">📎 컬럼 템플릿 관리</div>
-            <div class="tb-dd-sep"></div>
-            <div class="tb-dd-item danger" onclick="tbClose('ddTools');resetToDefault()">⚠ 데이터 초기화</div>
-          </div>
-        </div>
+
+    <!-- 편집 -->
+    <div class="mb-menu" onmouseenter="mbHover('edit')">
+      <span class="mb-lbl" onclick="mbToggle('edit')">편집</span>
+      <div class="mb-drop" id="mb-drop-edit">
+        <div class="mb-item" onclick="mbClose();undo()"><span class="mb-ico">↩</span><span class="mb-text">실행취소</span><span class="mb-kbd">Ctrl+Z</span></div>
+        <div class="mb-item" onclick="mbClose();redo()"><span class="mb-ico">↪</span><span class="mb-text">다시실행</span><span class="mb-kbd">Ctrl+Y</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-item" id="mbi-section" onclick="mbClose();toggleSectionMode()"><span class="mb-chk"></span><span class="mb-text">섹션 모드</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-item" onclick="mbClose();openAISchemaModal()"><span class="mb-ico">🤖</span><span class="mb-text">AI 스키마 생성</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-item danger" onclick="mbClose();resetToDefault()"><span class="mb-ico">⚠</span><span class="mb-text">데이터 초기화</span></div>
       </div>
 
-    <div class="tb-div"></div>
+    <!-- 보기 -->
+    <div class="mb-menu" onmouseenter="mbHover('view')">
+      <span class="mb-lbl" onclick="mbToggle('view')">보기</span>
+      <div class="mb-drop" id="mb-drop-view">
+        <div class="mb-item" onclick="mbClose();resetView()"><span class="mb-ico">↺</span><span class="mb-text">뷰 초기화</span></div>
+        <div class="mb-item" onclick="mbClose();fitAll()"><span class="mb-ico">⊟</span><span class="mb-text">전체 맞춤</span><span class="mb-kbd">Home</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">배치</div>
+        <div class="mb-item" onclick="mbClose();autoLayout('hierarchical')"><span class="mb-ico">⋹</span><span class="mb-text">계층형 배치</span></div>
+        <div class="mb-item" onclick="mbClose();autoLayout('grid')"><span class="mb-ico">⊞</span><span class="mb-text">격자형 배치</span></div>
+        <div class="mb-item" onclick="mbClose();autoLayout('circular')"><span class="mb-ico">◯</span><span class="mb-text">원형 배치</span></div>
+        <div class="mb-item" onclick="mbClose();autoOptimizeRelations()"><span class="mb-ico">⫸</span><span class="mb-text">자동 관계선 최적화</span></div>
+        <div class="mb-item" onclick="mbClose();autoOptimizeRelationsV2()"><span class="mb-ico">⫷</span><span class="mb-text">관계선최적화V2</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">표기법</div>
+        <div class="mb-item" id="mbi-logical" onclick="mbClose();setViewMode('logical');saveState()"><span class="mb-chk"></span><span class="mb-text">논리 보기</span></div>
+        <div class="mb-item" id="mbi-physical" onclick="mbClose();setViewMode('physical');saveState()"><span class="mb-chk"></span><span class="mb-text">물리 보기</span></div>
+        <div class="mb-item" id="mbi-notation" onclick="mbClose();toggleNotation()"><span class="mb-chk"></span><span class="mb-text">크로우풋 표기</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">정렬</div>
+        <div class="mb-item" onclick="mbClose();alignEntities('left')"><span class="mb-ico">◧</span><span class="mb-text">왼쪽 정렬</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('hcenter')"><span class="mb-ico">↔</span><span class="mb-text">수평 중앙 정렬</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('right')"><span class="mb-ico">◨</span><span class="mb-text">오른쪽 정렬</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('top')"><span class="mb-ico">⬒</span><span class="mb-text">위 정렬</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('vcenter')"><span class="mb-ico">↕</span><span class="mb-text">수직 중앙 정렬</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('bottom')"><span class="mb-ico">⬓</span><span class="mb-text">아래 정렬</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('hdist')"><span class="mb-ico">⇔</span><span class="mb-text">수평 균등 배분</span></div>
+        <div class="mb-item" onclick="mbClose();alignEntities('vdist')"><span class="mb-ico">⇕</span><span class="mb-text">수직 균등 배분</span></div>
+      </div>
+    </div>
 
     <!-- ── 툴박스 2: 논리/물리 · 정렬 · 크로우풋 ── -->
     <div class="toolbox" id="tb2">
@@ -136,19 +113,23 @@
       </div>
     </div>
 
-    <div class="tb-div"></div>
-
-    <!-- ── 툴박스 3: 실행취소 / 다시실행 · 검색 · 단축키 ── -->
-    <div class="toolbox" id="tb3">
-      <div class="toolbox-hdr" onclick="toggleToolbox('tb3')" title="접기 / 펼치기">
-        <span>⚡ 기능</span><span class="toolbox-caret">▶</span>
+    <!-- 설정 -->
+    <div class="mb-menu" onmouseenter="mbHover('settings')">
+      <span class="mb-lbl" onclick="mbToggle('settings')">설정</span>
+      <div class="mb-drop" id="mb-drop-settings">
+        <div class="mb-item" onclick="mbClose();openThemeModal()"><span class="mb-ico">🎨</span><span class="mb-text">테마 변경</span></div>
+        <div class="mb-item" id="mbi-snap" onclick="mbClose();toggleGridSnap()"><span class="mb-chk"></span><span class="mb-text">그리드 스냅</span></div>
+        <div class="mb-item" onclick="mbClose();resetExportDir()"><span class="mb-ico">📁</span><span class="mb-text">내보내기 폴더 재설정</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-item" onclick="mbClose();openAgentSettingsModal()"><span class="mb-ico">🤖</span><span class="mb-text">Agent설정</span></div>
       </div>
-      <div class="toolbox-body">
-        <button class="btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩ 실행취소</button>
-        <button class="btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪ 다시실행</button>
-        <div class="tb-div"></div>
-        <button class="btn" onclick="openSearch()" title="엔티티 검색 (Ctrl+F)">🔍 검색</button>
-        <button class="btn" onclick="openShortcutsModal()" title="단축키 목록">⌨ 단축키</button>
+    </div>
+
+    <!-- Help -->
+    <div class="mb-menu" onmouseenter="mbHover('help')">
+      <span class="mb-lbl" onclick="mbToggle('help')">Help</span>
+      <div class="mb-drop" id="mb-drop-help">
+        <div class="mb-item" onclick="mbClose();openShortcutsModal()"><span class="mb-ico">⌨</span><span class="mb-text">단축키 목록</span></div>
       </div>
     </div>
 
@@ -191,30 +172,62 @@
 <!-- ── Diagram Panel (right) ────────────────── -->
 <div id="diagramPanel" class="collapsed">
   <div id="panelWidthHandle"></div>
-  <div id="panelTop">
-    <div class="panel-hdr">
-      <button class="panel-collapse-btn" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
-      <span class="panel-hdr-title">다이어그램</span>
-      <button class="panel-add-btn" onclick="showNewDiagModal()" title="새 다이어그램 추가">＋</button>
-    </div>
-    <div id="diagramList"></div>
+
+  <!-- 패널 탭 (목록 / Agent) -->
+  <div id="panelTabs">
+    <button class="panel-tab active" data-ptab="list"  onclick="switchPanelTab('list')"><span>📋</span>목록</button>
+    <button class="panel-tab"        data-ptab="agent" onclick="switchPanelTab('agent')"><span>🤖</span>Agent</button>
+    <button class="panel-collapse-btn" style="margin-left:auto" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
   </div>
-  <div id="panelDivider"></div>
-  <div id="panelBottom">
-    <div class="panel-hdr" style="padding: 7px 10px 7px 8px;">
-      <span class="panel-hdr-title" style="font-size:12px;">엔티티 목록</span>
+
+  <!-- 목록 뷰 -->
+  <div id="panelViewList" class="panel-view active">
+    <div id="panelTop">
+      <div class="panel-hdr">
+        <span class="panel-hdr-title">다이어그램</span>
+        <button class="panel-add-btn" onclick="showNewDiagModal()" title="새 다이어그램 추가">＋</button>
+      </div>
+      <div id="diagramList"></div>
     </div>
-    <div id="entityTree"></div>
+    <div id="panelDivider"></div>
+    <div id="panelBottom">
+      <div class="panel-hdr" style="padding: 7px 10px 7px 8px;">
+        <span class="panel-hdr-title" style="font-size:12px;">엔티티 목록</span>
+      </div>
+      <div id="entityTree"></div>
+    </div>
+    <div id="propDivider"></div>
+    <div id="propPanel">
+      <div class="panel-hdr pp-hdr">
+        <span id="ppIcon" class="pp-icon">📋</span>
+        <span class="panel-hdr-title pp-title" id="ppTitle"></span>
+        <button class="diag-btn" id="ppModalBtn" onclick="openPropPanelModal()" title="모달에서 전체 편집 (⤢)">⤢</button>
+        <button class="diag-btn" onclick="hidePropPanel()" title="닫기">✕</button>
+      </div>
+      <div id="ppContent"></div>
+    </div>
   </div>
-  <div id="propDivider"></div>
-  <div id="propPanel">
-    <div class="panel-hdr pp-hdr">
-      <span id="ppIcon" class="pp-icon">📋</span>
-      <span class="panel-hdr-title pp-title" id="ppTitle"></span>
-      <button class="diag-btn" id="ppModalBtn" onclick="openPropPanelModal()" title="모달에서 전체 편집 (⤢)">⤢</button>
-      <button class="diag-btn" onclick="hidePropPanel()" title="닫기">✕</button>
+
+  <!-- Agent 뷰 (채팅) -->
+  <div id="panelViewAgent" class="panel-view">
+    <div id="agentMessages" class="agent-messages">
+      <div class="agent-empty" id="agentEmpty">
+        <div class="agent-empty-ico">🤖</div>
+        <div class="agent-empty-title">무엇을 도와드릴까요?</div>
+        <div class="agent-empty-sub">자연어로 ERD를 만들거나 질문하세요.</div>
+        <div class="agent-suggests">
+          <button class="agent-chip" onclick="agentFillInput(this.textContent)">회원·주문 테이블 만들어줘</button>
+          <button class="agent-chip" onclick="agentFillInput(this.textContent)">PK 없는 테이블 찾아줘</button>
+          <button class="agent-chip" onclick="agentFillInput(this.textContent)">전체 자동 정렬해줘</button>
+        </div>
+      </div>
     </div>
-    <div id="ppContent"></div>
+    <div class="agent-input-area">
+      <textarea id="agentInput" class="agent-input" rows="1"
+                placeholder="메시지를 입력하세요…  (Enter 전송 · Shift+Enter 줄바꿈)"
+                oninput="agentAutoGrow(this)" onkeydown="agentInputKey(event)"></textarea>
+      <button id="agentSendBtn" class="agent-send" onclick="agentSend()" title="전송">➤</button>
+    </div>
   </div>
 </div>
 <div id="panelReopenTab" class="visible" onclick="toggleDiagramPanel()" title="다이어그램 패널 열기">
@@ -445,23 +458,40 @@
   <div class="img-menu-sep"></div>
   <div class="img-menu-item" onclick="downloadImage(false)">🖼&nbsp; 섹션 제외</div>
   <div class="img-menu-sep"></div>
+  <div class="img-menu-item" onclick="downloadImage(true,true)">🖼&nbsp; 고해상도 2x</div>
+  <div class="img-menu-sep"></div>
   <div class="img-menu-item" onclick="downloadSVG()">&#x2B21;&nbsp; SVG 내보내기</div>
 </div>
 
 <!-- ── DDL Modal ─────────────────────────────── -->
 <div class="modal-overlay" id="ddlOverlay" onmousedown="overlayClose(event,'ddlOverlay')">
-  <div class="modal" style="width:680px;max-height:80vh" onmousedown.stop>
+  <div class="modal" style="width:960px;max-width:97vw;max-height:80vh" onmousedown.stop>
     <h3>DDL 생성 (물리 모델 기준)</h3>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <select class="form-select" id="ddlDialect" style="width:160px" onchange="generateDDL(this.value)">
-        <option value="mysql">MySQL / MariaDB</option>
-        <option value="postgresql">PostgreSQL</option>
-        <option value="oracle">Oracle</option>
-        <option value="mssql">SQL Server</option>
-      </select>
-      <button class="btn" onclick="copyDDL()">&#x1F4CB; 복사</button>
+    <div style="display:flex;gap:16px;align-items:stretch">
+      <!-- 좌측: 엔티티 목록 -->
+      <div id="ddlEntityListWrap" style="width:240px;flex-shrink:0;display:flex;flex-direction:column">
+        <div style="font-size:13px;color:#cdd6f4;margin-bottom:8px">엔티티 (체크된 항목만 생성)</div>
+        <div id="ddlEntityList" style="display:flex;flex-direction:column;gap:5px;flex:1;overflow:auto;padding:8px;background:#181825;border:1px solid #313244;border-radius:8px;max-height:60vh"></div>
+      </div>
+      <!-- 우측: 옵션 + 미리보기 -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px">
+          <select class="form-select" id="ddlDialect" style="width:160px" onchange="generateDDL(this.value)">
+            <option value="mysql">MySQL / MariaDB</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="oracle">Oracle</option>
+            <option value="mssql">SQL Server</option>
+          </select>
+          <button class="btn" onclick="copyDDL()">&#x1F4CB; 복사</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:13px;color:#cdd6f4">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptFK" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> FK 포함</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptIndex" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> INDEX 포함</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ddlOptComment" checked onchange="generateDDL()" style="accent-color:var(--ac,#89b4fa)"> COMMENT 포함</label>
+        </div>
+        <pre id="ddlContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:14px;color:#a6e3a1;font-family:Consolas,monospace;font-size:12px;overflow:auto;flex:1;max-height:60vh;white-space:pre;line-height:1.6"></pre>
+      </div>
     </div>
-    <pre id="ddlContent" style="background:#181825;border:1px solid #313244;border-radius:8px;padding:14px;color:#a6e3a1;font-family:Consolas,monospace;font-size:12px;overflow:auto;max-height:54vh;white-space:pre;line-height:1.6"></pre>
     <div class="modal-actions"><button class="btn-cancel-m" onclick="closeDDLModal()">닫기</button></div>
   </div>
 </div>
@@ -874,6 +904,14 @@
 <script src="js/broadcast.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="js/webrtc.js"></script>
+<script src="js/shortcuts.js"></script>
+<script src="js/db_connect.js"></script>
+<script src="js/profile_manager.js"></script>
+<script src="js/reverse_engineer.js"></script>
+<script src="js/forward_engineer.js"></script>
+<script src="js/agent_tools.js"></script>
+<script src="js/agent_panel.js"></script>
+<script src="js/agent_settings.js"></script>
 <script src="js/main.js"></script>
 
 <!-- ── Status Bar ───────────────────────────── -->

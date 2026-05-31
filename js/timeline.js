@@ -219,14 +219,19 @@ function restoreTimelineSnapshot() {
   askConfirm(
     `"${snap.name}" 시점으로 복원하시겠습니까?\n현재 작업은 실행취소(Ctrl+Z)로 되돌릴 수 있습니다.`,
     () => {
-      _tlPreviewMode = false;
-      _tlSavedE = null;
-      _tlSavedR = null;
-      restoreFromSnapshot(JSON.parse(snap.state));
-      saveState();
-      _hideTimelineHud();
-      render();
-      showToast('⏱ 복원 완료');
+      try {
+        const s = JSON.parse(snap.state);
+        _tlPreviewMode = false;
+        _tlSavedE = null;
+        _tlSavedR = null;
+        restoreFromSnapshot(s);
+        saveState();
+        _hideTimelineHud();
+        render();
+        showToast('⏱ 복원 완료');
+      } catch (err) {
+        showToast('복원 중 오류가 발생했습니다.');
+      }
     },
     '복원'
   );
@@ -249,11 +254,17 @@ function closeTimeline() {
 // 하위 호환 alias
 function closeTimelineModal() { closeTimeline(); }
 
+let _tlHideTimer = null;
 function _hideTimelineHud() {
   const hud = document.getElementById('tlHud');
   if (!hud) return;
   hud.style.transition = 'opacity .18s, transform .18s';
   hud.style.opacity    = '0';
   hud.style.transform  = 'translateX(-50%) translateY(16px)';
-  setTimeout(() => { if (hud) hud.style.display = 'none'; }, 200);
+  if (_tlHideTimer) clearTimeout(_tlHideTimer);
+  _tlHideTimer = setTimeout(() => {
+    // 그 사이 다시 열렸으면(미리보기 모드) 숨기지 않는다
+    if (hud && !_tlPreviewMode) hud.style.display = 'none';
+    _tlHideTimer = null;
+  }, 200);
 }

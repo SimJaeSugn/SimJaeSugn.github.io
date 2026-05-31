@@ -112,7 +112,11 @@ function _showBcIndicator(fromTabId) {
   clearTimeout(badge._fadeTimer);
   badge._fadeTimer = setTimeout(() => {
     badge.style.opacity = '0';
-    setTimeout(() => { if (badge) badge.textContent = _bcBadgeLabel(); }, 400);
+    setTimeout(() => {
+      if (!badge) return;
+      badge.textContent = _bcBadgeLabel();
+      badge.style.opacity = '1'; // 페이드 후 상시 연결 배지를 다시 보이게 복원
+    }, 400);
   }, 2000);
 }
 

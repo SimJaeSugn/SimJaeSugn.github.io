@@ -1,0 +1,14 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+cryptography>=42.0.0
+asyncpg>=0.29.0
+aiomysql>=0.2.0
+pyodbc>=5.1.0
+oracledb>=2.0.0
+pydantic>=2.0.0
+python-multipart>=0.0.9
+pyinstaller>=6.0.0
+# ── Agent (자연어 ERD 제어, M1) ──
+langgraph>=0.2.0
+langchain-openai>=0.2.0
+langchain-core>=0.3.0

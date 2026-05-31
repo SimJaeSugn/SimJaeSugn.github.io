@@ -44,6 +44,7 @@ let resizingSection = null;
 let resizeDir = null;
 let resizeStart = null;
 let _didMove = false; // 실제 이동이 발생했는지 추적 (단순 클릭 제외)
+let _pendingDeselect = false; // 빈 영역 mousedown 후 mouseup 시점에 선택 해제 여부 결정
 let nextSectionColorIdx = 0;
 
 // ── 메모 상태 ────────────────────────────────────────────────────
@@ -2010,9 +2011,8 @@ canvas.addEventListener('mousedown', e => {
     canvas.classList.add('dragging');
     render(); return;
   }
-  selectedEntity = null;
-  selectedRelation = null;
-  if (!e.shiftKey && !e.ctrlKey) selectedEntities.clear();
+  if (!e.shiftKey && !e.ctrlKey) _pendingDeselect = true;
+  _didMove = false;
   if (e.shiftKey) {
     selectionBox = { x: w.x, y: w.y, x2: w.x, y2: w.y };
     canvas.style.cursor = 'crosshair';
@@ -2206,6 +2206,8 @@ canvas.addEventListener('mousemove', e => {
   if (panStart) {
     vx = e.clientX - _qbLeftOff() - panStart.x;
     vy = e.clientY - panStart.y;
+    _didMove = true;
+    _pendingDeselect = false;
     render(); return;
   }
 
@@ -2276,8 +2278,8 @@ canvas.addEventListener('dblclick', e => {
     e.stopImmediatePropagation();
     if (collapsedEntities.has(hitEnt.id)) collapsedEntities.delete(hitEnt.id);
     else collapsedEntities.add(hitEnt.id);
-    flushCurrentState();
     render();
+    saveState();
   }
 });
 
@@ -2371,6 +2373,33 @@ canvas.addEventListener('mouseup', e => {
   if (draggingSegment && !_didMove) {
     selectedRelation = draggingSegment.rel;
   }
+  if (_pendingDeselect && !_didMove) {
+    selectedEntity = null;
+    selectedRelation = null;
+    selectedEntities.clear();
+  }
+  _pendingDeselect = false;
+
+  // 엔티티 드래그 종료: 한쪽 끝만 이동해 상대 배치가 바뀐 관계선의 고정 앵커(fromFace/toFace/wpts 등)를
+  // 무효화하여 위치 기반 동적 앵커 재계산(getRelationPath 3단계)으로 복귀시킨다.
+  // 최적화(autoOptimizeRelations/V2)·수동 라우팅으로 고정된 면이 드래그 후 자동 전환되도록 한다.
+  // (우클릭 '경로 초기화'(ui.js resetRel: rel.bend=null)와 동일한 자동 복귀를 드래그 시 자동 수행)
+  // 양끝이 함께 이동한 선은 상대 배치가 불변이므로 유지한다.
+  if (_didMove && draggingEntity) {
+    const movedIds = new Set();
+    if (selectedEntities.size > 1 && selectedEntities.has(draggingEntity.id)) {
+      selectedEntities.forEach(id => movedIds.add(id));
+    } else {
+      movedIds.add(draggingEntity.id);
+    }
+    RELATIONS.forEach(rel => {
+      const fromMoved = movedIds.has(rel.from);
+      const toMoved   = movedIds.has(rel.to);
+      if (fromMoved === toMoved) return;  // 무관(둘 다 미이동) 또는 양끝 동시 이동 → 유지
+      rel.bend = null;                    // 동적 앵커 재계산으로 복귀
+    });
+  }
+
   // ── 속성 패널 연동: 패널 열기가 canvas 크기를 바꾸므로
   //    draggingEntity = null 이후에 호출해야 drag 오작동을 막는다
   const _ppEnt   = (!wasDragging && !_didMove && draggingEntity && selectedEntities.size <= 1)
@@ -2385,7 +2414,12 @@ canvas.addEventListener('mouseup', e => {
   if (wasDragging) setTimeout(saveState, 0);
 
   // cleanup 완료 후 패널 조작 (이 시점엔 draggingEntity가 null이므로 안전)
-  if (_ppEnt && typeof showPropPanel === 'function')        showPropPanel(_ppEnt);
+  // 엔티티 클릭 시 컬럼(속성) 편집기 자동 열림은
+  //   ① 우측 패널이 열려 있고  ② 활성 탭이 '목록'일 때만 동작한다.
+  // (패널이 닫혀 있거나 Agent 탭이 떠 있을 때는 클릭만으로 열지 않는다.)
+  const _listTabActive = !document.getElementById('panelViewList')
+    || document.getElementById('panelViewList').classList.contains('active');
+  if (_ppEnt && panelOpen && _listTabActive && typeof showPropPanel === 'function') showPropPanel(_ppEnt);
   else if (_ppEmpty && typeof hidePropPanel === 'function') hidePropPanel();
 });
 
@@ -2398,6 +2432,7 @@ canvas.addEventListener('mouseleave', () => {
   draggingRelPort = null; hoveredPort = null;
   resizingSection = null; resizeDir = null; resizeStart = null;
   panStart = null; selectionBox = null;
+  _pendingDeselect = false;
   canvas.classList.remove('dragging');
   hoveredEntity = null; hoveredRelSeg = null; hoveredSection = null;
   canvas.style.cursor = sectionMode ? 'crosshair' : 'default'; render();
@@ -2488,4 +2523,12 @@ canvas.addEventListener('touchmove', e => {
   e.preventDefault();
 }, { passive: false });
 
-canvas.addEventListener('touchend', () => { draggingEntity = null; panStart = null; });
+canvas.addEventListener('touchend', () => {
+  const didDrag = !!draggingEntity;
+  if (gridSnap && draggingEntity) {
+    draggingEntity.x = Math.round(draggingEntity.x / GRID) * GRID;
+    draggingEntity.y = Math.round(draggingEntity.y / GRID) * GRID;
+  }
+  draggingEntity = null; panStart = null;
+  if (didDrag) { render(); saveState(); }
+});

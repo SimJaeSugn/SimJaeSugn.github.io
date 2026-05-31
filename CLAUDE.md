@@ -6,21 +6,68 @@
 
 **트리거:** UXERManager 코드 변경 요청 시 `feature-dev` 스킬을 사용하라. 단순 코드 설명·질문은 직접 응답 가능.
 
-## 하네스: 미들웨어 README 동기화
+## 하네스: README 동기화
 
-**목표:** 미들웨어 변경 시 참조 문서를 항상 최신 상태로 유지한다.
+**목표:** 코드·구조 변경 시 세 README 파일이 항상 실제 상태와 일치하도록 유지한다.
 
-**트리거:** `middleware/` 하위 파일(src, package.json 등)을 추가·수정·삭제할 때마다 반드시 `middleware/README.md`를 업데이트하라.
+**대상 README:**
 
-**업데이트 대상:**
-- API 엔드포인트 추가·변경·삭제 → API 레퍼런스 섹션 반영
-- SSE 이벤트 구조 변경 → SSE 이벤트 타입 요약 및 예시 반영
-- 지원 DB 추가·제거 → 지원 DB 표 반영
-- 포트·저장 경로·CORS 정책 변경 → 해당 섹션 반영
-- 파일 구조 변경 → 파일 구조 다이어그램 반영
-- 빌드 방법 변경 → 실행/빌드 섹션 반영
+| 파일 | 범위 |
+|------|------|
+| `README.md` | 섹션 25~28 (아키텍처·파일구조·개발환경·배포) |
+| `proxy/nodejs/README.md` | 실행 방법·빌드·API·파일구조·트레이·지원 DB |
+| `proxy/python/README.md` | 실행 방법·빌드·API·파일구조·지원 DB |
 
-**규칙:** 미들웨어 코드 변경과 README 업데이트는 같은 작업으로 처리한다. README 업데이트 없이 미들웨어 변경만 완료했다고 보고하지 않는다.
+**트리거 → 검토 대상 매핑:**
+
+| 변경 항목 | 검토할 README |
+|----------|--------------|
+| 디렉토리·파일 추가·이동·삭제 | README.md 섹션 26, 변경된 컴포넌트의 개별 README 파일구조 섹션 |
+| 포트 번호 변경 | README.md 섹션 25·27·28, proxy/nodejs/README.md, proxy/python/README.md |
+| 빌드 명령어·스크립트·설치파일명 변경 | README.md 섹션 27·28, 해당 컴포넌트 개별 README |
+| 새 의존성·도구 추가 | README.md 섹션 27 사전 요구사항 표, 해당 개별 README |
+| API 엔드포인트 추가·변경·삭제 | 해당 컴포넌트 개별 README API 섹션 |
+| 지원 DB 추가·제거 | README.md 섹션 25, 해당 컴포넌트 개별 README 지원 DB 표 |
+| 아키텍처 구조 변경 | README.md 섹션 25 |
+| `proxy/nodejs/` 코드 변경 | proxy/nodejs/README.md |
+| `proxy/python/` 코드 변경 | proxy/python/README.md |
+
+**검토 절차:**
+
+1. 변경 항목이 위 표의 어느 행에 해당하는지 판단한다.
+2. 해당 README 파일을 Read로 읽어 실제 코드·구조와 대조한다.
+3. 불일치가 있으면 즉시 수정한다.
+4. 불일치가 없으면 완료 보고에 "README 검토 완료 — 변경 불필요"를 명시한다.
+
+**규칙:** 트리거 항목에 해당하는 변경이 있음에도 README 검토 없이 작업 완료를 보고하지 않는다.
+
+## 하네스: Agent v1/v2 격리
+
+**목표:** Agent v2의 기능 추가·수정·삭제가 v1(현행 운영)에 어떠한 영향도 주지 않도록 격리를 강제한다. (설계 근거: `docs/AI_ERD_v2_의도분석_계획준수_구현계획서.html` §9.1 격리 계약)
+
+**트리거:** 다음 경로 중 하나라도 건드리는 작업 시 본 하네스를 적용한다.
+- 백엔드: `proxy/python/agent/v2/`, `proxy/python/routers/v2/`
+- 프론트: `js/agent_v2/`
+- 등록부: `proxy/python/main.py`(v2 가드 등록), `index.html`(v2 스크립트 로드)
+
+**불변식 (반드시 유지):**
+
+1. **단방향 의존** — 부모의 v1 모듈(`agent/__init__.py`·`agent/graph.py`·`agent/nodes/*`·`agent/common/*`·`agent/tools_proxy.py` 등)과 `routers/agent.py`·`js/agent_panel.js`·`js/agent_settings.js`·`js/agent_tools.js`는 `agent.v2`·`routers.v2`·`js/agent_v2`를 **절대 import·참조하지 않는다**. (v2 → v1 읽기 전용만 허용)
+2. **실패 격리** — v2 라우터는 `main.py`에서 `try/except` 가드로 등록한다. v2가 import 실패·반쪽 삭제여도 앱·v1이 정상 기동해야 한다.
+3. **런타임 자원 분리** — 경로(`/agent/v2/*`)·그래프 인스턴스·Checkpointer·`thread_id` 네임스페이스·프론트 전역(`_AGENT_V2_*`)·DOM 컨테이너(`#agentV2Panel`)를 v1과 분리한다. v1 전역(`_AGENT_URL`·`_agentThreadId` 등)을 재사용·재정의하지 않는다.
+4. **수정해야 하면 복제** — 공유 frozen 모듈(키스토어·crypto·DB 어댑터·`agent/common/llm`·`agent/tools_proxy`·`agent_tools.js`)을 고쳐야 할 것 같으면, 고치지 말고 `agent/v2/`로 해당 부분만 복제해 v2 사본을 수정한다. 시그니처·반환·부수효과를 바꾸는 변경은 전면 금지.
+
+**검증 절차 (작업 완료 전 필수):**
+
+1. 기존 파일 변경이 다음 2곳의 **추가만**인지 확인한다 — `proxy/python/main.py`(가드 등록 블록), `index.html`(v2 스크립트 로드·마크업).
+2. diff 화이트리스트 검사 결과가 **비어 있어야** 한다:
+   ```
+   git diff main -- proxy/python/routers/agent.py ':!proxy/python/agent/v2' \
+     proxy/python/agent/ js/agent_panel.js js/agent_settings.js js/agent_tools.js
+   ```
+3. v1 모듈에서 `agent.v2`·`routers.v2` 참조 grep 결과가 **0건**인지 확인한다.
+
+**규칙:** 위 트리거에 해당하는 작업에서 검증 절차(diff 화이트리스트·단방향 grep)를 거치지 않고 완료를 보고하지 않는다. v1 파일이 화이트리스트(추가 2곳) 밖에서 한 줄이라도 변경되면 격리 위반으로 되돌린다. (격리 해제는 §9.1 "승격" 시점에만, 별도 결정으로.)
 
 ---
 
@@ -29,3 +76,8 @@
 |------|----------|------|------|
 | 2026-05-26 | 초기 구성 | 전체 | - |
 | 2026-05-27 | 미들웨어 README 동기화 규칙 추가 | CLAUDE.md | 미들웨어 변경 시 문서 누락 방지 |
+| 2026-05-30 | middleware/ → proxy/nodejs/, python-sidecar/ → proxy/python/ 재편 | CLAUDE.md, electron/, README.md 등 | 디렉토리 구조 정비 |
+| 2026-05-30 | README 동기화 검토 하네스 추가 | CLAUDE.md | 코드 변경 시 README 누락 방지 |
+| 2026-05-30 | 미들웨어·README 동기화 하네스 2개를 단일 하네스로 통합 | CLAUDE.md | 관리 단순화 |
+| 2026-05-30 | README.md 메뉴별 기능 업데이트 (섹션 25~28로 재번호, 새 기능 4개 추가) | README.md, CLAUDE.md | 구 툴박스→신 메뉴바 구조 반영 |
+| 2026-05-31 | Agent v1/v2 격리 하네스 추가 | CLAUDE.md | v2 작업이 v1(현행 운영)에 영향 주지 않도록 강제 (계획서 §9.1 근거) |

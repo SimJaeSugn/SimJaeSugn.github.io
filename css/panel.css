@@ -1,3 +1,151 @@
+/* ── 패널 탭 (목록 / Agent) ───────────────────── */
+#panelTabs {
+  display: flex; align-items: center; gap: 2px;
+  padding: 5px 6px 0 8px; border-bottom: 1px solid var(--bd); flex-shrink: 0;
+}
+.panel-tab {
+  background: none; border: none; color: var(--tx-sub); cursor: pointer;
+  padding: 7px 11px 8px; font-size: 12px; font-weight: 600;
+  border-radius: 7px 7px 0 0; border-bottom: 2px solid transparent;
+  display: flex; align-items: center; gap: 4px;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.panel-tab:hover { color: var(--tx-main); background: var(--bg-surface); }
+.panel-tab.active { color: var(--ac); border-bottom-color: var(--ac); }
+.panel-tab span { font-size: 13px; }
+
+/* ── 패널 뷰 전환 ─────────────────────────────── */
+.panel-view { flex: 1; display: none; flex-direction: column; min-height: 0; overflow: hidden; }
+.panel-view.active { display: flex; }
+
+/* ── Agent 채팅 ───────────────────────────────── */
+.agent-messages {
+  flex: 1; overflow-y: auto; padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 10px;
+  user-select: text;            /* 채팅 텍스트 선택·복사 허용 */
+}
+.agent-msg-bubble { user-select: text; -webkit-user-select: text; cursor: text; }
+.agent-messages::-webkit-scrollbar { width: 5px; }
+.agent-messages::-webkit-scrollbar-track { background: transparent; }
+.agent-messages::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+
+.agent-msg { display: flex; gap: 7px; max-width: 100%; align-items: flex-start; }
+.agent-msg.user { flex-direction: row-reverse; }
+.agent-msg-ava {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; background: var(--bg-surface); margin-top: 1px;
+}
+.agent-msg.user .agent-msg-ava { background: var(--ac-dim); }
+.agent-msg-bubble {
+  padding: 8px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.45;
+  color: var(--tx-main); word-break: break-word; white-space: pre-wrap;
+  max-width: calc(100% - 38px);
+}
+/* Agent 말풍선은 markdown(HTML)이라 pre-wrap 시 블록 사이 줄바꿈이 빈 줄로 보임 → normal */
+.agent-msg.agent .agent-msg-bubble { background: var(--bg-surface); border-top-left-radius: 4px; white-space: normal; }
+.agent-msg.user  .agent-msg-bubble { background: var(--ac); color: #fff; border-top-right-radius: 4px; }
+
+/* 말풍선 내 markdown 렌더 (Agent 응답) */
+.agent-msg-bubble > :first-child { margin-top: 0; }
+.agent-msg-bubble > :last-child { margin-bottom: 0; }
+.agent-msg-bubble p { margin: 3px 0; }
+.agent-msg-bubble h1, .agent-msg-bubble h2, .agent-msg-bubble h3,
+.agent-msg-bubble h4, .agent-msg-bubble h5, .agent-msg-bubble h6 {
+  font-size: 13px; font-weight: 700; margin: 7px 0 3px; line-height: 1.3; color: var(--ac);
+}
+.agent-msg-bubble ul, .agent-msg-bubble ol { margin: 3px 0; padding-left: 18px; }
+.agent-msg-bubble li { margin: 1px 0; }
+.agent-msg-bubble code {
+  font-family: 'Cascadia Code','Consolas','D2Coding',monospace; font-size: 11.5px;
+  background: var(--bg-surface2); padding: 1px 5px; border-radius: 4px; word-break: break-word;
+}
+.agent-msg-bubble pre {
+  background: var(--bg-surface2); border: 1px solid var(--bd2); border-radius: 7px;
+  padding: 8px 10px; margin: 6px 0; overflow-x: auto;
+}
+.agent-msg-bubble pre code { background: none; padding: 0; font-size: 11.5px; line-height: 1.5; }
+.agent-msg-bubble pre::-webkit-scrollbar { height: 6px; }
+.agent-msg-bubble pre::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+.agent-msg-bubble table { border-collapse: collapse; margin: 6px 0; font-size: 11.5px; }
+.agent-msg-bubble th, .agent-msg-bubble td { border: 1px solid var(--bd2); padding: 3px 7px; text-align: left; }
+.agent-msg-bubble th { background: var(--bg-surface2); }
+.agent-msg-bubble a { color: var(--ac); text-decoration: underline; }
+.agent-msg-bubble blockquote {
+  border-left: 3px solid var(--bd2); margin: 5px 0; padding: 2px 10px; color: var(--tx-sub);
+}
+.agent-msg-bubble hr { border: none; border-top: 1px solid var(--bd2); margin: 8px 0; }
+/* 사용자 말풍선(흰 글자)에서 코드 가독성 보정 */
+.agent-msg.user .agent-msg-bubble code,
+.agent-msg.user .agent-msg-bubble pre { background: rgba(0,0,0,0.18); color: #fff; }
+
+/* 계획 미리보기 / 진행 체크리스트 */
+.agent-plan { border: 1px solid var(--bd2); border-radius: 9px; padding: 8px 10px; margin-bottom: 6px; background: var(--bg-surface2); }
+.agent-plan-title { font-size: 11.5px; font-weight: 700; color: var(--ac); margin-bottom: 6px; cursor: pointer; }
+.agent-plan-title::after { content: ' ▾'; font-weight: normal; opacity: .55; }
+/* 최종 결과 후: 계획/체크리스트 접기(제목만, 클릭 시 펼침) */
+.agent-plan.collapsed { background: transparent; border-color: transparent; padding: 0; margin-bottom: 3px; }
+.agent-plan.collapsed .agent-plan-title { margin-bottom: 0; font-size: 11px; opacity: .7; }
+.agent-plan.collapsed .agent-plan-title::after { content: ' ▸'; }
+.agent-plan.collapsed .agent-step { display: none; }
+.agent-plan.collapsed .agent-plan-actions { display: none; }
+.agent-step { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; padding: 2px 0; color: var(--tx-main); }
+.agent-step-ico { flex-shrink: 0; width: 14px; text-align: center; }
+.agent-plan-actions { display: flex; gap: 6px; margin-top: 8px; }
+.agent-btn { flex: 1; border: none; border-radius: 7px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.12s, opacity 0.12s; }
+.agent-btn-ok { background: var(--ac); color: #fff; }
+.agent-btn-ok:hover { background: var(--ac-hover); }
+.agent-btn-cancel { background: var(--bg-surface); color: var(--tx-sub); border: 1px solid var(--bd2); }
+.agent-btn-cancel:hover { color: var(--tx-main); }
+.agent-reply:empty { display: none; }
+
+/* 입력 중 표시 */
+.agent-typing { display: inline-flex; gap: 3px; align-items: center; padding: 2px 0; }
+.agent-typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--tx-sub); animation: agentBlink 1.2s infinite; }
+.agent-typing i:nth-child(2) { animation-delay: .2s; }
+.agent-typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes agentBlink { 0%,60%,100% { opacity: .25; } 30% { opacity: 1; } }
+
+/* 빈 상태 / 추천 */
+.agent-empty { margin: auto; text-align: center; padding: 20px 14px; color: var(--tx-sub); }
+.agent-empty-ico { font-size: 34px; opacity: .85; }
+.agent-empty-title { color: var(--tx-main); font-size: 14px; font-weight: 700; margin-top: 8px; }
+.agent-empty-sub { font-size: 12px; margin-top: 4px; }
+.agent-suggests { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+.agent-chip {
+  background: var(--bg-surface); border: 1px solid var(--bd2); color: var(--tx-main);
+  padding: 7px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; text-align: left;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.agent-chip:hover { background: var(--bg-surface2); border-color: var(--ac); color: var(--ac); }
+
+/* 입력 영역 */
+.agent-input-area {
+  flex-shrink: 0; border-top: 1px solid var(--bd); padding: 8px;
+  display: flex; gap: 6px; align-items: flex-end; background: var(--bg-surface2);
+}
+.agent-input {
+  flex: 1; resize: none; max-height: 120px; overflow-y: hidden;
+  background: var(--bg-panel-overlay); color: var(--tx-main);
+  border: 1px solid var(--bd2); border-radius: 9px; padding: 8px 10px;
+  font-size: 12.5px; line-height: 1.45; font-family: inherit;
+}
+.agent-input:focus { outline: none; border-color: var(--ac); }
+.agent-input::placeholder { color: var(--tx-sub); }
+.agent-input { scrollbar-width: thin; scrollbar-color: var(--bd2) transparent; }
+.agent-input::-webkit-scrollbar { width: 6px; }
+.agent-input::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }
+.agent-input::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+.agent-input::-webkit-scrollbar-thumb:hover { background: var(--tx-sub); }
+.agent-send {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; border: none;
+  background: var(--ac); color: #fff; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, opacity 0.12s;
+}
+.agent-send:hover { background: var(--ac-hover); }
+.agent-send:disabled { opacity: .4; cursor: default; }
+
 /* ── Diagram Panel (right side) ──────────────── */
 #diagramPanel {
   position: fixed; top: 32px; right: 0; bottom: 22px; width: 240px;

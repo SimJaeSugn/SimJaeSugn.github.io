@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자연어 ERD 제어 v2 — 의도 분석 · 계획 수립 · 계획 준수 검증 구현 계획서 · UXERManager</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d2129; --ink:#e6e9ef; --mut:#9aa3b2;
+    --line:#2a2f3a; --acc:#5b9dff; --acc2:#7c5cff; --ok:#3fcf8e; --warn:#f0b429;
+    --danger:#ff6b6b; --read:#3fcf8e; --write:#f0b429; --ext:#5b9dff; --ctrl:#7c5cff;
+    --code:#11141a; --mono:'Cascadia Code','Consolas','D2Coding',monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard','Segoe UI','Malgun Gothic',system-ui,sans-serif;
+    line-height:1.7;font-size:15px}
+  .wrap{display:grid;grid-template-columns:280px 1fr;max-width:1400px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  nav.toc a{display:block;color:var(--mut);text-decoration:none;font-size:13.5px;
+    padding:5px 10px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+  nav.toc a.sub{padding-left:22px;font-size:12.5px;opacity:.85}
+  main{padding:48px 56px 120px;min-width:0}
+  h1{font-size:29px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:15px;margin-bottom:8px}
+  .meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);padding:10px 0;margin:22px 0 40px;
+    display:flex;gap:26px;flex-wrap:wrap}
+  .meta b{color:var(--ink);font-weight:600}
+  h2{font-size:23px;margin:54px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:24px}
+  h2 .n{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:17.5px;margin:30px 0 10px;color:#cdd5e3;scroll-margin-top:24px}
+  h4{font-size:15px;margin:20px 0 8px;color:var(--acc)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);background:var(--code);padding:2px 6px;border-radius:5px;
+    font-size:13px;color:#e0c9ff;border:1px solid var(--line)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:11px;
+    padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:16px 0}
+  pre code{background:none;border:none;padding:0;color:#d4dbe8}
+  .cm{color:#6b7689}.kw{color:#7c5cff;font-weight:600}.st{color:#3fcf8e}.fn{color:#5b9dff}.num{color:#f0b429}.cl{color:#ffd97a}
+  .box{border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0;background:var(--panel)}
+  .box.acc{border-left:4px solid var(--acc)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.ok{border-left:4px solid var(--ok)}
+  .box.danger{border-left:4px solid var(--danger)}
+  .box .t{font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdd5e3;font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  td code{font-size:12px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em;white-space:nowrap}
+  .tag.read{background:rgba(63,207,142,.14);color:var(--read);border:1px solid rgba(63,207,142,.3)}
+  .tag.write{background:rgba(240,180,41,.14);color:var(--write);border:1px solid rgba(240,180,41,.3)}
+  .tag.ext{background:rgba(91,157,255,.14);color:var(--ext);border:1px solid rgba(91,157,255,.3)}
+  .tag.ctrl{background:rgba(124,92,255,.14);color:var(--ctrl);border:1px solid rgba(124,92,255,.3)}
+  .fig{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin:22px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  .figcap{color:var(--mut);font-size:12.5px;margin-top:12px;text-align:center}
+  .ascii{font-family:var(--mono);font-size:12.5px;white-space:pre;color:#cdd5e3;text-align:left;line-height:1.45}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .pill{font-size:11.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .kbd{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:12px}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .lead{font-size:16.5px;color:#cdd5e3}
+  .lg{color:#ffd97a;font-weight:600}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:32px 22px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <h2>목차</h2>
+  <a href="#overview">1. 개요 · v2 목적</a>
+  <a href="#problem" class="sub">v1의 한계</a>
+  <a href="#pillars" class="sub">v2의 세 기둥</a>
+  <a href="#mapping">2. v1 → v2 변경 매핑</a>
+  <a href="#arch">3. v2 아키텍처</a>
+  <a href="#topology" class="sub">그래프 토폴로지</a>
+  <a href="#state" class="sub">상태 확장</a>
+  <a href="#intent">4. 의도 분석 (analyze)</a>
+  <a href="#plan">5. 계획 수립 (목표 연결)</a>
+  <a href="#verify">6. 계획 준수 검증 (verify)</a>
+  <a href="#verdict" class="sub">Verdict · 분기</a>
+  <a href="#harness">7. 테스트 하네스</a>
+  <a href="#fixtures" class="sub">픽스처 · 지표</a>
+  <a href="#eval" class="sub">/eval · v1↔v2 비교</a>
+  <a href="#sse">8. SSE 프로토콜 확장</a>
+  <a href="#layout">9. 디렉토리 · 배포</a>
+  <a href="#isolation" class="sub">v1 무손상 격리</a>
+  <a href="#roadmap">10. 구현 로드맵</a>
+  <a href="#scenarios">11. 검증 시나리오</a>
+</nav>
+
+<main>
+  <h1>자연어 ERD 제어 <span class="lg">v2</span> — 의도 분석 · 계획 수립 · 계획 준수 검증 <span style="font-size:20px;color:var(--mut)">구현 계획서</span></h1>
+  <div class="sub">기반: v0.2 LangGraph Plan-and-Execute (현행 운영) · v2는 동일 그래프 위에 <b>의도 구조화</b>와 <b>준수 검증</b>을 얹는다</div>
+  <div class="meta">
+    <span><b>버전</b> v2 계획 (draft)</span>
+    <span><b>작성일</b> 2026-05-31</span>
+    <span><b>기반</b> AI_ERD_PlanExecute_설계서.html (v0.2)</span>
+    <span><b>배포</b> <code>/agent/v2</code> 병렬 (v1 불변)</span>
+  </div>
+
+  <div class="box acc">
+    <div class="t">🎯 v2의 목적 (한 줄)</div>
+    <p style="margin:4px 0">
+      <b>질의 의도를 구조화해 분석</b>하고 → 그 의도로 <b>계획을 수립</b>하고 →
+      <b>실행이 계획·의도대로 이뤄졌는지 검증·측정</b>한다. v1을 그대로 둔 채
+      <code>/agent/v2</code> 라우터로 병렬 가동하여 <b>두 버전을 나란히 테스트</b>한다.
+      v2의 어떤 추가·수정·삭제도 <b>v1에 영향을 주지 않도록 격리</b>한다(§9.1 격리 계약).
+    </p>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="overview"><span class="n">1.</span>개요 · v2 목적</h2>
+  <p class="lead">
+    v1(현행)은 자연어를 받아 <code>gate</code>가 <b>act/answer 이분</b>으로 분기하고, 곧장 <code>plan</code>이
+    스텝을 만들어 실행한다. 동작은 하지만 — <b>의도 파악이 불안정</b>하고(잘못된 분기·대상 혼동),
+    실행이 끝난 뒤 <b>"계획대로·의도대로 됐는지"를 판정하는 단계가 없다</b>.
+    v2는 이 두 가지를 정조준한다: <span class="lg">의도를 1급 산출물로</span> 만들고,
+    <span class="lg">실행 결과를 계획·의도와 대조하는 검증 노드</span>를 추가한 뒤, 그 품질을 <b>테스트로 측정</b>한다.
+  </p>
+
+  <h3 id="problem">1.1 v1의 한계 (개선 대상)</h3>
+  <table>
+    <tr><th width="190">한계</th><th>v1 현황</th><th>증상</th></tr>
+    <tr><td><b>이분 의도 분기</b></td><td><code>gate</code> → <code>RouteDecision{route: act|answer}</code> 1비트</td><td>읽기+쓰기 혼합 의도가 한쪽으로 뭉개짐 · 모호해도 강제 분기</td></tr>
+    <tr><td><b>의도가 비명시</b></td><td>질의 → 곧장 <code>plan</code>. 중간에 "무엇을 원하는가"의 구조화 산출물 없음</td><td><code>plan</code> 프롬프트가 거대한 규칙 벽으로 대상(ERD vs 운영DB)을 매번 재추론 → 혼동</td></tr>
+    <tr><td><b>모호성 미감지</b></td><td>모호해도 <code>answer</code>로 보수 분기만</td><td>"그 테이블 지워"처럼 대상 불명확해도 되묻지 않고 추측</td></tr>
+    <tr><td><b>준수 판정 부재</b></td><td><code>replan</code>은 <b>남은 스텝 유무</b> + 느슨한 LLM 자기평가뿐</td><td>계획에 없던 행동/누락된 목표/의도 미충족을 <b>구조적으로</b> 잡지 못함</td></tr>
+    <tr><td><b>품질 측정 불가</b></td><td>의도·계획 정확도를 잴 <b>테스트 자산이 없음</b></td><td>프롬프트를 고쳐도 좋아졌는지 회귀했는지 판단 근거 없음</td></tr>
+  </table>
+  <div class="box warn">
+    <div class="t">⚠️ 출발점 — 기록된 문제의식</div>
+    커밋 이력 <code>680434b "4단계까지 구현(질의 의도파악이 엉망임)"</code> 가 v2의 직접적 출발점이다.
+    v2는 "의도파악"을 <b>구조화·검증·측정 가능한 파이프라인</b>으로 바꾸는 것이 핵심이며, 새 기능 추가가 아니라 <b>기존 동작의 신뢰도·관측성 강화</b>다.
+  </div>
+
+  <h3 id="pillars">1.2 v2의 세 기둥</h3>
+  <div class="grid2">
+    <div class="box acc">
+      <div class="t">① 의도 분석 (analyze)</div>
+      <ul>
+        <li><code>gate</code>의 1비트를 <b><code>IntentSpec</code></b> 구조로 대체·확장</li>
+        <li>의도를 <b>목표(goals) 단위로 분해</b> — 각 목표가 곧 검증 단위</li>
+        <li>대상 범위(<code>erd</code>/<code>db</code>/<code>concept</code>)·제약·<b>모호성</b>을 명시</li>
+        <li>모호하면 <code>clarify</code> — 추측 대신 되묻기</li>
+      </ul>
+    </div>
+    <div class="box ok">
+      <div class="t">② 계획 수립 (plan, 목표 연결)</div>
+      <ul>
+        <li>각 스텝을 <b><code>goal_id</code>에 연결</b> + <b><code>expectation</code></b>(성공조건) 부여</li>
+        <li>계획이 <b>어느 목표에 기여하는지</b> 추적 가능</li>
+        <li>목표 미커버·과잉 스텝을 계획 단계부터 점검</li>
+      </ul>
+    </div>
+    <div class="box" style="border-left:4px solid var(--acc2)">
+      <div class="t">③ 계획 준수 검증 (verify)</div>
+      <ul>
+        <li>실행 후 <b><code>Verdict</code></b> 산출: 목표 충족 · 스텝 준수 · 누락 · 과잉</li>
+        <li>준수율(<code>score</code>)로 <b>정량화</b> → <code>respond</code>/<code>replan</code> 분기</li>
+        <li>SSE <code>verdict</code> 이벤트로 <b>테스터에게 그대로 노출</b></li>
+      </ul>
+    </div>
+    <div class="box" style="border-left:4px solid var(--warn)">
+      <div class="t">④ 테스트 하네스 (purpose)</div>
+      <ul>
+        <li>픽스처 기반 <b>오프라인 채점</b>(<code>/agent/v2/eval</code>)</li>
+        <li>의도 정확도 · 계획 준수율 지표화</li>
+        <li><b>v1 ↔ v2 A/B 비교</b> · 프롬프트 회귀 감지</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="mapping"><span class="n">2.</span>v1 → v2 변경 매핑</h2>
+  <p>v2는 v1 그래프의 <b>형태를 유지</b>한 채 노드 하나를 교체(<code>gate</code>→<code>analyze</code>)하고 하나를 추가(<code>verify</code>)한다. 나머지(<code>fetch_tools</code>·<code>approve</code>·<code>exec_proxy</code>·<code>execute</code>·<code>respond</code>·interrupt/resume·드래프트 커밋)는 <b>그대로 재사용</b>한다.</p>
+  <table>
+    <tr><th width="300">v1 (현행)</th><th>v2 (계획)</th></tr>
+    <tr><td><code>gate</code> → <code>RouteDecision{act|answer}</code></td><td><b><code>analyze</code></b> → <code>IntentSpec{kind, goals[], constraints[], ambiguities[]}</code> (kind: answer/act/mixed/clarify)</td></tr>
+    <tr><td><code>plan</code> → <code>Step{id, tool, args}</code></td><td><code>plan</code> → <code>StepV2{id, tool, args, <b>goal_id, expectation</b>}</code> (IntentSpec.goals 소비)</td></tr>
+    <tr><td><code>replan</code> = 남은 스텝 유무 + 느슨한 자기평가</td><td><b><code>verify</code></b> 노드 신설 → <code>Verdict{adherence, goals[], missing, extra, score}</code> → 그 뒤 <code>replan</code> 재사용</td></tr>
+    <tr><td>SSE: <code>meta·token·interrupt·done·error</code></td><td>+ <b><code>intent</code></b> · <b><code>plan</code></b> · <b><code>verdict</code></b> (관측 이벤트 추가, 기존 이벤트 불변)</td></tr>
+    <tr><td>라우터 <code>/agent</code> (<code>routers/agent.py</code>)</td><td><b><code>/agent/v2</code></b> (<code>routers/v2/agent.py</code>) — 병렬, v1 불변·가드 등록(§9.1)</td></tr>
+    <tr><td>품질 측정 없음</td><td><b><code>/agent/v2/eval</code></b> + <code>fixtures.jsonl</code> + 스코어카드 (의도·계획 정확도)</td></tr>
+    <tr><td>프론트: <code>agent_panel.js</code> 단일 경로</td><td><b>별도</b> <code>js/agent_v2/*</code> (자체 패널·클라이언트·관측 렌더) — v1 프론트 불변</td></tr>
+  </table>
+
+  <!-- 3 -->
+  <h2 id="arch"><span class="n">3.</span>v2 아키텍처</h2>
+
+  <h3 id="topology">3.1 그래프 토폴로지</h3>
+  <div class="fig">
+    <div class="ascii">                                          ┌────────── replan(loop) ──────────┐
+                                          ▼                                   │
+ START ─▶ analyze ──act/mixed──▶ fetch_tools ─▶ plan ─▶ approve ─yes─▶ exec_proxy ─▶ execute ─▶ verify
+            │  │                                          │ no                                    │
+        answer clarify                                    ▼                          ┌── pass ────┘
+            │     │                                      END (취소)                  │
+            ▼     ▼                                                          partial/fail
+           answer→END   escalate→respond→END                                  ├─ recoverable → replan
+                                                                              └─ unrecoverable → respond
+                                                                                          │
+                                                                                  respond ─▶ END</div>
+    <div class="figcap">그림 1 — v2 토폴로지. <span class="lg">analyze</span>(의도 구조화)와 <span class="lg">verify</span>(준수 검증)가 신규/교체 노드. <code>clarify</code>는 모호 시 즉시 사용자에게 되묻고, <code>verify</code>는 실행 결과를 계획·의도와 대조해 pass/partial/fail로 분기한다. 회색 경로(fetch_tools·approve·exec_proxy·execute·replan·respond)는 v1 재사용.</div>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 900 250" font-family="'Pretendard','Segoe UI',sans-serif" font-size="12">
+      <defs>
+        <marker id="a1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b9dff"/></marker>
+        <marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c5cff"/></marker>
+        <marker id="a3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#3fcf8e"/></marker>
+      </defs>
+      <!-- pipeline boxes -->
+      <rect x="20"  y="100" width="120" height="50" rx="10" fill="#1d2129" stroke="#f0b429"/>
+      <text x="80"  y="122" text-anchor="middle" fill="#ffd97a" font-size="13">① analyze</text>
+      <text x="80"  y="140" text-anchor="middle" fill="#9aa3b2" font-size="10">의도 구조화</text>
+
+      <rect x="190" y="100" width="120" height="50" rx="10" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="250" y="122" text-anchor="middle" fill="#bcd4ff" font-size="13">② plan</text>
+      <text x="250" y="140" text-anchor="middle" fill="#9aa3b2" font-size="10">목표→스텝</text>
+
+      <rect x="360" y="100" width="120" height="50" rx="10" fill="#14171e" stroke="#2a2f3a"/>
+      <text x="420" y="122" text-anchor="middle" fill="#cdd5e3" font-size="13">approve</text>
+      <text x="420" y="140" text-anchor="middle" fill="#6b7689" font-size="10">v1 재사용</text>
+
+      <rect x="530" y="100" width="120" height="50" rx="10" fill="#14171e" stroke="#2a2f3a"/>
+      <text x="590" y="122" text-anchor="middle" fill="#cdd5e3" font-size="13">execute</text>
+      <text x="590" y="140" text-anchor="middle" fill="#6b7689" font-size="10">v1 재사용</text>
+
+      <rect x="700" y="100" width="120" height="50" rx="10" fill="#1d2129" stroke="#7c5cff"/>
+      <text x="760" y="122" text-anchor="middle" fill="#cdb8ff" font-size="13">③ verify</text>
+      <text x="760" y="140" text-anchor="middle" fill="#9aa3b2" font-size="10">준수 검증</text>
+
+      <line x1="140" y1="125" x2="190" y2="125" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#a1)"/>
+      <line x1="310" y1="125" x2="360" y2="125" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#a1)"/>
+      <line x1="480" y1="125" x2="530" y2="125" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#a1)"/>
+      <line x1="650" y1="125" x2="700" y2="125" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#a1)"/>
+
+      <!-- SSE observability events emitted -->
+      <text x="80"  y="80" text-anchor="middle" fill="#caa64a" font-size="10">⤓ SSE intent</text>
+      <text x="250" y="80" text-anchor="middle" fill="#6f93c8" font-size="10">⤓ SSE plan</text>
+      <text x="760" y="80" text-anchor="middle" fill="#9b86c8" font-size="10">⤓ SSE verdict</text>
+      <line x1="80"  y1="86" x2="80"  y2="100" stroke="#caa64a" stroke-width="1.3" stroke-dasharray="2 2"/>
+      <line x1="250" y1="86" x2="250" y2="100" stroke="#6f93c8" stroke-width="1.3" stroke-dasharray="2 2"/>
+      <line x1="760" y1="86" x2="760" y2="100" stroke="#9b86c8" stroke-width="1.3" stroke-dasharray="2 2"/>
+
+      <!-- verify outcomes -->
+      <text x="760" y="178" text-anchor="middle" fill="#8df0bf" font-size="10">pass → respond</text>
+      <text x="760" y="196" text-anchor="middle" fill="#bcd4ff" font-size="10">partial/fail → replan</text>
+      <text x="760" y="214" text-anchor="middle" fill="#ff9e9e" font-size="10">unrecoverable → respond(사유)</text>
+      <line x1="760" y1="150" x2="760" y2="166" stroke="#7c5cff" stroke-width="1.3" stroke-dasharray="2 2"/>
+
+      <text x="80" y="178" text-anchor="middle" fill="#8df0bf" font-size="10">answer → END</text>
+      <text x="80" y="196" text-anchor="middle" fill="#f0b429" font-size="10">clarify → 되묻기</text>
+    </svg>
+    <div class="figcap">그림 2 — v2의 핵심 3노드와 관측 이벤트. <code>analyze</code>는 <code>intent</code>, <code>plan</code>은 <code>plan</code>, <code>verify</code>는 <code>verdict</code> SSE 이벤트를 흘려보내 — 테스터가 "무엇을 이해했고 / 어떻게 계획했고 / 계획대로 됐는지"를 단계별로 관측한다.</div>
+  </div>
+
+  <h3 id="state">3.2 상태 확장 (AgentStateV2)</h3>
+  <p>v1 <code>AgentState</code>에 의도·검증 필드만 더한다. 기존 필드(<code>messages</code>·<code>erd_context</code>·<code>plan</code>·<code>approved</code>·<code>tool_catalog</code>·<code>past_steps</code>·<code>replan_*</code>)는 의미·리듀서 그대로.</p>
+<pre><code><span class="kw">class</span> <span class="cl">AgentStateV2</span>(AgentState):           <span class="cm"># v1 상태를 상속·확장</span>
+    intent:   <span class="cl">Optional</span>[dict]              <span class="cm"># IntentSpec — analyze 산출 (검증 기준)</span>
+    verdict:  <span class="cl">Optional</span>[dict]              <span class="cm"># Verdict — verify 산출 (준수 리포트)</span>
+    <span class="cm"># plan[*] 가 v2에선 goal_id·expectation 을 동반 (StepV2)</span></code></pre>
+
+  <!-- 4 -->
+  <h2 id="intent"><span class="n">4.</span>의도 분석 — <code>analyze</code> 노드</h2>
+  <p>
+    v1 <code>gate</code>(act/answer 1비트)를 대체한다. 경량 모델(<code>get_fast_llm</code>)에 ERD 요약·역량 목록을 주고
+    <code>with_structured_output(IntentSpec)</code>로 <b>구조화된 의도</b>를 받는다. 핵심은 <b>목표 분해</b>다 — 이후 모든 단계가 이 goals를 기준 삼는다.
+  </p>
+<pre><code><span class="kw">class</span> <span class="cl">Goal</span>(BaseModel):
+    id:           str                                  <span class="cm"># g1, g2 … (스텝이 참조)</span>
+    description:  str                                  <span class="cm"># "회원 테이블 생성"</span>
+    action:       <span class="cl">Literal</span>[<span class="st">"read"</span>,<span class="st">"create"</span>,<span class="st">"update"</span>,<span class="st">"delete"</span>,<span class="st">"layout"</span>,<span class="st">"sql"</span>,<span class="st">"explain"</span>]
+    target_scope: <span class="cl">Literal</span>[<span class="st">"erd"</span>,<span class="st">"db"</span>,<span class="st">"concept"</span>]      <span class="cm"># 다이어그램 / 운영DB / 일반지식</span>
+    target_ref:   str = <span class="st">""</span>                          <span class="cm"># 대상 테이블·컬럼 식별</span>
+
+<span class="kw">class</span> <span class="cl">IntentSpec</span>(BaseModel):
+    kind:        <span class="cl">Literal</span>[<span class="st">"answer"</span>,<span class="st">"act"</span>,<span class="st">"mixed"</span>,<span class="st">"clarify"</span>]
+    summary:     str                                   <span class="cm"># 한 줄 의도 요약</span>
+    goals:       <span class="cl">list</span>[Goal] = []                     <span class="cm"># 분해된 목표 = 검증 단위</span>
+    constraints: <span class="cl">list</span>[str] = []                      <span class="cm"># "30자로", "PK 필수" 등 제약</span>
+    ambiguities: <span class="cl">list</span>[str] = []                      <span class="cm"># 모호한 점 (있으면 kind=clarify)</span>
+    confidence:  float = <span class="num">1.0</span></code></pre>
+  <table>
+    <tr><th width="120">kind</th><th>분기</th><th>의미</th></tr>
+    <tr><td><code>answer</code></td><td>→ <code>answer</code> → END</td><td>상태 변경 불필요 (개념·조회성) — v1과 동일 경로</td></tr>
+    <tr><td><code>act</code> / <code>mixed</code></td><td>→ <code>fetch_tools</code> → <code>plan</code></td><td>도구 실행 필요. <code>mixed</code>는 읽기+쓰기 혼합 (v1이 뭉개던 케이스)</td></tr>
+    <tr><td><code>clarify</code></td><td>→ <code>respond</code>(질문) → END</td><td><b>모호성 존재</b> → 추측 대신 사용자에게 되묻고 종료. <code>ambiguities</code>를 질문으로 변환</td></tr>
+  </table>
+  <div class="box ok">
+    <div class="t">왜 의도를 구조화하면 정확도가 오르나</div>
+    <ul>
+      <li><b>대상 분리</b>: <code>target_scope</code>(erd/db)를 의도 단계에서 결정 → <code>plan</code> 프롬프트의 거대한 "ERD vs 운영DB" 규칙 벽 제거, 혼동 감소.</li>
+      <li><b>목표 단위</b>: "회원·주문 만들고 연결" → <code>goals=[g1,g2,g3]</code>로 분해 → <code>plan</code>이 각 목표만 충실히 스텝화.</li>
+      <li><b>모호성 게이트</b>: "그거 지워"처럼 <code>target_ref</code>가 비면 <code>clarify</code> → 잘못된 삭제 방지 (보수성).</li>
+      <li><b>검증 가능</b>: goals가 곧 <code>verify</code>의 채점 항목 → "의도대로 됐나"를 항목별로 판정.</li>
+    </ul>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="plan"><span class="n">5.</span>계획 수립 — 목표 연결 <code>plan</code></h2>
+  <p>v1 <code>plan</code>을 확장한다. 입력이 raw 질의가 아니라 <b><code>IntentSpec.goals</code></b>이며, 각 스텝은 <b>어느 목표에 기여하는지</b>(<code>goal_id</code>)와 <b>성공조건</b>(<code>expectation</code>)을 명시한다. (설계서 §6.4가 예고한 <code>expectation</code> 필드를 v2에서 실제 구현.)</p>
+<pre><code><span class="kw">class</span> <span class="cl">StepV2</span>(Step):                  <span class="cm"># v1 Step{id,tool,args} 확장</span>
+    goal_id:     str                    <span class="cm"># 이 스텝이 기여하는 IntentSpec.goal</span>
+    expectation: str = <span class="st">""</span>             <span class="cm"># 성공조건(postcondition) — verify가 대조</span></code></pre>
+  <table>
+    <tr><th width="200">계획 단계 점검</th><th>내용</th></tr>
+    <tr><td><b>목표 커버리지</b></td><td>모든 <code>goal</code>이 ≥1개 스텝으로 커버되는가 (미커버 목표는 계획 결함)</td></tr>
+    <tr><td><b>과잉 방지</b></td><td>어느 <code>goal_id</code>에도 속하지 않는 스텝은 제거 (계획 단계 환각 차단)</td></tr>
+    <tr><td><b>카탈로그 필터</b></td><td>v1 그대로 — <code>tool_catalog</code>(클라) + <code>PROXY_TOOL_CATALOG</code> 밖 툴 제거</td></tr>
+    <tr><td><b>의존 순서</b></td><td>v1 그대로 — 엔티티 생성 → 관계 → 정렬</td></tr>
+  </table>
+
+  <!-- 6 -->
+  <h2 id="verify"><span class="n">6.</span>계획 준수 검증 — <code>verify</code> 노드</h2>
+  <p class="lead">
+    v2의 심장. <code>execute</code> 직후, <b>실행 결과(<code>past_steps</code>)를 계획(<code>plan</code>의 expectation)과 의도(<code>IntentSpec.goals</code>)에 대조</b>해
+    "계획대로·의도대로 됐는가"를 <b>구조적으로</b> 판정한다. v1 <code>replan</code>의 느슨한 자기평가를 명시적 채점으로 바꾼다.
+  </p>
+  <h4>검증 항목 (4종)</h4>
+  <table>
+    <tr><th width="170">항목</th><th>판정</th></tr>
+    <tr><td><b>목표 충족</b> (goal)</td><td>각 <code>IntentSpec.goal</code>마다, 그 goal에 연결된 스텝들의 실제 결과가 목표를 달성했는가 (<code>fulfilled</code> + <code>evidence</code>)</td></tr>
+    <tr><td><b>스텝 준수</b> (step)</td><td>실행된 각 스텝의 결과가 <code>expectation</code>(성공조건)을 만족하는가 (구조 검증 + LLM 대조)</td></tr>
+    <tr><td><b>누락</b> (missing)</td><td>계획에 있었으나 실행되지 않은 스텝 · 어느 스텝도 커버하지 않은 목표</td></tr>
+    <tr><td><b>과잉</b> (extra)</td><td>계획·목표에 없는데 실행된 행동 (의도 이탈 — 가장 위험한 신호)</td></tr>
+  </table>
+
+<pre><code><span class="kw">class</span> <span class="cl">GoalVerdict</span>(BaseModel):
+    goal_id:   str
+    fulfilled: bool
+    evidence:  str = <span class="st">""</span>                <span class="cm"># 어떤 스텝/결과가 이 목표를 충족했나</span>
+
+<span class="kw">class</span> <span class="cl">Verdict</span>(BaseModel):
+    adherence: <span class="cl">Literal</span>[<span class="st">"pass"</span>,<span class="st">"partial"</span>,<span class="st">"fail"</span>]
+    goals:     <span class="cl">list</span>[GoalVerdict] = []
+    missing:   <span class="cl">list</span>[str] = []           <span class="cm"># 누락 목표/스텝</span>
+    extra:     <span class="cl">list</span>[str] = []           <span class="cm"># 계획 밖 실행 (의도 이탈)</span>
+    score:     float = <span class="num">0.0</span>             <span class="cm"># 준수율 = 충족 목표수 / 전체 목표수</span>
+    next:      <span class="cl">Literal</span>[<span class="st">"respond"</span>,<span class="st">"replan"</span>,<span class="st">"escalate"</span>]
+    note:      str = <span class="st">""</span></code></pre>
+
+  <h3 id="verdict">6.1 Verdict 분기</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 250" font-family="'Pretendard','Segoe UI',sans-serif">
+      <defs>
+        <marker id="vg" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#3fcf8e"/></marker>
+        <marker id="vb" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#5b9dff"/></marker>
+        <marker id="vr" markerWidth="11" markerHeight="11" refX="8.5" refY="3.2" orient="auto"><path d="M0,0 L9,3.2 L0,6.4 Z" fill="#ff6b6b"/></marker>
+      </defs>
+      <rect x="300" y="14" width="280" height="58" rx="12" fill="#14171e" stroke="#7c5cff"/>
+      <text x="440" y="38" text-anchor="middle" fill="#cdb8ff" font-size="12.5">🔎 verify — 결과를 계획·의도와 대조</text>
+      <text x="440" y="58" text-anchor="middle" fill="#9aa3b2" font-size="10.5">목표 충족? · 스텝 준수? · 누락? · 과잉?</text>
+
+      <line x1="400" y1="72" x2="150" y2="150" stroke="#3fcf8e" stroke-width="1.8" marker-end="url(#vg)"/>
+      <line x1="440" y1="72" x2="440" y2="150" stroke="#5b9dff" stroke-width="1.8" marker-end="url(#vb)"/>
+      <line x1="480" y1="72" x2="730" y2="150" stroke="#ff6b6b" stroke-width="1.8" marker-end="url(#vr)"/>
+
+      <g font-size="10.5">
+        <rect x="40"  y="152" width="220" height="86" rx="10" fill="#1d2129" stroke="#3fcf8e"/>
+        <text x="150" y="176" text-anchor="middle" fill="#8df0bf" font-size="12.5">✅ pass</text>
+        <text x="150" y="198" text-anchor="middle" fill="#cdd5e3">모든 목표 충족 · 과잉 없음</text>
+        <text x="150" y="222" text-anchor="middle" fill="#6b8f7e">→ respond (커밋)</text>
+
+        <rect x="330" y="152" width="220" height="86" rx="10" fill="#1d2129" stroke="#5b9dff"/>
+        <text x="440" y="176" text-anchor="middle" fill="#bcd4ff" font-size="12.5">🔧 partial</text>
+        <text x="440" y="198" text-anchor="middle" fill="#cdd5e3">일부 미충족·복구 가능</text>
+        <text x="440" y="222" text-anchor="middle" fill="#6f86b0">→ replan (보정 스텝)</text>
+
+        <rect x="620" y="152" width="220" height="86" rx="10" fill="#1d2129" stroke="#ff6b6b"/>
+        <text x="730" y="176" text-anchor="middle" fill="#ff9e9e" font-size="12.5">🛑 fail</text>
+        <text x="730" y="198" text-anchor="middle" fill="#cdd5e3">의도 이탈·복구 불가</text>
+        <text x="730" y="222" text-anchor="middle" fill="#bd7a7a">→ respond(사유) / escalate</text>
+      </g>
+    </svg>
+    <div class="figcap">그림 3 — <code>verify</code>의 3분기. <code>pass</code>는 곧장 커밋, <code>partial</code>은 <b>기존 <code>replan</code>을 재사용</b>해 보정 스텝을 받아 <code>execute</code>로 되돌리고, <code>fail</code>(특히 <code>extra</code>≠∅ 의도 이탈)은 안전하게 보고/에스컬레이트한다. <code>replan_count</code> 상한은 v1 그대로 무한 루프를 막는다.</div>
+  </div>
+  <div class="box acc">
+    <div class="t">replan과의 관계 — 교체가 아니라 전치(前置)</div>
+    v2는 <code>replan</code>을 없애지 않는다. <code>verify</code>가 <b>구조적 판정</b>을 먼저 내고(목표·스텝·누락·과잉),
+    보정이 필요할 때만(<code>partial</code>) 기존 <code>replan</code>이 <b>다음 스텝을 생성</b>한다. 즉 verify=판정, replan=재계획으로 역할을 분리한다.
+    이로써 v1의 "남은 스텝 있으면 continue"식 암묵 판정이 <b>명시적 채점 → 재계획</b>으로 바뀐다.
+  </div>
+
+  <!-- 7 -->
+  <h2 id="harness"><span class="n">7.</span>테스트 하네스 — v2의 목적 실현</h2>
+  <p>
+    "계획대로 실행하는지 테스트한다"는 목적을 <b>두 계층</b>으로 구현한다.
+    런타임 <code>verify</code>(매 턴 자기검증)는 §6에서 다뤘고, 여기서는 <b>오프라인 채점 하네스</b>를 정의한다 —
+    프롬프트·모델을 바꿀 때 의도·계획 품질이 <b>좋아졌는지 회귀했는지</b>를 수치로 답한다.
+  </p>
+
+  <h3 id="fixtures">7.1 픽스처 · 지표</h3>
+  <p>대표 질의를 <b>정답(기대값)</b>과 함께 픽스처로 고정한다. 각 줄은 하나의 테스트 케이스다.</p>
+<pre><code><span class="cm"># agent/v2/eval/fixtures.jsonl  (JSON Lines)</span>
+{<span class="st">"id"</span>:<span class="st">"F-01"</span>, <span class="st">"query"</span>:<span class="st">"정규화가 뭐야?"</span>,
+ <span class="st">"expect"</span>:{<span class="st">"kind"</span>:<span class="st">"answer"</span>, <span class="st">"tools"</span>:[], <span class="st">"forbidden"</span>:[<span class="st">"create_entity"</span>,<span class="st">"run_sql"</span>]}}
+{<span class="st">"id"</span>:<span class="st">"F-02"</span>, <span class="st">"query"</span>:<span class="st">"회원·주문 만들고 1:N 연결 후 정렬"</span>,
+ <span class="st">"expect"</span>:{<span class="st">"kind"</span>:<span class="st">"act"</span>, <span class="st">"goals"</span>:<span class="num">3</span>, <span class="st">"tools"</span>:[<span class="st">"create_entity"</span>,<span class="st">"create_relation"</span>,<span class="st">"auto_layout"</span>]}}
+{<span class="st">"id"</span>:<span class="st">"F-03"</span>, <span class="st">"query"</span>:<span class="st">"운영 DB 테이블 다 지워"</span>,
+ <span class="st">"expect"</span>:{<span class="st">"kind"</span>:<span class="st">"act"</span>, <span class="st">"scope"</span>:<span class="st">"db"</span>, <span class="st">"tools"</span>:[<span class="st">"fetch_db_schema"</span>,<span class="st">"run_sql"</span>], <span class="st">"forbidden"</span>:[<span class="st">"delete_entity"</span>]}}
+{<span class="st">"id"</span>:<span class="st">"F-04"</span>, <span class="st">"query"</span>:<span class="st">"그 테이블 지워"</span>,
+ <span class="st">"expect"</span>:{<span class="st">"kind"</span>:<span class="st">"clarify"</span>}}                          <span class="cm"># 대상 불명확 → 되물어야 정답</span></code></pre>
+  <table>
+    <tr><th width="200">지표</th><th>측정</th></tr>
+    <tr><td><b>의도 정확도</b> (intent)</td><td><code>kind</code> 일치율 · <code>target_scope</code>(erd/db) 일치율 · 목표 개수 근사</td></tr>
+    <tr><td><b>계획 준수</b> (plan)</td><td>계획된 tool 집합이 <code>expect.tools</code>를 포함 · <code>forbidden</code> 툴 <b>미사용</b>(0이어야 함)</td></tr>
+    <tr><td><b>모호성 처리</b> (clarify)</td><td>모호 케이스(F-04 류)에서 <code>clarify</code>로 분기하는 재현율 — <b>잘못된 추측 방지</b> 측정</td></tr>
+    <tr><td><b>대상 혼동률</b></td><td>운영DB 요청에 ERD 툴(<code>delete_entity</code> 등)을 쓰는 오분류 빈도 (v1의 대표 결함)</td></tr>
+  </table>
+
+  <h3 id="eval">7.2 <code>/agent/v2/eval</code> · v1↔v2 비교</h3>
+  <p>
+    채점은 <b>실행 없이</b>(dry-run) <code>analyze → plan</code>까지만 돌려 의도·계획만 평가한다 — 실제 ERD/DB를 건드리지 않으므로 안전하고 반복 가능하다.
+  </p>
+<pre><code><span class="cm"># POST /agent/v2/eval  — 픽스처 일괄 채점 (실행 생략, 계획까지만)</span>
+<span class="kw">@router.post</span>(<span class="st">"/eval"</span>)
+<span class="kw">async def</span> <span class="fn">eval_run</span>(body: EvalBody):
+    cases = load_fixtures(body.path <span class="kw">or</span> DEFAULT_FIXTURES)
+    rows = []
+    <span class="kw">for</span> c <span class="kw">in</span> cases:
+        intent = analyze_only(c.query, c.context)          <span class="cm"># analyze 노드만</span>
+        plan   = plan_only(intent) <span class="kw">if</span> intent.kind != <span class="st">"answer"</span> <span class="kw">else</span> []
+        rows.append(score_case(c.expect, intent, plan))    <span class="cm"># 케이스별 채점</span>
+    <span class="kw">return</span> {<span class="st">"summary"</span>: aggregate(rows), <span class="st">"rows"</span>: rows}   <span class="cm"># 스코어카드</span></code></pre>
+  <table>
+    <tr><th width="120">호출</th><th>용도</th></tr>
+    <tr><td><code>/agent/eval</code><sup>v1</sup></td><td>(선택) v1에도 동일 채점기를 붙여 같은 픽스처로 베이스라인 측정</td></tr>
+    <tr><td><code>/agent/v2/eval</code></td><td>v2 채점 → 두 스코어카드를 나란히 비교해 <b>v2가 실제로 나은지</b> 확인</td></tr>
+    <tr><td>CLI <code>python -m agent.v2.eval.runner</code></td><td>CI·로컬에서 픽스처 회귀 검사 (프록시 미기동 시에도 모듈 직접 실행)</td></tr>
+  </table>
+  <div class="box ok">
+    <div class="t">✅ 이 하네스가 답하는 질문</div>
+    <ul>
+      <li>"의도파악이 엉망"이 <b>수치로 얼마나</b> 개선됐나? (kind/scope 정확도 v1 vs v2)</li>
+      <li>운영DB 요청에 ERD 툴을 쓰는 <b>대상 혼동</b>이 줄었나?</li>
+      <li>모호 질의를 <b>되묻는 비율</b>이 올라갔나(추측 감소)?</li>
+      <li>프롬프트를 고친 뒤 <b>회귀</b>가 없나? (픽스처 통과율)</li>
+    </ul>
+  </div>
+
+  <!-- 8 -->
+  <h2 id="sse"><span class="n">8.</span>SSE 프로토콜 확장</h2>
+  <p>v1 이벤트(<code>meta·token·interrupt·done·error</code>)는 <b>그대로</b> 두고, 관측용 3종을 추가한다. 클라 런타임의 interrupt/resume·툴 실행 로직은 <b>변경 없음</b>(v1 재사용) — 추가 이벤트는 "보여주기"만 한다.</p>
+  <table>
+    <tr><th width="120">이벤트</th><th>시점</th><th>페이로드</th></tr>
+    <tr><td><code>intent</code> <span class="tag ctrl">신규</span></td><td><code>analyze</code> 직후</td><td><code>IntentSpec</code> — kind·summary·goals·constraints·ambiguities</td></tr>
+    <tr><td><code>plan</code> <span class="tag ctrl">신규</span></td><td><code>plan</code> 직후</td><td><code>StepV2[]</code> — goal_id·expectation 포함 (미리보기 강화)</td></tr>
+    <tr><td><code>verdict</code> <span class="tag ctrl">신규</span></td><td><code>verify</code> 직후</td><td><code>Verdict</code> — adherence·goals·missing·extra·score</td></tr>
+    <tr><td colspan="3" style="color:var(--mut)">— 이하 v1 동일 — </td></tr>
+    <tr><td><code>interrupt</code></td><td>실행 위임</td><td><code>tools_request</code> / <code>plan_approval</code> / <code>tool_calls</code> (v1 그대로)</td></tr>
+    <tr><td><code>token·done·error</code></td><td>응답·종료·오류</td><td>v1 그대로</td></tr>
+  </table>
+  <div class="box acc">
+    <div class="t">프론트 — 관측 패널 (읽기 전용)</div>
+    <code>agent_panel.js</code>의 <code>_agentReadSSE</code> 콜백에 분기 3개만 추가한다: <code>intent</code>→"이해한 의도" 카드, <code>plan</code>→스텝·목표 표, <code>verdict</code>→준수 리포트(목표별 ✓/✗·score). 모두 <b>표시 전용</b>이라 기존 실행 흐름(<code>phase</code> 루프·드래프트 커밋)에 영향이 없다.
+  </div>
+
+  <!-- 9 -->
+  <h2 id="layout"><span class="n">9.</span>디렉토리 · 배포 구조</h2>
+  <p class="sub">표기 — 🟢 <b>신규</b> · 🟡 <b>수정</b> · ⚪ <b>기존</b>(불변). v2는 <code>agent/v2/</code>·<code>routers/v2/</code> <b>하위 디렉토리</b>로 격리한다(부모와 동일 규약). 부모 패키지의 <b>기존 v1 파일은 한 줄도 건드리지 않는다</b>.</p>
+<pre><code>proxy/python/
+├── agent/                       <span class="cm">⚪ v1 패키지 — 기존 파일 전부 불변</span>
+│   ├── __init__.py              <span class="cm">⚪ 불변 (v2 추가해도 수정 不要 — v2는 자체 __init__)</span>
+│   ├── graph.py · common/ · nodes/ · tools_proxy.py · db_docs.py …  <span class="cm">⚪ v1 (불변)</span>
+│   └── <span class="fn">v2/</span>                      <span class="cm">🟢 신규: v2 서브패키지 (routers/v2 와 동일 규약)</span>
+│       ├── __init__.py
+│       ├── graph.py             <span class="cm">← analyze→plan→approve→exec_proxy→execute→verify→replan→respond</span>
+│       ├── <span class="fn">nodes/</span>
+│       │   ├── analyze.py       <span class="cm">🟢 의도 분석 (gate 대체) — IntentSpec</span>
+│       │   ├── plan.py          <span class="cm">🟢 목표 연결 계획 — StepV2(goal_id,expectation)</span>
+│       │   ├── verify.py        <span class="cm">🟢 계획 준수 검증 — Verdict</span>
+│       │   └── (answer·execute·exec_proxy·approve·respond·replan)  <span class="cm">← 부모 v1 import 재사용</span>
+│       ├── <span class="fn">common/</span>
+│       │   ├── state.py         <span class="cm">🟢 AgentStateV2 (agent.common.state 상속 + intent·verdict)</span>
+│       │   ├── schemas.py       <span class="cm">🟢 IntentSpec·Goal·StepV2·Verdict·GoalVerdict</span>
+│       │   └── prompts.py       <span class="cm">🟢 ANALYZE/PLAN_V2/VERIFY 프롬프트</span>
+│       └── <span class="fn">eval/</span>                <span class="cm">🟢 테스트 하네스</span>
+│           ├── fixtures.jsonl   <span class="cm">← 대표 질의 + 기대값</span>
+│           ├── scorer.py        <span class="cm">← 케이스 채점 · 집계</span>
+│           └── runner.py        <span class="cm">← CLI 일괄 실행 (python -m agent.v2.eval.runner)</span>
+├── routers/
+│   ├── agent.py                 <span class="cm">⚪ v1 라우터 (불변)</span>
+│   └── v2/                      <span class="cm">🟢 신규</span>
+│       ├── __init__.py
+│       └── agent.py             <span class="cm">← /stream·/resume·/key·/config + /eval (agent.v2.graph 사용)</span>
+├── main.py                      <span class="cm">🟡 수정: v2 라우터 가드 등록(try/except) — 유일한 백엔드 v1 파일 접촉</span>
+└── requirements.txt             <span class="cm">⚪ 불변 (langgraph·langchain-openai 이미 존재)</span>
+
+js/
+├── agent_panel.js               <span class="cm">⚪ 불변 — v1 전용. v2는 건드리지 않음</span>
+├── agent_settings.js            <span class="cm">⚪ 불변 — v1 전용</span>
+├── agent_tools.js               <span class="cm">⚪ 불변 — AGENT_TOOL_CATALOG 단일 소스를 v2가 읽기만 함</span>
+└── agent_v2/                    <span class="cm">🟢 신규: v2 전용 프론트 (자체 패널·클라이언트·관측 렌더)</span>
+    ├── panel_v2.js              <span class="cm">← v2 채팅 패널 셸 (v1 패널과 독립)</span>
+    ├── client_v2.js             <span class="cm">← /agent/v2/* SSE 통신 · phase 루프</span>
+    └── observe_v2.js            <span class="cm">← intent·plan·verdict 관측 카드 렌더</span>
+
+index.html                       <span class="cm">🟡 수정: agent_v2/* &lt;script&gt; 로드 추가(가법적) + v2 패널 마크업</span></code></pre>
+  <div class="box acc">
+    <div class="t">백엔드는 <code>agent/v2/</code>(중첩) · 프론트는 <code>js/agent_v2/</code>(형제) — 의도된 비대칭</div>
+    백엔드 v1은 <b>패키지</b>(<code>agent/</code>)이므로 <code>routers/v2/</code>처럼 <code>agent/v2/</code>로 <b>중첩</b>한다. 반면 프론트 v1은 패키지가 아니라
+    <b>평면 파일</b>(<code>agent_panel.js</code>·<code>agent_settings.js</code>·<code>agent_tools.js</code>)이라 부모 <code>js/agent/</code>가 없다 —
+    여기에 맞춰 v2를 <code>js/agent/v2/</code>로 넣으려면 v1 파일을 <b>이동(=수정)</b>해야 하므로 격리 위반이다.
+    따라서 프론트는 v1을 건드리지 않는 형제 디렉토리 <code>js/agent_v2/</code>로 둔다(둘 다 "v2를 한 곳에 격리"라는 동일 원칙).
+  </div>
+  <div class="box danger">
+    <div class="t">🔒 v1 파일 접촉 = 단 2곳, 모두 가법적</div>
+    백엔드는 <code>main.py</code>의 <b>가드 등록 1블록</b>, 프론트는 <code>index.html</code>의 <b>스크립트 로드·마크업 추가</b>뿐이다.
+    두 변경 모두 <b>기존 줄을 고치지 않고 추가만</b> 하며, 되돌리려면 추가분만 지우면 된다. 그 외 v1 파일(<code>routers/agent.py</code>·<code>agent/**</code>·<code>agent_panel.js</code>·<code>agent_settings.js</code>·<code>agent_tools.js</code>)은 <b>diff 0</b>을 강제한다.
+  </div>
+
+  <h3 id="isolation">9.1 격리 계약 — v1 무손상 보장</h3>
+  <p class="lead">
+    <b>v2의 어떤 추가·수정·삭제도 v1에 영향을 주지 않는다.</b> 이것은 권고가 아니라 <b>강제 계약</b>이며,
+    아래 세 가지 불변식(invariant)으로 보장하고 마지막에 <b>diff 화이트리스트</b>로 검증한다.
+  </p>
+
+  <h4>불변식 ① 의존 방향은 단방향 — v1 → v2 참조 금지</h4>
+  <div class="fig">
+    <div class="ascii">  v1 (부모의 기존 모듈)                          v2 (하위 디렉토리)
+  ┌───────────────────────────┐   ✗ 참조 금지   ┌───────────────────────┐
+  │ agent/{graph,common,nodes,│ ◀─────╳───────  │ agent/v2/             │
+  │   tools_proxy,db_docs}    │                 │ routers/v2/           │
+  │ routers/agent.py          │   ───────────▶  │ js/agent_v2/          │
+  │ agent_panel.js            │   ○ 읽기 전용   │                       │
+  └───────────────────────────┘ (frozen 원시모듈)└───────────────────────┘
+              │                                            │
+              ▼                                            ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  공유 frozen 원시모듈 (양쪽이 읽기만, v2가 수정 不可)        │
+  │  utils/keystore·crypto · db/adapters · agent/common/llm    │
+  │  agent/tools_proxy · agent/db_docs · agent_tools.js(catalog)│
+  └──────────────────────────────────────────────────────────┘</div>
+    <div class="figcap">그림 4 — v2가 <code>agent/v2/</code>로 부모 패키지 <b>안에</b> 들어와도, 의존은 <b>v2 → v1(읽기 전용)</b> 한 방향만 허용한다. 부모의 v1 모듈(<code>agent/graph.py</code>·<code>agent/__init__.py</code> 등)은 자식 <code>agent.v2</code>를 <b>절대 import하지 않는다</b>(파이썬 표준 "부모는 자식을 모른다" 규약). 따라서 <code>agent/v2/</code>를 통째로 삭제해도 v1은 그대로 동작한다.</div>
+  </div>
+  <table>
+    <tr><th width="120">규칙</th><th>내용</th></tr>
+    <tr><td><b>v1 → v2 금지</b></td><td>부모의 v1 파일(<code>agent/__init__.py</code>·<code>agent/graph.py</code>·<code>agent/nodes/*</code> 등)과 <code>routers/agent.py</code>는 <code>agent.v2</code>·<code>routers.v2</code>를 <b>절대 import·참조하지 않는다</b>. (있으면 격리 위반)</td></tr>
+    <tr><td><b>v2 → v1 읽기만</b></td><td>v2는 v1의 <b>frozen 원시모듈</b>(키스토어·crypto·DB 어댑터·llm 팩토리·tools_proxy·db_docs·툴 카탈로그)을 <b>import해 읽기만</b> 한다 — 수정·몽키패치 금지.</td></tr>
+    <tr><td><b>분기 로직은 복제</b></td><td>v2가 <b>다르게 동작해야 하는 노드</b>(analyze·plan·verify·graph)는 v1 import가 아니라 <code>agent/v2/</code>에 <b>독립 구현</b>. 공유는 "안 바뀌는 것"만.</td></tr>
+  </table>
+
+  <h4>불변식 ② 실패 격리 — v2가 깨져도 v1·앱이 산다</h4>
+  <p>v2 라우터 등록을 <b>가드</b>로 감싼다. v2 패키지가 import 에러·문법 오류·삭제 상태여도 앱과 v1은 정상 기동한다.</p>
+<pre><code><span class="cm"># main.py — v1 영역은 그대로, v2만 가드 등록 (추가 블록)</span>
+app.include_router(agent.router, prefix=<span class="st">"/agent"</span>)        <span class="cm"># ⚪ v1 (불변)</span>
+
+<span class="kw">try</span>:                                                     <span class="cm"># 🟢 v2 — 실패해도 앱·v1 무영향</span>
+    <span class="kw">from</span> routers.v2 <span class="kw">import</span> agent <span class="kw">as</span> agent_v2
+    app.include_router(agent_v2.router, prefix=<span class="st">"/agent/v2"</span>)
+<span class="kw">except</span> Exception <span class="kw">as</span> e:                                    <span class="cm"># import 실패·반쪽 삭제 등</span>
+    logging.warning(<span class="st">"v2 agent router disabled: %s"</span>, e)   <span class="cm"># 조용히 비활성, v1 계속</span></code></pre>
+
+  <h4>불변식 ③ 런타임 자원 분리 — 상태가 섞이지 않는다</h4>
+  <table>
+    <tr><th width="160">자원</th><th>분리 방법</th></tr>
+    <tr><td>HTTP 경로</td><td><code>/agent/*</code>(v1) vs <code>/agent/v2/*</code>(v2) — 완전 분리. v1·v2 패널이 <b>공존</b>해도 전역·DOM 분리로 무간섭(A/B)</td></tr>
+    <tr><td>그래프 인스턴스</td><td>v2는 <code>agent/v2/graph.py</code>의 <b>독립 compile</b> + <b>독립 Checkpointer</b>. <code>thread_id</code> 네임스페이스 분리(예: <code>v2_*</code>)</td></tr>
+    <tr><td>프론트 전역</td><td>v2 스크립트는 <code>_AGENT_V2_*</code> 접두 전역만 사용 — v1의 <code>_AGENT_URL</code>·<code>_agentThreadId</code> 등 <b>전역을 재사용·재정의하지 않음</b></td></tr>
+    <tr><td>DOM</td><td>v2 패널은 <b>별도 컨테이너</b>(<code>#agentV2Panel</code>) — v1 패널 DOM·이벤트 핸들러와 겹치지 않음</td></tr>
+    <tr><td>공유 읽기 자원</td><td>OpenAI 키스토어·<code>AGENT_TOOL_CATALOG</code>는 <b>읽기 공유</b>(상태 변경 없음) — 동시 사용해도 충돌 없음</td></tr>
+  </table>
+
+  <div class="box ok">
+    <div class="t">✅ 격리 검증 — diff 화이트리스트 (수용 기준)</div>
+    v2 구현 PR의 <code>git diff --stat</code>에서 <b>기존 파일 변경은 정확히 다음 2개로 한정</b>되어야 한다. 그 외 v1 파일이 한 줄이라도 바뀌면 격리 위반으로 반려.
+    <ul>
+      <li><code>proxy/python/main.py</code> — v2 가드 등록 블록 <b>추가만</b></li>
+      <li><code>index.html</code> — <code>agent_v2/*</code> 스크립트 로드·v2 패널 마크업 <b>추가만</b></li>
+    </ul>
+    <div style="margin-top:6px;color:var(--mut);font-size:12.5px">검사: <code>git diff main -- proxy/python/routers/agent.py ':!proxy/python/agent/v2' proxy/python/agent/ js/agent_panel.js js/agent_settings.js js/agent_tools.js</code> 결과가 <b>비어 있어야</b> 한다.</div>
+    <div class="box warn" style="margin:10px 0 0">
+      <div class="t" style="font-size:13.5px">⚠️ <code>agent/v2/</code> 하위화의 유일한 비용 — 검사 pathspec 제외</div>
+      v2가 <code>agent/</code> <b>안에</b> 들어오면서, "v1 패키지 전체(<code>proxy/python/agent/</code>) diff 0"이라는 단순 검사가 불가능해졌다(그 경로가 이제 v2 추가분을 포함). 따라서 검사에 <b><code>':!proxy/python/agent/v2'</code> 제외 지정</b>을 반드시 붙인다. (<code>routers/v2/</code>도 <code>routers/agent.py</code>만 콕 집어 검사하는 것과 동일한 패턴 — 부모 디렉토리 통째가 아니라 <b>v1 파일·v1 서브트리만</b> 대상.)
+    </div>
+  </div>
+
+  <div class="box warn">
+    <div class="t">⚠️ "수정해야 하면 복제한다" 원칙</div>
+    v2 작업 중 공유 frozen 모듈을 <b>고쳐야 할 것 같으면</b> — 고치지 말고 <code>agent/v2/</code>로 <b>해당 부분만 복제</b>해 v2 사본을 수정한다.
+    공유 모듈의 시그니처·반환·부수효과를 바꾸는 변경은 v1 회귀 위험이 있으므로 <b>전면 금지</b>. (중복 비용 &lt; v1 파손 위험)
+  </div>
+
+  <h4>승격(선택) — 격리 해제는 별도 결정</h4>
+  <p>v2가 지표상 우위를 확인하면(§7) 승격한다. 이때 비로소 v1 파일을 건드린다: <code>main.py</code> prefix를 <code>/agent</code>로 전환하고 v1 디렉토리·v1 프론트를 제거한다. <b>승격은 격리 계약의 종료 시점</b>이며, 그 전까지 위 불변식은 예외 없이 유지된다.</p>
+
+  <div class="box ok">
+    <div class="t">🛡️ 본 격리 계약은 하네스로 강제된다 (CLAUDE.md)</div>
+    위 불변식·검증 절차는 권고에 그치지 않고 <b><code>CLAUDE.md</code>의 "하네스: Agent v1/v2 격리"</b>로 등록되어(2026-05-31) 강제된다.
+    <code>agent/v2/</code>·<code>routers/v2/</code>·<code>js/agent_v2/</code>·v2 등록부를 건드리는 작업은 완료 보고 전 반드시
+    <b>diff 화이트리스트 검사</b>(pathspec 제외 포함)와 <b>단방향 grep</b>을 거쳐야 하며, v1 파일이 허용된 추가 2곳 밖에서 변경되면 격리 위반으로 되돌린다.
+  </div>
+
+  <!-- 10 -->
+  <h2 id="roadmap"><span class="n">10.</span>구현 로드맵</h2>
+  <p>v1을 깨지 않는 순서로 — <b>골격(병렬 가동)</b> → <b>의도</b> → <b>계획 연결</b> → <b>검증</b> → <b>테스트 하네스</b> → (선택)<b>승격</b>. 각 단계는 독립적으로 검증 가능하다.</p>
+  <table>
+    <tr><th width="74">단계</th><th>핵심 목표</th><th width="150">산출물</th><th width="90">선행</th></tr>
+    <tr><td><b>V2-M1</b></td><td><b>골격 + 격리</b> — <code>routers/v2</code> + <code>agent/v2</code> 그래프(초기엔 v1 미러) + <code>js/agent_v2/*</code> 자체 패널. <code>/agent/v2</code> 가동·<b>격리 계약 확립</b>(§9.1)·A/B 비교</td><td>agent/v2/graph.py · routers/v2/agent.py · main.py(가드 등록) · js/agent_v2/* · index.html(로드)</td><td>—</td></tr>
+    <tr><td><b>V2-M2</b></td><td><b>의도 분석</b> — <code>IntentSpec</code>·<code>Goal</code> + <code>analyze</code> 노드 + <code>clarify</code> 분기 + <code>intent</code> SSE·관측 카드</td><td>analyze.py · schemas.py · prompts.py(ANALYZE)</td><td>M1</td></tr>
+    <tr><td><b>V2-M3</b></td><td><b>계획-의도 연결</b> — <code>StepV2(goal_id,expectation)</code> + <code>plan</code> 재작성(goals 소비·목표 커버리지·과잉 제거) + <code>plan</code> SSE</td><td>plan.py · schemas.py(StepV2)</td><td>M2</td></tr>
+    <tr><td><b>V2-M4</b></td><td><b>준수 검증</b> — <code>verify</code> 노드 + <code>Verdict</code> + 3분기(pass/partial→replan/fail) + <code>verdict</code> SSE·준수 리포트</td><td>verify.py · schemas.py(Verdict) · graph.py(엣지)</td><td>M3</td></tr>
+    <tr><td><b>V2-M5</b></td><td><b>테스트 하네스</b> — <code>fixtures.jsonl</code> + <code>scorer</code> + <code>/eval</code>·CLI runner + v1↔v2 스코어카드 비교</td><td>eval/* · routers/v2/agent.py(/eval)</td><td>M2(채점은 M4 권장)</td></tr>
+    <tr><td><b>V2-M6</b> <span class="tag ctrl">선택</span></td><td><b>승격</b> — v2가 지표상 v1 우위 확인 시 prefix 전환·v1 제거·README 동기화</td><td>main.py · README 3종 · v1 디렉토리 제거</td><td>M4·M5</td></tr>
+  </table>
+
+  <div class="box acc">
+    <div class="t">V2-M1 · 골격 — 병렬 가동 + 격리 계약 확립</div>
+    <p><b>목표</b> — v2 엔드포인트를 띄우고 v1과 <b>나란히</b> 동작시키되, 무엇보다 <b>격리 계약(§9.1)을 먼저 못박는다</b>. 이 단계 그래프는 v1과 동일하게 행동해도 좋다(의도/검증은 다음 단계).</p>
+    <table>
+      <tr><th width="110">완료 기준</th><td>v2 패널에서 v1 시나리오가 <code>/agent/v2</code>로 동일 동작 · <b>diff 화이트리스트 통과</b>(기존 파일 변경은 <code>main.py</code>·<code>index.html</code> 추가분뿐, §9.1) · v2 라우터를 통째로 제거해도 v1·앱 정상 기동(가드 등록 확인)</td></tr>
+    </table>
+  </div>
+  <div class="box acc">
+    <div class="t">V2-M4 · 준수 검증 — v2의 본질</div>
+    <p><b>목표</b> — 실행 결과를 의도·계획과 대조해 구조적 판정을 내리고, 그 리포트를 사용자·테스터에게 노출한다.</p>
+    <table>
+      <tr><th width="110">완료 기준</th><td>정상 케이스 <code>verdict.adherence="pass"</code>·<code>score=1.0</code> · 일부러 한 목표를 빠뜨리면 <code>missing</code>에 잡히고 <code>partial</code>→<code>replan</code> 보정 · 계획 밖 행동 주입 시 <code>extra</code>에 검출</td></tr>
+    </table>
+  </div>
+
+  <div class="box warn">
+    <div class="t">⚠️ 진행 원칙 · 하네스 준수 (CLAUDE.md)</div>
+    <ul>
+      <li>실제 구현은 <code>feature-dev</code> 스킬로 진행하며, 단계마다 <b>단축키 동기화 · 백업(aiKey) 통합 · README 3종</b> 영향분을 점검한다.</li>
+      <li><b>v1 무손상이 최우선</b> — <code>CLAUDE.md</code>의 <b>"하네스: Agent v1/v2 격리"</b>(2026-05-31 등록)가 강제한다. v2 경로를 건드리는 작업은 완료 전 <b>diff 화이트리스트 + 단방향 grep</b> 검증 필수(§9.1).</li>
+      <li><b>본 문서(계획서) 작성 자체</b>는 코드·구조·엔드포인트·의존성 변경이 아니므로 README 갱신 불필요. 실제 v2 구현(M1~) 시 <code>README.md</code> §25·§27·§28 및 <code>proxy/python/README.md</code>(엔드포인트 <code>/agent/v2/*</code>·파일구조)가 갱신 대상이 된다.</li>
+    </ul>
+  </div>
+
+  <!-- 11 -->
+  <h2 id="scenarios"><span class="n">11.</span>검증 시나리오</h2>
+  <p>각 단계 완료 판정용 수용 테스트. <b>입력/상황 → 기대 결과</b> 형태이며, v1 결함을 정조준한 케이스를 포함한다.</p>
+
+  <h4>V2-M1 — 골격 · 병렬 가동 · <b>격리</b></h4>
+  <table>
+    <tr><th width="74">ID</th><th width="42%">입력 / 상황</th><th>기대 결과</th></tr>
+    <tr><td>V2-1.1</td><td>기존 v1 패널에서 모든 조작</td><td>v1과 <b>완전 동일</b> 동작 · 네트워크는 <code>/agent/*</code> 호출</td></tr>
+    <tr><td>V2-1.2</td><td>v2 패널에서 "정규화가 뭐야?"</td><td><code>/agent/v2/stream</code> 호출 · 토큰 스트리밍 정상</td></tr>
+    <tr><td>V2-1.3</td><td>v1·v2 동시 사용(탭/패널 2개)</td><td>서로 간섭 없음(<code>thread_id</code>·전역·DOM 독립) · v1 라우터 무영향</td></tr>
+    <tr><td>V2-1.4 <span class="tag ctrl">격리</span></td><td><code>git diff main</code> 검사</td><td>기존 파일 변경이 <code>main.py</code>·<code>index.html</code> <b>추가분으로만</b> 한정 · v1 파일(<code>routers/agent.py</code>·<code>agent/**</code>·<code>agent_panel.js</code> 등) <b>diff 0</b></td></tr>
+    <tr><td>V2-1.5 <span class="tag ctrl">격리</span></td><td><code>agent/v2/</code>·<code>routers/v2/</code>·<code>js/agent_v2/</code>를 통째로 삭제 후 기동</td><td>경고 로그만 남기고 앱·v1 <b>정상 기동</b>(가드 등록) — v2 삭제가 v1에 무영향</td></tr>
+    <tr><td>V2-1.6 <span class="tag ctrl">격리</span></td><td>부모 v1 모듈(<code>agent/</code>의 기존 파일)·<code>routers/agent.py</code>에서 <code>agent.v2</code>·<code>routers.v2</code> 참조 검색(grep)</td><td>참조 <b>0건</b> — v1 → v2 의존 없음(부모는 자식을 모름, 단방향 확인)</td></tr>
+  </table>
+
+  <h4>V2-M2 — 의도 분석</h4>
+  <table>
+    <tr><th width="74">ID</th><th width="42%">입력 / 상황</th><th>기대 결과</th></tr>
+    <tr><td>V2-2.1</td><td>"회원·주문 만들고 1:N 연결 후 정렬"</td><td><code>intent.kind="act"</code> · <code>goals</code> 3개(생성·연결·정렬)로 분해 · <code>intent</code> SSE 카드 표시</td></tr>
+    <tr><td>V2-2.2</td><td>"운영 DB 테이블 다 지워"</td><td><code>goals[*].target_scope="db"</code> — 운영DB로 인식(ERD 아님)</td></tr>
+    <tr><td>V2-2.3</td><td>"그 테이블 지워" (대상 불명확)</td><td><code>kind="clarify"</code> · <code>ambiguities</code>에 대상 불명확 명시 · 되묻고 종료(삭제 미실행)</td></tr>
+    <tr><td>V2-2.4</td><td>"회원 보여주고 이메일도 추가해"</td><td><code>kind="mixed"</code> — 읽기+쓰기 혼합 인식(v1이 뭉개던 케이스)</td></tr>
+  </table>
+
+  <h4>V2-M3 — 계획-의도 연결</h4>
+  <table>
+    <tr><th width="74">ID</th><th width="42%">입력 / 상황</th><th>기대 결과</th></tr>
+    <tr><td>V2-3.1</td><td>V2-2.1의 계획 생성</td><td>각 스텝에 <code>goal_id</code> 부여 · 3개 목표 모두 ≥1 스텝으로 커버 · <code>plan</code> SSE에 목표 매핑 표시</td></tr>
+    <tr><td>V2-3.2</td><td>계획에 목표와 무관한 스텝이 섞임</td><td>과잉 스텝 제거(어느 <code>goal_id</code>에도 안 붙는 스텝 배제)</td></tr>
+    <tr><td>V2-3.3</td><td>한 목표가 스텝으로 안 풀림</td><td>미커버 목표 표시 → 계획 결함으로 드러남</td></tr>
+  </table>
+
+  <h4>V2-M4 — 준수 검증</h4>
+  <table>
+    <tr><th width="74">ID</th><th width="42%">입력 / 상황</th><th>기대 결과</th></tr>
+    <tr><td>V2-4.1</td><td>정상 실행 완료</td><td><code>verdict.adherence="pass"</code> · <code>score=1.0</code> · 목표별 ✓ · <code>respond</code>→커밋</td></tr>
+    <tr><td>V2-4.2</td><td>한 목표(정렬)를 실행에서 누락</td><td><code>missing</code>에 검출 · <code>partial</code> → <code>replan</code>이 <code>auto_layout</code> 보정 스텝 생성</td></tr>
+    <tr><td>V2-4.3</td><td>계획 밖 행동(예: 임의 삭제) 발생</td><td><code>extra</code>에 검출 · <code>adherence="fail"</code> · 안전 보고(커밋 안 함)</td></tr>
+    <tr><td>V2-4.4</td><td>보정 반복으로 <code>replan_count</code> 상한 도달</td><td><code>escalate</code> — 무한 루프 없음(v1 안전장치 재사용)</td></tr>
+    <tr><td>V2-4.5</td><td><code>verdict</code> SSE 수신</td><td>패널에 준수 리포트(목표별 충족·누락·과잉·score) 렌더</td></tr>
+  </table>
+
+  <h4>V2-M5 — 테스트 하네스</h4>
+  <table>
+    <tr><th width="74">ID</th><th width="42%">입력 / 상황</th><th>기대 결과</th></tr>
+    <tr><td>V2-5.1</td><td><code>POST /agent/v2/eval</code> (기본 픽스처)</td><td>케이스별 채점 + 집계 스코어카드 반환 · <b>실행 없이</b>(dry-run) 안전</td></tr>
+    <tr><td>V2-5.2</td><td>F-04("그 테이블 지워") 채점</td><td><code>clarify</code> 정답 처리 — 모호성 재현율에 반영</td></tr>
+    <tr><td>V2-5.3</td><td>F-03(운영DB 삭제) 채점</td><td><code>forbidden</code>(<code>delete_entity</code>) 미사용 확인 · 대상 혼동 0</td></tr>
+    <tr><td>V2-5.4</td><td>같은 픽스처를 v1·v2로 각각 채점</td><td>두 스코어카드 비교 — 의도/대상/모호성 지표에서 v2 우위 확인</td></tr>
+    <tr><td>V2-5.5</td><td><code>python -m agent.v2.eval.runner</code></td><td>프록시 미기동 상태에서도 모듈 직접 실행·채점(CI 가능)</td></tr>
+  </table>
+
+  <div class="box ok">
+    <div class="t">✅ 공통 회귀 체크 (모든 단계)</div>
+    <ul>
+      <li><b>v1 무손상 (최우선)</b>: 모든 v2 단계의 PR에서 v1 파일 <b>diff 0</b> 유지(§9.1 화이트리스트). v2 기능 추가·수정·삭제가 v1 동작을 한 톨도 바꾸지 않음.</li>
+      <li><b>드래프트·undo 정합</b>: v2도 <code>verify pass</code> 후에만 커밋 · undo 1회 롤백(v1 격리 규칙 계승).</li>
+      <li><b>키·시크릿 비노출</b>: OpenAI 키는 프록시 키스토어에만 · 네트워크/콘솔 노출 없음.</li>
+      <li><b>관측 이벤트 안전</b>: <code>intent·plan·verdict</code> 미수신(구버전 백엔드)이어도 패널이 깨지지 않음(점진적 향상).</li>
+    </ul>
+  </div>
+
+  <hr>
+  <p class="sub">
+    본 문서는 v2 <b>구현 계획서</b>(draft)다. 기반 설계는 <code>AI_ERD_PlanExecute_설계서.html</code>(v0.2)이며,
+    실제 구현은 <code>feature-dev</code> 스킬로 진행하고 단축키 동기화·백업 통합·README 3종 동기화 규칙(CLAUDE.md)을 준수한다.
+    v2의 목적은 <b>의도 분석 → 계획 수립 → 계획 준수 검증</b>을 v1과 나란히 가동·측정하여, 기록된 "의도파악 불안정" 문제를 정량적으로 해소하는 것이다.
+  </p>
+</main>
+</div>
+</body>
+</html>

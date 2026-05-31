@@ -212,6 +212,9 @@ function _rtcSetupConn(role) {
       setViewMode?.(viewMode);
       syncToolDropdownLabels?.();
       render();
+      // 수신한 협업 상태를 localStorage·undo 스택에 영속화
+      // (_rtcReceiving=true 이므로 saveState 래퍼가 RTC 재전송은 건너뜀)
+      saveState();
     } catch(e) {
       console.warn('[WebRTC] 상태 복원 실패:', e);
     }
@@ -282,7 +285,9 @@ function _rtcShowRestoreToast() {
     // 모달이 열려 있으면 패널 안에 안내
     const panel = document.getElementById('rtcPanelRole');
     if (panel) {
+      document.getElementById('rtcRestoreNotice')?.remove(); // 중복 누적 방지
       const notice = document.createElement('div');
+      notice.id = 'rtcRestoreNotice';
       notice.style.cssText = 'margin-top:14px;padding:12px;background:var(--bg-surface);' +
         'border-radius:8px;border-left:3px solid var(--ac-y);font-size:12px;';
       notice.innerHTML =

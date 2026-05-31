@@ -53,13 +53,34 @@ document.addEventListener('keydown', e => {
     if (typeof openCmdPalette === 'function') openCmdPalette();
     return;
   }
+  // Agent 패널 토글 (기본 Ctrl+Shift+A) — 입력 필드 포커스 중에도 동작
+  if (typeof matchSC === 'function' && matchSC(e, 'toggleAgent')) {
+    e.preventDefault();
+    if (typeof toggleAgentPanel === 'function') toggleAgentPanel();
+    return;
+  }
   // 입력 필드 포커스 중에는 이하 단축키 무시
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  // 타임라인 미리보기 중에는 ENTITIES/RELATIONS가 임시(비영속) 상태이므로
+  // 데이터를 변경/영속화하는 전역 단축키를 차단한다(HUD의 ←/→/Enter/Esc는 HUD 핸들러가 처리).
+  if (typeof _tlPreviewMode !== 'undefined' && _tlPreviewMode) return;
 
   const ctrl = e.ctrlKey || e.metaKey;
   if (matchSC(e, 'search'))  { e.preventDefault(); openSearch(); return; }
-  if (matchSC(e, 'copy'))    { e.preventDefault(); copyEntity(); }
+  if (matchSC(e, 'copy'))    {
+    // 렌더된 텍스트(예: Agent 채팅 말풍선)가 선택돼 있으면
+    // 엔티티 복사 대신 선택 텍스트를 클립보드에 복사한다.
+    const _sel = (window.getSelection && window.getSelection().toString()) || '';
+    if (_sel.trim()) {
+      e.preventDefault();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(_sel).catch(() => { try { document.execCommand('copy'); } catch {} });
+      } else { try { document.execCommand('copy'); } catch {} }
+      return;
+    }
+    e.preventDefault(); copyEntity();
+  }
   if (matchSC(e, 'paste'))   {
     e.preventDefault();
     // 아무것도 선택되지 않은 상태: 클립보드 텍스트가 콤마 구분 항목이면
@@ -156,10 +177,6 @@ document.addEventListener('keydown', e => {
       });
       selectedSections.clear(); selectedSection = null;
       render(); saveState(); return;
-    }
-    if (selectedSections.size > 0) {
-      [...selectedSections].forEach(s => deleteSection(s));
-      selectedSections.clear(); render(); saveState(); return;
     }
   }
 });

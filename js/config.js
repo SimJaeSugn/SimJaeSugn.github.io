@@ -147,6 +147,8 @@ const COLOR = {
   gridColor:   '#2a2a3d',
   snapGrid:    'rgba(49,50,68,0.5)',
   selFill:     'rgba(137,180,250,0.08)',
+  ac_y:        '#f9e2af',
+  sectionLabelBg: 'rgba(30,30,46,0.88)',
 };
 
 // ── 테마 정의 ─────────────────────────────────────────────────

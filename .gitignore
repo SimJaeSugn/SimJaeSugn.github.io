@@ -1,0 +1,30 @@
+# 작업 임시 파일
+_workspace/
+_workspace_*/
+
+# 의존성
+node_modules/
+**/node_modules/
+
+# 빌드 산출물
+electron/dist/
+proxy/nodejs/dist/
+proxy/python/dist/
+proxy/python/build/
+proxy/python/__pycache__/
+proxy/python/**/__pycache__/
+proxy/python/*.spec
+
+# Python 가상환경
+proxy/python/venv/
+
+# Python 패키지 마커
+**/__init__.py
+
+# 로그 및 환경변수
+*.log
+.env
+
+# OS
+.DS_Store
+Thumbs.db

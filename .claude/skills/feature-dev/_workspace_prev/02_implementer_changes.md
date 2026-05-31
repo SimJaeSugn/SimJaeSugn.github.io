@@ -1,14 +1,34 @@
-## 변경 파일 목록
-- js/entities.js: copyEntity()가 선택 집합 내 from/to 양쪽 포함 관계선을 _clipboard.relations에 함께 복사. pasteEntity()가 클립보드 그룹 바운딩 박스 중심을 뷰포트 중앙 월드좌표로 이동(dx/dy)시켜 배치하고, 원본→신규 엔티티 id 매핑으로 관계선을 재매핑하여 RELATIONS에 추가.
+## 요청 요약
+메뉴 중 설정 메뉴 하위로 옮겨야 할 환경설정 성격 항목 이동.
 
-## 주요 결정 사항
-- 관계선 객체에 영속 waypoints 필드가 없음(canvas.js에서 매 렌더링 시 엔티티 위치로 재계산). 따라서 analyst가 "확인 필요"로 표시한 waypoints 좌표 보정은 불필요 — 구현하지 않음.
-- 관계선은 id 필드가 없고 from/to(엔티티 id) 쌍으로 식별됨. JSON 깊은 복제 후 from/to만 idMap으로 재매핑. card/lineStyle/pathStyle/label/color 옵션 필드는 깊은 복제로 그대로 보존됨.
-- 좌표 계산은 toWorld(off + cw/2, ch/2) 헬퍼를 직접 호출하여 중복 보정을 방지(analyst 권장안). off=_qbLeftOff()(좌측 도킹 퀵바), cw는 우측 패널(panelOpen?PANEL_W:0) 반영.
-- 연속 붙여넣기 시 완전 겹침 방지를 위해 pasteCount 기반 소량 누적 오프셋 nudge=20*(pasteCount-1)을 dx/dy에 가산(첫 붙여넣기는 정확히 중앙).
-- FK ref는 기존 동작대로 null 유지(요청 범위는 "관계선" 한정). FK 컬럼 참조 복원은 미수행 — 확인 필요 항목 유지.
-- 엔티티가 없고 섹션만 복사한 경우 바운딩 박스에 섹션 x/y/w/h를 포함하여 중앙 배치. 둘 다 비어 바운딩이 Infinity이면 dx=dy=0으로 안전 처리.
-- panelOpen/PANEL_W/entityHeight/_qbLeftOff/toWorld 모두 전역 스코프 함수·변수로 entities.js에서 호출 가능함을 확인. 방어적으로 typeof 가드 적용.
+사용자 확정 이동 항목:
+- 테마 변경 (보기 → 설정)
+- 그리드 스냅 (편집 → 설정)
+- 내보내기 폴더 재설정 (파일 → 설정)
+※ 탭 동기화는 제외(공유 메뉴 유지).
 
-## 미완료 항목
-- 없음 (요청 1, 요청 2 모두 구현 완료).
+## 변경 파일
+### index.html
+- 파일 메뉴: `resetExportDir()` 항목 제거
+- 편집 메뉴: `mbi-snap`(그리드 스냅) 항목 제거
+- 보기 메뉴: `openThemeModal()`(테마 변경) 항목 + 선행 구분선 제거
+- 설정 메뉴(`#mb-drop-settings`): 테마 변경 / 그리드 스냅(`mbi-snap` id 보존) / 내보내기 폴더 재설정 추가 + 구분선 후 기존 Agent설정 배치
+
+### js/ui.js
+- 명령 팔레트(Ctrl+K) 카테고리 라벨 갱신: 테마 변경·그리드 스냅·내보내기 폴더 재설정 → category '설정'
+
+### README.md (사용자 매뉴얼 메뉴 경로 정확성 갱신)
+- L262: `편집` → `설정` (그리드 스냅 경로)
+- L602: `보기` → `설정` (테마 변경 경로)
+- 내보내기 표에서 `📁 내보내기 폴더 재설정` 행 제거 + 안내 문구를 `설정` → `📁 내보내기 폴더 재설정`으로 수정
+
+## 통합 검증
+- 단축키 동기화: 이동 3개 항목 모두 단축키 없음 → shortcuts.js / 단축키 테이블 영향 없음.
+- 백업 통합: 신규 localStorage 키·데이터 구조 없음. 순수 UI 재배치.
+- 체크박스 상태 동기화: `mbi-snap` id 보존, ui.js:75 `getElementById` 기반이라 부모 메뉴와 무관하게 정상 동작.
+- 퀵바 `qb-snap` → toggleGridSnap 그대로 호출, 영향 없음.
+- 명령 팔레트: 카테고리만 라벨/검색용이며 배열 순서 렌더 → '설정'으로 갱신 완료.
+- README 동기화(섹션 25~28): 메뉴 항목 미열거 → 변경 불필요. 매뉴얼 경로 참조 3곳만 정확성 차원 갱신.
+
+## 비고(범위 외 관찰)
+- `js/agent_settings.js`(신규 파일)가 README 섹션 25 모듈 표에 미등재 — 본 작업과 무관한 기존 Agent 기능 작업의 누락 가능성.

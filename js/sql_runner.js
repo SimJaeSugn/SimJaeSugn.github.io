@@ -39,11 +39,12 @@ function _buildSqliteDDL() {
 
   ENTITIES.forEach(ent => {
     const tbl   = ent.physicalName || ent.id;
-    const pkCols = ent.attrs.filter(a => a.kind === 'pk').map(a => a.physicalName || a.logicalName);
+    const attrs = ent.attrs || [];
+    const pkCols = attrs.filter(a => a.kind === 'pk').map(a => a.physicalName || a.logicalName || 'col');
     const isCompositePK = pkCols.length > 1;
     const colLines = [];
 
-    ent.attrs.forEach(a => {
+    attrs.forEach(a => {
       const col = a.physicalName || a.logicalName || 'col';
       // SQLite type affinity
       let type = (a.type || 'TEXT').toUpperCase();
@@ -57,7 +58,7 @@ function _buildSqliteDDL() {
       let def = `  ${quot(col)} ${type}`;
       if (a.kind === 'pk' && !isCompositePK) {
         def += ' PRIMARY KEY';
-        if (a.autoIncrement) def += ' AUTOINCREMENT';
+        if (a.autoIncrement && type === 'INTEGER') def += ' AUTOINCREMENT';
       }
       if ((a.notNull || a.kind === 'pk') && !(a.kind === 'pk' && !isCompositePK)) def += ' NOT NULL';
       if (a.unique && a.kind !== 'pk') def += ' UNIQUE';

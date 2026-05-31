@@ -1,6 +1,6 @@
 // ── HTML 이스케이프 ──────────────────────────────────────────────
 function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── 상태 표시줄 ──────────────────────────────────────────────────
@@ -224,7 +224,8 @@ function _initQbDockDrag() {
           `background:rgba(137,180,250,0.08);border:2px dashed var(--ac);border-radius:3px;`;
       } else if (y < 70) {
         pending = 'top';
-        const h = _qbBarH();
+        // 현재 좌측 도킹 중이면 _qbBarH()가 0을 반환하므로 상단 바 기본 높이로 폴백
+        const h = _qbBarH() || (_qbLarge ? 40 : 28);
         ghost.style.cssText =
           `display:block;left:0;top:32px;width:100vw;height:${h}px;` +
           `position:fixed;pointer-events:none;z-index:9999;` +
@@ -683,6 +684,7 @@ function toggleGridSnap() {
   gridSnap = !gridSnap;
   syncToolDropdownLabels();
   render();
+  saveState();
 }
 
 // ── 크로우풋 표기법 토글 ────────────────────────────────────────
@@ -690,6 +692,7 @@ function toggleNotation() {
   notationStyle = notationStyle === 'simple' ? 'crowsfoot' : 'simple';
   syncToolDropdownLabels();
   render();
+  saveState();
 }
 
 // ── 관계명 인라인 편집 ────────────────────────────────────────────
@@ -1163,6 +1166,12 @@ let _ppTarget = null;  // 현재 표시 대상 (entity or relation object)
 
 function _ensurePanelOpen() {
   if (typeof panelOpen !== 'undefined' && !panelOpen) toggleDiagramPanel();
+  // 속성 패널(#propPanel)은 '목록' 뷰 안에 있으므로, Agent 탭이 떠 있으면
+  // 목록 탭으로 전환해야 속성 편집기가 실제로 보인다.
+  if (typeof switchPanelTab === 'function') {
+    const listView = document.getElementById('panelViewList');
+    if (listView && !listView.classList.contains('active')) switchPanelTab('list');
+  }
 }
 
 function showPropPanel(entity) {
@@ -1680,6 +1689,8 @@ function overlayClose(e, overlayId) {
     if (overlayId === 'copyDiagOverlay') closeCopyDiagModal();
     if (overlayId === 'newDiagOverlay')  closeNewDiagModal();
     if (overlayId === 'pmOverlay')       closeProfileManagerModal();
+    if (overlayId === 'agentSettingsOverlay') closeAgentSettingsModal();
+    if (overlayId === 'importDiagSelectOverlay') closeImportDiagSelectModal();
     if (overlayId === 'mwNotRunningOverlay') document.getElementById('mwNotRunningOverlay')?.classList.remove('active');
   }
 }
@@ -1703,6 +1714,20 @@ function updateTooltip(cx, cy, wx, wy, ent) {
   const eh = entityHeight(ent);
   let title = '', desc = '';
   if (wy >= ent.y && wy <= ent.y + HEADER_H) {
+    // 정규화 진단 경고가 있으면 헤더(⚠ 배지) hover 시 경고 내용을 우선 표시 (README 사양)
+    if (typeof _normActive !== 'undefined' && _normActive && _normWarnings[ent.id] && _normWarnings[ent.id].length) {
+      title = entDisplayName(ent);
+      desc = _normWarnings[ent.id].map(w => '⚠ ' + w).join('\n');
+      tt.innerHTML = `<div class="tt-title">${escHtml(title)}</div><div class="tt-desc" style="white-space:pre-line">${escHtml(desc)}</div>`;
+      tt.style.display = 'block';
+      const pad0 = 14; let tx0 = cx + pad0, ty0 = cy + pad0;
+      tt.style.left = tx0 + 'px'; tt.style.top = ty0 + 'px';
+      const r0 = tt.getBoundingClientRect();
+      if (r0.right  > window.innerWidth  - 8) tx0 = cx - r0.width  - pad0;
+      if (r0.bottom > window.innerHeight - 8) ty0 = cy - r0.height - pad0;
+      tt.style.left = tx0 + 'px'; tt.style.top = ty0 + 'px';
+      return;
+    }
     if (!ent.description) { tt.style.display = 'none'; return; }
     title = entDisplayName(ent);
     desc = ent.description;
@@ -2266,11 +2291,12 @@ const CMD_LIST = [
   { label: 'DDL 생성',                   category: '파일', icon: '🗄', action: () => openDDLModal() },
   { label: '이미지 내보내기 (섹션 포함)', category: '파일', icon: '🖼', action: () => downloadImage(true) },
   { label: '이미지 내보내기 (섹션 제외)', category: '파일', icon: '🖼', action: () => downloadImage(false) },
+  { label: '이미지 내보내기 (고해상도 2x)', category: '파일', icon: '🖼', action: () => downloadImage(true, true) },
   { label: 'SVG 내보내기',               category: '파일', icon: '⬡', action: () => downloadSVG() },
   { label: 'Markdown 내보내기',          category: '파일', icon: '📄', action: () => exportMarkdown() },
   { label: 'HTML 내보내기',              category: '파일', icon: '🌐', action: () => exportHTML() },
   { label: '인쇄 / PDF 저장',            category: '파일', icon: '🖨', action: () => exportPDF() },
-  { label: '내보내기 폴더 재설정',        category: '파일', icon: '📁', action: () => resetExportDir() },
+  { label: '내보내기 폴더 재설정',        category: '설정', icon: '📁', action: () => resetExportDir() },
   { label: 'JSON 불러오기',              category: '파일', icon: '📂', action: () => importData() },
   { label: '전체 백업 불러오기',          category: '파일', icon: '📥', action: () => importFullBackup() },
   { label: 'DDL 가져오기',               category: '파일', icon: '⬆', action: () => openDDLImportModal() },
@@ -2279,14 +2305,38 @@ const CMD_LIST = [
   { label: '다시실행',       category: '편집', icon: '↪', scId: 'redo',   action: () => redo() },
   { label: '복사',           category: '편집', icon: '⧉', scId: 'copy',   action: () => copyEntity() },
   { label: '붙여넣기',       category: '편집', icon: '📋', scId: 'paste',  action: () => pasteEntity() },
-  { label: '복제',           category: '편집', icon: '⧉', scId: 'dup',    action: () => {} },
-  { label: '전체 선택',      category: '편집', icon: '⊡', scId: 'selAll', action: () => { ENTITIES.forEach(en => selectedEntities.add(en.id)); render(); } },
+  { label: '복제',           category: '편집', icon: '⧉', scId: 'dup',    action: () => {
+    const entTargets = selectedEntities.size > 0
+      ? [...selectedEntities].map(id => ENTITIES.find(en => en.id === id)).filter(Boolean)
+      : selectedEntity ? [selectedEntity] : [];
+    const sectTargets = [...selectedSections];
+    if (!entTargets.length && !sectTargets.length) return;
+    selectedEntities.clear();
+    selectedSections.clear();
+    entTargets.forEach(en => {
+      const copy = JSON.parse(JSON.stringify(en));
+      copy.id = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+      copy.logicalName = en.logicalName ? en.logicalName + ' (복사)' : en.logicalName;
+      copy.x = en.x + 30; copy.y = en.y + 30;
+      ENTITIES.push(copy);
+      selectedEntities.add(copy.id);
+    });
+    sectTargets.forEach(s => {
+      const copy = JSON.parse(JSON.stringify(s));
+      copy.id = makeSectionId();
+      copy.x = s.x + 30; copy.y = s.y + 30;
+      SECTIONS.push(copy);
+      selectedSections.add(copy);
+    });
+    render(); saveState();
+  } },
+  { label: '전체 선택',      category: '편집', icon: '⊡', scId: 'selAll', action: () => { selectedEntities.clear(); ENTITIES.forEach(en => selectedEntities.add(en.id)); selectedSections.clear(); SECTIONS.forEach(s => selectedSections.add(s)); render(); } },
   { label: '섹션 모드',      category: '편집', icon: '▭', action: () => toggleSectionMode() },
-  { label: '그리드 스냅',    category: '편집', icon: '⊞', action: () => toggleGridSnap() },
+  { label: '그리드 스냅',    category: '설정', icon: '⊞', action: () => toggleGridSnap() },
   { label: 'AI 스키마 생성', category: '편집', icon: '🤖', action: () => openAISchemaModal() },
   { label: '데이터 초기화',  category: '편집', icon: '⚠', action: () => resetToDefault() },
   // 보기
-  { label: '테마 변경',      category: '보기', icon: '🎨', action: () => openThemeModal() },
+  { label: '테마 변경',      category: '설정', icon: '🎨', action: () => openThemeModal() },
   { label: '뷰 초기화',      category: '보기', icon: '↺',  action: () => resetView() },
   { label: '전체 맞춤',      category: '보기', icon: '⊟', scId: 'fitAll', action: () => fitAll() },
   { label: '계층형 배치',    category: '보기', icon: '⋹', action: () => autoLayout('hierarchical') },
@@ -2307,7 +2357,7 @@ const CMD_LIST = [
   { label: '수직 균등 배분', category: '보기', icon: '⇕', action: () => alignEntities('vdist') },
   // 도구
   { label: '엔티티 검색',     category: '도구', icon: '🔍', scId: 'search', action: () => openSearch() },
-  { label: '컬럼 탬플릿 관리', category: '도구', icon: '📎', action: () => openTemplateModal() },
+  { label: '컬럼 템플릿 관리', category: '도구', icon: '📎', action: () => openTemplateModal() },
   { label: 'SQL 실행기',       category: '도구', icon: '🗄', action: () => openSqlRunner() },
   { label: 'JOIN 경로 탐색기', category: '도구', icon: '🔗', action: () => openJoinExplorer() },
   { label: '정규화 진단',      category: '도구', icon: '⚠', action: () => runNormalizeDiagnosis() },
