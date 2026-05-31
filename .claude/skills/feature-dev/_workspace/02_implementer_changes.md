@@ -1,43 +1,95 @@
-## 요청 요약
-관계선 최적화(autoOptimizeRelations / autoOptimizeRelationsV2) 후 엔티티를 드래그해도 관계선의 출발/도착 면(앵커)이 위치에 따라 자동 재계산되지 않는 버그 수정.
+# 02 · Implementer Changes — V2-M1 골격 + 격리 계약 구현
 
-## 근본 원인 (analyst 분석 채택)
-`canvas.js getRelationPath`는 3단계 분기:
-1. `rel.bend.wpts` 있음 → wpts 그대로 (동적 재계산 없음)
-2. `rel.bend.fromFace || toFace` 있음 → 고정 면 (자동 전환 없음)
-3. 그 외 → `computeOrthogonalPath`로 dx/dy 기반 면 매번 재계산 (= 동적 앵커)
+## 변경/신규 파일 목록
 
-최적화 함수가 모든 관계선에 `fromFace/toFace(+wpts)`를 채워 넣어 1·2단계로 빠지므로 3단계(동적)에 진입 불가 → 드래그해도 면 고정.
+### 신규 파일 (격리 영역)
+| 파일 | 요약 |
+|------|------|
+| `proxy/python/agent/v2/__init__.py` | v2 서브패키지 마커 (빈 파일) |
+| `proxy/python/agent/v2/graph.py` | v1 build_graph() 토폴로지 미러 — 독립 build_graph_v2() + 독립 MemorySaver |
+| `proxy/python/routers/v2/__init__.py` | v2 라우터 패키지 마커 (빈 파일) |
+| `proxy/python/routers/v2/agent.py` | v1 routers/agent.py 미러 — graph import 한 줄만 agent.v2.graph로 교체, thread_id v2_ 접두, audit AGENT_V2/AGENT_V2_RESUME |
+| `js/agent_v2/panel_v2.js` | v2 패널 셸 — toggleAgentV2Panel/closeAgentV2Panel, agentV2AutoGrow/FillInput/InputKey, _agentV2AppendMsg/Render/ScrollBottom/Esc, agentV2BuildContext |
+| `js/agent_v2/client_v2.js` | v2 SSE 통신·phase 루프 — _AGENT_V2_URL, _agentV2ReadSSE, agentV2Send, _agentV2AwaitApproval, _agentV2ExecTools, agentV2ShowKeyPrompt |
+| `js/agent_v2/observe_v2.js` | 관측 핸들러 골격 — _agentV2RenderIntent/Plan/Verdict 빈 함수 (V2-M2~M4용) |
 
-## [수정 2차] 사용자 피드백 반영 — 옵션 A로 전환
-사용자 피드백: "수동으로 선을 조작하고 나면 그때부터 자동 앵커가 안 됨. 우클릭 '경로 초기화'(ui.js resetRel: `rel.bend=null`)를 하면 다시 됨."
-→ 1차에서 보존하려 했던 "수동 편집 선(`rel.bend.manual`)"이 바로 사용자가 자동 복귀를 원하는 대상이었음. 따라서:
-- 엔티티 드래그 종료 블록의 `if (rel.bend && rel.bend.manual) return;` **가드 제거** → 최적화·수동 라우팅 구분 없이 한쪽 끝만 이동한 모든 관계선을 `rel.bend=null`로 복귀. (= '경로 초기화'를 드래그 시 자동 수행)
-- 더 이상 쓰이지 않는 `rel.bend.manual` 설정 코드 2곳(세그먼트/웨이포인트 블록, 엔드포인트 블록) 원복(제거).
-- 트레이드오프: 엔티티를 드래그하면 그 선의 커스텀 라우팅은 자동 경로로 초기화됨(사용자 의도와 일치). 커스텀 라우팅을 유지하려면 엔티티 배치를 먼저 끝낸 뒤 선을 손보면 됨.
-- 검증: 엔티티 드래그 mousemove 경로(canvas.js L2077)가 `_didMove=true`(L2114) 설정 → reset 블록(L2388 `if(_didMove && draggingEntity)`) 확실히 실행. `getRelationPath`에서 `rel.bend=null` → 3단계 `computeOrthogonalPath` 동적 재계산 복귀 확인.
+### 수정 파일 (추가만 — v1 줄 변경 없음)
+| 파일 | 변경 내용 |
+|------|---------|
+| `proxy/python/main.py` | L2: `import logging` 추가, L40~45: v2 라우터 try/except 가드 블록 추가 |
+| `index.html` | L1047~1049: 스크립트 3줄 추가, L284~314: #agentV2ToggleBtn FAB + #agentV2Panel 독립 마크업 추가 |
 
-## (1차 시도) 옵션 B — 폐기
-엔티티 드래그 종료(mouseup) 시점에, **한쪽 끝만 이동한** 관계선의 `rel.bend`를 무효화(`null`)하여 동적 재계산으로 복귀. 단 **사용자가 수동 편집한 선(`rel.bend.manual===true`)과 양끝이 함께 이동한 선은 보존**.
-- 옵션 A(무조건 초기화) 대비, 수동 라우팅 선이 드래그로 사라지는 회귀를 방지. 수동 선은 본래도 동적 재계산 대상이 아니었으므로 보존이 기존 동작과 일관됨.
+---
 
-## 변경 파일
-### js/canvas.js (3곳)
-1. **mouseup 핸들러** (`draggingEntity=null` 이전, 약 L2389~2407): 엔티티 드래그 종료 시 이동 엔티티 집합 산출 후, 한쪽 끝만 이동(`fromMoved !== toMoved`)했고 수동 표시가 없는 관계선의 `rel.bend = null` 처리. 단일·다중선택 드래그 모두 처리.
-2. **세그먼트/웨이포인트 드래그 종료** (L2351~2356): `straightenWpts/collapse` 후 `_didMove`면 `rel.bend.manual = true` (수동 라우팅 표시).
-3. **엔드포인트(from/to) 드래그 종료** (L2373~2376): 재연결이 아닌 면/위치 직접 이동이면 `rel.bend.manual = true`.
+## 주요 결정 사항
 
-## 통합 검증
-- **단축키 동기화**: 신규 단축키 없음 → shortcuts.js / 단축키 테이블 영향 없음.
-- **백업 통합**: `rel.bend.manual`은 `rel.bend` 하위 boolean. state.js의 saveState/loadDiagram이 relations를 `JSON.parse(JSON.stringify(r))`로 깊은 복제하므로 자동 직렬화됨. export.js/import.js 별도 수정 불필요. 구버전 데이터(manual 부재→undefined→비수동 취급)와 하위 호환.
-- **최적화 재실행 일관성**: 최적화 함수가 `rel.bend=null`로 초기화 후 재구성하므로 manual 플래그도 자연히 리셋됨 → 재최적화 후 다시 자동 복귀 대상이 됨(일관적).
+### 계획과 다르게 구현한 부분
 
-## 회귀 검증 포인트
-1. 최적화 미적용 선: 기존처럼 드래그 시 면 자동 전환(변화 없음).
-2. autoOptimizeRelations / V2 적용 후 단일 엔티티 드래그: 면이 위치에 따라 재계산.
-3. 다중 선택으로 양끝 엔티티 동시 이동: 라우팅 유지(평행 이동), 무효화 안 됨.
-4. 사용자가 수동으로 꺾은 선: 단일 엔티티 드래그에도 보존.
+1. **v2 패널 진입 UX (계획서 §6 확인 필요 #1)**
+   - 계획서: "v2 자체 토글 버튼(예: #agentV2Panel 내 닫기 버튼 + 별도 진입 트리거)을 권장. implementer 재량."
+   - 구현: `#agentV2ToggleBtn` FAB 버튼(우측 하단 fixed, z-index:199)을 독립 진입 트리거로 추가. 패널 내부에 × 닫기 버튼 포함. v1 toggleAgentPanel/switchPanelTab 완전 미접촉.
 
-## README 동기화 (CLAUDE.md 하네스)
-- js/canvas.js(프런트엔드)만 수정. 디렉토리/포트/빌드/의존성/API/지원DB/아키텍처 변경 없음. proxy/* 무관.
-- → README 검토 완료 — 변경 불필요.
+2. **v2 키 안내 (계획서 §6 확인 필요 #2)**
+   - 계획서 권장: "V2-M1은 v1 설정 모달 호출(공유 키 사용)"
+   - 구현: `agentV2ShowKeyPrompt()`는 v2 자체 카드를 렌더하되, 버튼 클릭 시 `openAgentSettingsModal()`을 호출(v2→v1 단방향 허용 방향 — v1이 v2를 부르는 방향이 아님). 공유 키스토어 활용.
+
+3. **observe_v2.js 함수 위치**
+   - `_agentV2RenderIntent/Plan/Verdict` 세 함수를 observe_v2.js에 정의하고, client_v2.js의 `_agentV2ReadSSE` onEvent 스위치에서 직접 호출하는 구조. 계획서 §3.3과 동일.
+
+4. **_agentV2Esc 중복 정의**
+   - panel_v2.js와 client_v2.js 모두에서 `_agentV2Esc`를 사용하므로 panel_v2.js에 정의. client_v2.js는 panel_v2.js가 먼저 로드되므로 그대로 참조 가능(스크립트 순서: panel_v2 → client_v2 → observe_v2).
+
+---
+
+## 격리 검증 결과
+
+### ① 화이트리스트 — v1 파일 diff 0 확인
+```
+git diff -- proxy/python/routers/agent.py proxy/python/agent/ js/agent_panel.js js/agent_settings.js js/agent_tools.js
+```
+**결과: (출력 없음) — 통과**
+
+### ② 단방향 grep — 0건 확인
+```
+grep -rn "agent\.v2|routers\.v2|agent_v2" proxy/python/agent --include=*.py | grep -v "/v2/"
+```
+**결과: (출력 없음) — 통과**
+
+```
+grep -rn "agent\.v2|routers\.v2|agent_v2" proxy/python/routers/agent.py js/agent_panel.js js/agent_settings.js js/agent_tools.js
+```
+**결과: (출력 없음) — 통과**
+
+### ③ Python 구문 점검
+```
+python -m py_compile agent/v2/graph.py routers/v2/agent.py main.py
+EXIT:0
+```
+**결과: 오류 없음 — 통과**
+
+---
+
+## 미완료 항목
+
+- **없음.** V2-M1 계획서 §1~§5 체크리스트 전항목 구현 완료.
+- observe_v2.js 핸들러 본문은 의도적 빈 골격(V2-M2~M4에서 채울 예정 — 점진적 향상).
+
+---
+
+## 후속 전달 (integration-checker 처리 항목)
+
+### README 동기화 필요 — proxy/python/README.md
+
+새 API 엔드포인트 6개가 추가되었으므로 `proxy/python/README.md` API 섹션에 아래를 추가해야 함:
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/agent/v2/stream` | POST | v2 질의 → 그래프 실행 → SSE 스트리밍 |
+| `/agent/v2/resume` | POST | v2 interrupt 결과 회신 → 그래프 재개 |
+| `/agent/v2/key` | GET | v2 OpenAI 키 설정 여부 확인 |
+| `/agent/v2/key` | POST | v2 OpenAI 키 저장 (공유 키스토어) |
+| `/agent/v2/config` | GET | v2 Agent 설정 조회 |
+| `/agent/v2/config` | POST | v2 Agent 설정 저장 |
+
+> CLAUDE.md "하네스: README 동기화" — API 엔드포인트 추가·변경 트리거에 해당.
+> integration-checker가 proxy/python/README.md API 섹션을 업데이트할 것.

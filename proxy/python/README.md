@@ -77,6 +77,12 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/key | OpenAI 키 저장 (AES-256-GCM 암호화) |
 | GET | /agent/config | Agent 설정 조회 (provider/modelMain/modelFast/keyConfigured) |
 | POST | /agent/config | Agent 설정 저장 (provider/modelMain/modelFast) |
+| POST | /agent/v2/stream | v2 자연어 질의 → 그래프 실행 SSE (v1 미러 — 독립 인스턴스) |
+| POST | /agent/v2/resume | v2 interrupt 결과 회신 → 그래프 재개 SSE |
+| GET | /agent/v2/key | v2 OpenAI 키 설정 여부 확인 (공유 키스토어) |
+| POST | /agent/v2/key | v2 OpenAI 키 저장 (공유 키스토어) |
+| GET | /agent/v2/config | v2 Agent 설정 조회 (공유 키스토어) |
+| POST | /agent/v2/config | v2 Agent 설정 저장 (공유 키스토어) |
 
 > `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
 > `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.
@@ -96,13 +102,17 @@ proxy/python/
 │   ├── execute.py         ← /execute, /execute/stream 라우터
 │   ├── health.py          ← /health 라우터
 │   ├── schema.py          ← /schema 라우터
-│   └── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
+│   ├── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
+│   └── v2/                ← v2 라우터 패키지 (agent v1 격리 미러)
+│       └── agent.py       ← /agent/v2/stream·/resume·/key·/config 라우터
 ├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
 │   ├── graph.py           ← StateGraph (gate → answer | fetch_tools → plan → approve → exec_proxy → execute → replan → respond)
 │   ├── db_docs.py         ← DB 유형별 SQL 문법·자료형 참고 문서 (정적, db_doc_* 툴이 반환)
 │   ├── tools_proxy.py     ← 프록시(서버) 측 DB 툴 카탈로그·실행 (fetch_db_schema·run_sql, location="proxy")
 │   ├── nodes/             ← gate · answer · fetch_tools(클라 툴 카탈로그) · plan · approve(계획 승인) · exec_proxy(서버 DB 툴) · execute(클라 interrupt) · replan · respond
-│   └── common/            ← state · schemas(Plan/Step) · prompts · llm · keys(OpenAI 키)
+│   ├── common/            ← state · schemas(Plan/Step) · prompts · llm · keys(OpenAI 키)
+│   └── v2/                ← v2 에이전트 서브패키지 (v1 격리 미러 — 독립 graph 인스턴스)
+│       └── graph.py       ← build_graph_v2() — 독립 compile + 독립 MemorySaver (thread_id: v2_*)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅
 │   └── adapters/
