@@ -5,7 +5,7 @@
   사용자 확인(escalate) / 안전 종료(abort).
 - replan_count 상한으로 무한 루프 방지.
 """
-from agent.common.llm import MODEL_MAIN, get_llm
+from agent.common.llm import get_main_llm
 from agent.common.prompts import (
     REPLAN_SYSTEM,
     context_brief,
@@ -34,7 +34,7 @@ def replan_node(state: AgentState) -> dict:
         return {"replan_route": "escalate", "replan_reason": "재계획 시도 횟수를 초과했습니다."}
 
     catalog = (state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG
-    llm = get_llm(MODEL_MAIN)
+    llm = get_main_llm()
     decider = llm.with_structured_output(ReplanDecision, method="function_calling")
     system = (
         REPLAN_SYSTEM

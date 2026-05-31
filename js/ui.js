@@ -1666,6 +1666,7 @@ function overlayClose(e, overlayId) {
     if (overlayId === 'copyDiagOverlay') closeCopyDiagModal();
     if (overlayId === 'newDiagOverlay')  closeNewDiagModal();
     if (overlayId === 'pmOverlay')       closeProfileManagerModal();
+    if (overlayId === 'agentSettingsOverlay') closeAgentSettingsModal();
     if (overlayId === 'importDiagSelectOverlay') closeImportDiagSelectModal();
     if (overlayId === 'mwNotRunningOverlay') document.getElementById('mwNotRunningOverlay')?.classList.remove('active');
   }
@@ -2272,7 +2273,7 @@ const CMD_LIST = [
   { label: 'Markdown 내보내기',          category: '파일', icon: '📄', action: () => exportMarkdown() },
   { label: 'HTML 내보내기',              category: '파일', icon: '🌐', action: () => exportHTML() },
   { label: '인쇄 / PDF 저장',            category: '파일', icon: '🖨', action: () => exportPDF() },
-  { label: '내보내기 폴더 재설정',        category: '파일', icon: '📁', action: () => resetExportDir() },
+  { label: '내보내기 폴더 재설정',        category: '설정', icon: '📁', action: () => resetExportDir() },
   { label: 'JSON 불러오기',              category: '파일', icon: '📂', action: () => importData() },
   { label: '전체 백업 불러오기',          category: '파일', icon: '📥', action: () => importFullBackup() },
   { label: 'DDL 가져오기',               category: '파일', icon: '⬆', action: () => openDDLImportModal() },
@@ -2308,11 +2309,11 @@ const CMD_LIST = [
   } },
   { label: '전체 선택',      category: '편집', icon: '⊡', scId: 'selAll', action: () => { selectedEntities.clear(); ENTITIES.forEach(en => selectedEntities.add(en.id)); selectedSections.clear(); SECTIONS.forEach(s => selectedSections.add(s)); render(); } },
   { label: '섹션 모드',      category: '편집', icon: '▭', action: () => toggleSectionMode() },
-  { label: '그리드 스냅',    category: '편집', icon: '⊞', action: () => toggleGridSnap() },
+  { label: '그리드 스냅',    category: '설정', icon: '⊞', action: () => toggleGridSnap() },
   { label: 'AI 스키마 생성', category: '편집', icon: '🤖', action: () => openAISchemaModal() },
   { label: '데이터 초기화',  category: '편집', icon: '⚠', action: () => resetToDefault() },
   // 보기
-  { label: '테마 변경',      category: '보기', icon: '🎨', action: () => openThemeModal() },
+  { label: '테마 변경',      category: '설정', icon: '🎨', action: () => openThemeModal() },
   { label: '뷰 초기화',      category: '보기', icon: '↺',  action: () => resetView() },
   { label: '전체 맞춤',      category: '보기', icon: '⊟', scId: 'fitAll', action: () => fitAll() },
   { label: '계층형 배치',    category: '보기', icon: '⋹', action: () => autoLayout('hierarchical') },

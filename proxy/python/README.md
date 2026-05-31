@@ -75,6 +75,8 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/resume | interrupt 결과 회신 → 그래프 재개 SSE (툴 실행 위임 루프) |
 | GET | /agent/key | OpenAI 키 설정 여부 |
 | POST | /agent/key | OpenAI 키 저장 (AES-256-GCM 암호화) |
+| GET | /agent/config | Agent 설정 조회 (provider/modelMain/modelFast/keyConfigured) |
+| POST | /agent/config | Agent 설정 저장 (provider/modelMain/modelFast) |
 
 > `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
 > `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.
@@ -96,8 +98,10 @@ proxy/python/
 │   ├── schema.py          ← /schema 라우터
 │   └── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
 ├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
-│   ├── graph.py           ← StateGraph (gate → answer | plan → approve → execute → replan → respond)
-│   ├── nodes/             ← gate · answer · plan · approve(계획 승인) · execute(interrupt) · replan · respond
+│   ├── graph.py           ← StateGraph (gate → answer | fetch_tools → plan → approve → exec_proxy → execute → replan → respond)
+│   ├── db_docs.py         ← DB 유형별 SQL 문법·자료형 참고 문서 (정적, db_doc_* 툴이 반환)
+│   ├── tools_proxy.py     ← 프록시(서버) 측 DB 툴 카탈로그·실행 (fetch_db_schema·run_sql, location="proxy")
+│   ├── nodes/             ← gate · answer · fetch_tools(클라 툴 카탈로그) · plan · approve(계획 승인) · exec_proxy(서버 DB 툴) · execute(클라 interrupt) · replan · respond
 │   └── common/            ← state · schemas(Plan/Step) · prompts · llm · keys(OpenAI 키)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅

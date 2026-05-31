@@ -101,7 +101,25 @@
       "Bash(python -m py_compile agent/common/prompts.py)",
       "Bash(python -m py_compile agent/common/prompts.py agent/nodes/respond.py agent/nodes/replan.py)",
       "Bash(python -m py_compile agent/graph.py agent/common/prompts.py agent/common/state.py agent/nodes/replan.py agent/nodes/respond.py)",
-      "Bash(python -m py_compile agent/nodes/respond.py agent/common/prompts.py)"
+      "Bash(python -m py_compile agent/nodes/respond.py agent/common/prompts.py)",
+      "Bash(python -m py_compile routers/agent.py agent/common/keys.py agent/common/llm.py agent/nodes/answer.py agent/nodes/gate.py agent/nodes/plan.py agent/nodes/replan.py agent/nodes/respond.py)",
+      "Bash(./venv/Scripts/python.exe -m pip install -r requirements.txt)",
+      "Bash(echo \"PIP_DONE_EXIT=$?\")",
+      "Bash(python -m http.server 3000 --bind 127.0.0.1)",
+      "Bash(echo \"HTTP_EXIT=$?\")",
+      "Bash(npx --yes playwright install chromium)",
+      "Bash(echo \"PW_INSTALL_EXIT=$?\")",
+      "Bash(./venv/Scripts/python.exe -c \"import fastapi,uvicorn,langgraph,langchain_openai,asyncpg,aiomysql,pyodbc,oracledb,cryptography,pydantic; print\\('ALL_DEPS_OK'\\)\")",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(echo \"NPM_EXIT=$?\")",
+      "Bash(./venv/Scripts/python.exe main.py --port 3737)",
+      "Bash(echo \"SIDECAR_EXIT=$?\")",
+      "Bash(OUTDIR=\"E:/03.프로젝트/SimJaeSugn.github.io/_verify_tmp\" node drive.js)",
+      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force '_verify_tmp' -ErrorAction SilentlyContinue\")",
+      "Bash(rm -rf _workspace_prev)",
+      "Bash(mv _workspace _workspace_prev)",
+      "Bash(mkdir _workspace)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

@@ -3,7 +3,7 @@
 툴 목록은 fetch_tools 가 클라이언트에서 받아온 state.tool_catalog 를 사용한다(단일 소스).
 멀티턴 히스토리도 반영한다.
 """
-from agent.common.llm import MODEL_MAIN, get_llm
+from agent.common.llm import get_main_llm
 from agent.common.prompts import PLAN_SYSTEM, context_brief, tools_catalog_text
 from agent.common.schemas import Plan
 from agent.common.state import AgentState, recent_messages
@@ -24,7 +24,7 @@ def plan_node(state: AgentState) -> dict:
     catalog = (state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG
     known = {t.get("name") for t in catalog if t.get("name")} or _FALLBACK_TOOL_NAMES
 
-    llm = get_llm(MODEL_MAIN)
+    llm = get_main_llm()
     # Step.args 가 자유형 Dict 라서 strict json_schema 불가 → function_calling(비-strict)
     planner = llm.with_structured_output(Plan, method="function_calling")
     system = (

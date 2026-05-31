@@ -361,7 +361,7 @@ async function agentSend() {
   }
 }
 
-// ── OpenAI 키 입력 (미설정 시) ───────────────────────────────────
+// ── OpenAI 키 입력 — Agent설정 모달로 유도 ───────────────────────
 function agentShowKeyPrompt() {
   if (document.getElementById('agentKeyCard')) return;
   const wrap = document.getElementById('agentMessages');
@@ -371,31 +371,10 @@ function agentShowKeyPrompt() {
   card.id = 'agentKeyCard';
   card.innerHTML =
     '<div class="agent-msg-ava">🔑</div>' +
-    '<div class="agent-msg-bubble">OpenAI API 키를 입력하세요. (프록시에 암호화 저장)' +
-    '<div style="display:flex;gap:6px;margin-top:8px">' +
-    '<input id="agentKeyInput" type="password" class="agent-input" style="flex:1;max-height:none;overflow:hidden" placeholder="sk-..." />' +
-    '<button class="agent-send" onclick="agentSaveKey()" title="저장">저장</button>' +
+    '<div class="agent-msg-bubble">OpenAI API 키가 필요합니다.' +
+    '<div style="margin-top:8px">' +
+    '<button class="agent-send" onclick="document.getElementById(\'agentKeyCard\').remove();openAgentSettingsModal()" style="width:100%">⚙ Agent설정에서 키 입력</button>' +
     '</div></div>';
   wrap.appendChild(card);
   _agentScrollBottom();
-  setTimeout(() => { const i = document.getElementById('agentKeyInput'); if (i) i.focus(); }, 50);
-}
-
-async function agentSaveKey() {
-  const inp = document.getElementById('agentKeyInput');
-  const key = (inp && inp.value || '').trim();
-  if (!key) return;
-  try {
-    const res = await fetch(`${_AGENT_URL}/agent/key`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: key }),
-    });
-    if (!res.ok) throw new Error('저장 실패');
-    const card = document.getElementById('agentKeyCard');
-    if (card) card.remove();
-    _agentAppendMsg('agent', '✅ 키가 저장되었습니다. 다시 질문해 주세요.');
-  } catch (e) {
-    _agentAppendMsg('agent', '⚠ 키 저장 실패: ' + _agentEsc(e.message));
-  }
 }

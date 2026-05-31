@@ -25,7 +25,7 @@ from fastapi.responses import StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from agent.common.keys import has_openai_key, set_openai_key
+from agent.common.keys import get_agent_config, has_openai_key, set_agent_config, set_openai_key
 from agent.common.llm import OpenAIKeyMissing
 from agent.graph import graph
 from utils.audit_logger import write_audit_log
@@ -80,7 +80,7 @@ async def stream(body: StreamBody):
     if not has_openai_key():
         raise HTTPException(
             status_code=400,
-            detail="OpenAI 키가 설정되지 않았습니다. Agent 패널에서 키를 입력하세요.",
+            detail="OpenAI 키가 설정되지 않았습니다. 설정 ▸ Agent설정에서 키를 입력하세요.",
         )
 
     thread_id = body.threadId or _new_thread_id()
@@ -155,3 +155,32 @@ def post_key(body: KeyBody):
         raise HTTPException(status_code=400, detail="API 키가 비어 있습니다.")
     set_openai_key(key)
     return {"ok": True, "configured": True}
+
+
+# ── /agent/config ─────────────────────────────────────────────────────────────
+
+class AgentConfigBody(BaseModel):
+    provider: Optional[str] = None
+    modelMain: Optional[str] = None
+    modelFast: Optional[str] = None
+
+
+@router.get("/config")
+def get_config():
+    cfg = get_agent_config()
+    return {
+        "provider": cfg["provider"],
+        "modelMain": cfg["modelMain"],
+        "modelFast": cfg["modelFast"],
+        "keyConfigured": has_openai_key(),
+    }
+
+
+@router.post("/config")
+def post_config(body: AgentConfigBody):
+    set_agent_config(
+        provider=body.provider or "",
+        model_main=body.modelMain or "",
+        model_fast=body.modelFast or "",
+    )
+    return {"ok": True}

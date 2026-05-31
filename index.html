@@ -36,7 +36,6 @@
         <div class="mb-item" onclick="mbClose();exportMarkdown()"><span class="mb-ico">📄</span><span class="mb-text">Markdown 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportHTML()"><span class="mb-ico">🌐</span><span class="mb-text">HTML 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportPDF()"><span class="mb-ico">🖨</span><span class="mb-text">인쇄 / PDF 저장</span></div>
-        <div class="mb-item" onclick="mbClose();resetExportDir()"><span class="mb-ico">📁</span><span class="mb-text">내보내기 폴더 재설정</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">불러오기</div>
         <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico">📂</span><span class="mb-text">JSON 불러오기</span></div>
@@ -53,7 +52,6 @@
         <div class="mb-item" onclick="mbClose();redo()"><span class="mb-ico">↪</span><span class="mb-text">다시실행</span><span class="mb-kbd">Ctrl+Y</span></div>
         <div class="mb-sep"></div>
         <div class="mb-item" id="mbi-section" onclick="mbClose();toggleSectionMode()"><span class="mb-chk"></span><span class="mb-text">섹션 모드</span></div>
-        <div class="mb-item" id="mbi-snap" onclick="mbClose();toggleGridSnap()"><span class="mb-chk"></span><span class="mb-text">그리드 스냅</span></div>
         <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();openAISchemaModal()"><span class="mb-ico">🤖</span><span class="mb-text">AI 스키마 생성</span></div>
         <div class="mb-sep"></div>
@@ -65,8 +63,6 @@
     <div class="mb-menu" onmouseenter="mbHover('view')">
       <span class="mb-lbl" onclick="mbToggle('view')">보기</span>
       <div class="mb-drop" id="mb-drop-view">
-        <div class="mb-item" onclick="mbClose();openThemeModal()"><span class="mb-ico">🎨</span><span class="mb-text">테마 변경</span></div>
-        <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();resetView()"><span class="mb-ico">↺</span><span class="mb-text">뷰 초기화</span></div>
         <div class="mb-item" onclick="mbClose();fitAll()"><span class="mb-ico">⊟</span><span class="mb-text">전체 맞춤</span><span class="mb-kbd">Home</span></div>
         <div class="mb-sep"></div>
@@ -131,6 +127,18 @@
         <div class="mb-item" onclick="mbClose();generateShareUrl()"><span class="mb-ico">🔗</span><span class="mb-text">공유 URL 생성</span></div>
         <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();openProfileManagerModal()"><span class="mb-ico">🗂</span><span class="mb-text">DB 프로파일 관리</span></div>
+      </div>
+    </div>
+
+    <!-- 설정 -->
+    <div class="mb-menu" onmouseenter="mbHover('settings')">
+      <span class="mb-lbl" onclick="mbToggle('settings')">설정</span>
+      <div class="mb-drop" id="mb-drop-settings">
+        <div class="mb-item" onclick="mbClose();openThemeModal()"><span class="mb-ico">🎨</span><span class="mb-text">테마 변경</span></div>
+        <div class="mb-item" id="mbi-snap" onclick="mbClose();toggleGridSnap()"><span class="mb-chk"></span><span class="mb-text">그리드 스냅</span></div>
+        <div class="mb-item" onclick="mbClose();resetExportDir()"><span class="mb-ico">📁</span><span class="mb-text">내보내기 폴더 재설정</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-item" onclick="mbClose();openAgentSettingsModal()"><span class="mb-ico">🤖</span><span class="mb-text">Agent설정</span></div>
       </div>
     </div>
 
@@ -1035,6 +1043,7 @@
 <script src="js/forward_engineer.js"></script>
 <script src="js/agent_tools.js"></script>
 <script src="js/agent_panel.js"></script>
+<script src="js/agent_settings.js"></script>
 <script src="js/main.js"></script>
 
 <!-- ── Status Bar ───────────────────────────── -->

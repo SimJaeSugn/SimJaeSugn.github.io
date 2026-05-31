@@ -259,7 +259,7 @@ https://<계정>.github.io/<저장소명>/
 
 ### 그리드 스냅
 
-`편집` → `그리드 스냅` 체크로 20px 그리드에 맞춰 이동.  
+`설정` → `그리드 스냅` 체크로 20px 그리드에 맞춰 이동.  
 활성화 시 퀵바의 `⊞` 버튼이 강조됩니다.
 
 ### 섹션 모드
@@ -320,10 +320,9 @@ https://<계정>.github.io/<저장소명>/
 | `📄 Markdown 내보내기` | — | 테이블 형식 Markdown |
 | `🌐 HTML 내보내기` | — | 스탠드얼론 HTML 파일 |
 | `🖨 인쇄 / PDF 저장` | — | 브라우저 인쇄 다이얼로그 → PDF 저장 |
-| `📁 내보내기 폴더 재설정` | — | 저장 폴더 재지정 |
 
 > **내보내기 폴더 설정**: 처음 내보내기 시 폴더 선택 다이얼로그가 표시됩니다. 이후 같은 폴더에 자동 저장됩니다.  
-> 폴더를 바꾸려면 `📁 내보내기 폴더 재설정`을 클릭하세요.  
+> 폴더를 바꾸려면 `설정` → `📁 내보내기 폴더 재설정`을 클릭하세요.  
 > File System Access API 미지원 브라우저에서는 즉시 다운로드 방식으로 동작합니다.
 
 ### 데이터 불러오기
@@ -599,7 +598,7 @@ URL이 클립보드에 자동 복사됩니다.
 
 ## 20. 테마 & 색상
 
-`보기` → `🎨 테마 변경`
+`설정` → `🎨 테마 변경`
 
 ### 기본 제공 테마
 
@@ -927,6 +926,8 @@ SimJaeSugn.github.io/
 │   │   │   │   ├── connector.js
 │   │   │   │   └── adapters/      ← mysql / postgres / oracle / mssql
 │   │   │   ├── routes/            ← config / execute / health / schema
+│   │   │   ├── tray.js            ← 시스템 트레이 아이콘·메뉴
+│   │   │   ├── tray_win_bin.js    ← Windows 트레이 헬퍼 바이너리 (base64 내장)
 │   │   │   └── utils/             ← crypto / keystore / auditLogger
 │   │   └── package.json
 │   │
@@ -935,7 +936,7 @@ SimJaeSugn.github.io/
 │       ├── requirements.txt
 │       ├── build.ps1              ← PyInstaller 빌드
 │       ├── routers/               ← config / execute / health / schema / agent
-│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common /) — 자연어 ERD 제어
+│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy) — 자연어 ERD 제어
 │       ├── db/adapters/           ← postgres / mysql / mssql / oracle
 │       └── utils/                 ← crypto / keystore / audit_logger
 │

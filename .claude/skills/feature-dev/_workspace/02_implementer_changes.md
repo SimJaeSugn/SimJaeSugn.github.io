@@ -1,11 +1,34 @@
-## 변경 파일 목록
-- js/entities.js: 6개 항목 수정 (deleteEntity 정리, buildTypeOptions 이스케이프, onDbTypeChange saveState, ID 검증, syncFKReferences 개선, saveEntity autoFK 재동기화)
+## 요청 요약
+메뉴 중 설정 메뉴 하위로 옮겨야 할 환경설정 성격 항목 이동.
 
-## 주요 결정 사항
-- 계획과 동일하게 구현함. 추가 판단 없음.
-- `syncFKReferences` dead code 제거: `let changed`, `changed = true` 두 곳, `return changed` 제거. forEach 콜백 반환값은 무시되므로 동작 변화 없음.
-- `saveEntity` autoFK 재동기화: 신규 엔티티 추가 시에도 `targetEntityId`가 설정된 이후에 autoFK 정리 블록이 실행되므로 신규/편집 모두 정상 동작.
-- 기존 데이터(autoFK 필드 없는 구 자동관계)는 정리 조건(`RELATIONS[i].autoFK`)에 해당하지 않아 보존됨.
+사용자 확정 이동 항목:
+- 테마 변경 (보기 → 설정)
+- 그리드 스냅 (편집 → 설정)
+- 내보내기 폴더 재설정 (파일 → 설정)
+※ 탭 동기화는 제외(공유 메뉴 유지).
 
-## 미완료 항목
-- 없음. 계획의 6개 항목 전부 완료.
+## 변경 파일
+### index.html
+- 파일 메뉴: `resetExportDir()` 항목 제거
+- 편집 메뉴: `mbi-snap`(그리드 스냅) 항목 제거
+- 보기 메뉴: `openThemeModal()`(테마 변경) 항목 + 선행 구분선 제거
+- 설정 메뉴(`#mb-drop-settings`): 테마 변경 / 그리드 스냅(`mbi-snap` id 보존) / 내보내기 폴더 재설정 추가 + 구분선 후 기존 Agent설정 배치
+
+### js/ui.js
+- 명령 팔레트(Ctrl+K) 카테고리 라벨 갱신: 테마 변경·그리드 스냅·내보내기 폴더 재설정 → category '설정'
+
+### README.md (사용자 매뉴얼 메뉴 경로 정확성 갱신)
+- L262: `편집` → `설정` (그리드 스냅 경로)
+- L602: `보기` → `설정` (테마 변경 경로)
+- 내보내기 표에서 `📁 내보내기 폴더 재설정` 행 제거 + 안내 문구를 `설정` → `📁 내보내기 폴더 재설정`으로 수정
+
+## 통합 검증
+- 단축키 동기화: 이동 3개 항목 모두 단축키 없음 → shortcuts.js / 단축키 테이블 영향 없음.
+- 백업 통합: 신규 localStorage 키·데이터 구조 없음. 순수 UI 재배치.
+- 체크박스 상태 동기화: `mbi-snap` id 보존, ui.js:75 `getElementById` 기반이라 부모 메뉴와 무관하게 정상 동작.
+- 퀵바 `qb-snap` → toggleGridSnap 그대로 호출, 영향 없음.
+- 명령 팔레트: 카테고리만 라벨/검색용이며 배열 순서 렌더 → '설정'으로 갱신 완료.
+- README 동기화(섹션 25~28): 메뉴 항목 미열거 → 변경 불필요. 매뉴얼 경로 참조 3곳만 정확성 차원 갱신.
+
+## 비고(범위 외 관찰)
+- `js/agent_settings.js`(신규 파일)가 README 섹션 25 모듈 표에 미등재 — 본 작업과 무관한 기존 Agent 기능 작업의 누락 가능성.

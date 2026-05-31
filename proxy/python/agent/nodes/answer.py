@@ -3,7 +3,7 @@
 LLM 호출이 노드 안에서 일어나므로, 라우터가 graph.astream(stream_mode="messages")
 로 구동하면 이 노드의 토큰이 실시간으로 흘러나간다.
 """
-from agent.common.llm import MODEL_MAIN, get_llm
+from agent.common.llm import get_main_llm
 from agent.common.prompts import (
     ANSWER_ACT_NOTE,
     ANSWER_SYSTEM,
@@ -25,7 +25,7 @@ def answer_node(state: AgentState) -> dict:
     if caps:
         system += "\n\n" + caps
     system += "\n\n[현재 ERD]\n" + context_brief(state.get("erd_context"))
-    llm = get_llm(MODEL_MAIN)
+    llm = get_main_llm()
     # 시스템(현재 ERD) + 최근 대화 히스토리(마지막이 현재 질문)
     msgs = [("system", system)] + recent_messages(state)
     resp = llm.invoke(msgs)  # stream_mode="messages" 로 토큰 중계

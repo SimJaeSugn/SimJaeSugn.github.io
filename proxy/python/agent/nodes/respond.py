@@ -2,7 +2,7 @@
 
 클라이언트는 그래프가 respond 까지 도달(=done)하면 드래프트를 커밋한다.
 """
-from agent.common.llm import MODEL_MAIN, get_llm
+from agent.common.llm import get_main_llm
 from agent.common.prompts import RESPOND_SYSTEM, results_detail
 from agent.common.state import AgentState, recent_messages
 
@@ -18,7 +18,7 @@ def respond_node(state: AgentState) -> dict:
                 ) if reason else "\n[상태] 사용자 확인이 필요 — 무엇이 필요한지 구체적으로 되물으세요."
     elif route == "abort":
         hint = "\n[상태] 회복 불가하여 안전하게 종료됨" + (f" (사유: {reason})" if reason else "") + " — 사유를 간단히 설명하세요."
-    llm = get_llm(MODEL_MAIN)
+    llm = get_main_llm()
     # 사용자 원 요청(대화 히스토리)을 함께 전달해야 '30자 요약', '표로' 같은 구체 지시를 지킨다
     msgs = [("system", RESPOND_SYSTEM)] + recent_messages(state) + [
         ("user", f"[수행 결과]\n{summary}{hint}\n\n위 [수행 결과]를 바탕으로 방금 사용자의 요청에 "
