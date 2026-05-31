@@ -2380,6 +2380,26 @@ canvas.addEventListener('mouseup', e => {
   }
   _pendingDeselect = false;
 
+  // 엔티티 드래그 종료: 한쪽 끝만 이동해 상대 배치가 바뀐 관계선의 고정 앵커(fromFace/toFace/wpts 등)를
+  // 무효화하여 위치 기반 동적 앵커 재계산(getRelationPath 3단계)으로 복귀시킨다.
+  // 최적화(autoOptimizeRelations/V2)·수동 라우팅으로 고정된 면이 드래그 후 자동 전환되도록 한다.
+  // (우클릭 '경로 초기화'(ui.js resetRel: rel.bend=null)와 동일한 자동 복귀를 드래그 시 자동 수행)
+  // 양끝이 함께 이동한 선은 상대 배치가 불변이므로 유지한다.
+  if (_didMove && draggingEntity) {
+    const movedIds = new Set();
+    if (selectedEntities.size > 1 && selectedEntities.has(draggingEntity.id)) {
+      selectedEntities.forEach(id => movedIds.add(id));
+    } else {
+      movedIds.add(draggingEntity.id);
+    }
+    RELATIONS.forEach(rel => {
+      const fromMoved = movedIds.has(rel.from);
+      const toMoved   = movedIds.has(rel.to);
+      if (fromMoved === toMoved) return;  // 무관(둘 다 미이동) 또는 양끝 동시 이동 → 유지
+      rel.bend = null;                    // 동적 앵커 재계산으로 복귀
+    });
+  }
+
   // ── 속성 패널 연동: 패널 열기가 canvas 크기를 바꾸므로
   //    draggingEntity = null 이후에 호출해야 drag 오작동을 막는다
   const _ppEnt   = (!wasDragging && !_didMove && draggingEntity && selectedEntities.size <= 1)
