@@ -18,6 +18,24 @@ analyst → implementer → integration-checker → reviewer 순서로 각 에�
 
 ---
 
+## 산출물 형식: HTML (공용 양식)
+
+모든 `_workspace/` 산출물은 **HTML 문서**로 작성한다. 디자인은 `docs/계획서_샘플양식.html`의
+양식을 따르며, 그 스타일을 추출한 공용 템플릿 `.claude/skills/feature-dev/assets/report_template.html`을
+기준으로 한다. 각 에이전트는 이 템플릿의 `<style>` 블록을 그대로 인라인 복사해 **외부 의존 없이
+단독으로 열리는 자기완결형 HTML**을 생성한다.
+
+| 단계 | 산출물 파일 |
+|------|------------|
+| analyst | `_workspace/01_analyst_plan.html` |
+| implementer | `_workspace/02_implementer_changes.html` |
+| integration-checker | `_workspace/03_integration_check.html` |
+| reviewer | `_workspace/04_review.html` |
+
+오케스트레이터가 각 Phase 완료 후 산출물을 읽을 때도 위 `.html` 경로를 사용한다.
+
+---
+
 ## Phase 0: 컨텍스트 확인
 
 `_workspace/` 디렉토리 존재 여부로 실행 모드를 결정한다.
@@ -41,7 +59,7 @@ Agent(
 )
 ```
 
-완료 후 `_workspace/01_analyst_plan.md`를 읽어 계획을 확인한다.
+완료 후 `_workspace/01_analyst_plan.html`을 읽어 계획을 확인한다.
 
 ---
 
@@ -54,11 +72,11 @@ Agent(
   subagent_type: "general-purpose",
   model: "Sonnet",
   description: "UXERManager 코드 구현",
-  prompt: "[implementer.md의 전체 내용]\n\n[_workspace/01_analyst_plan.md의 전체 내용]"
+  prompt: "[implementer.md의 전체 내용]\n\n[_workspace/01_analyst_plan.html의 전체 내용]"
 )
 ```
 
-완료 후 `_workspace/02_implementer_changes.md`를 읽어 변경 내역을 확인한다.
+완료 후 `_workspace/02_implementer_changes.html`을 읽어 변경 내역을 확인한다.
 
 ---
 
@@ -71,11 +89,11 @@ Agent(
   subagent_type: "general-purpose",
   model: "Sonnet",
   description: "단축키 동기화·백업 통합 검증 및 수정",
-  prompt: "[integration-checker.md의 전체 내용]\n\n[_workspace/01_analyst_plan.md 내용]\n\n[_workspace/02_implementer_changes.md 내용]"
+  prompt: "[integration-checker.md의 전체 내용]\n\n[_workspace/01_analyst_plan.html 내용]\n\n[_workspace/02_implementer_changes.html 내용]"
 )
 ```
 
-완료 후 `_workspace/03_integration_check.md`를 읽어 결과를 확인한다.
+완료 후 `_workspace/03_integration_check.html`을 읽어 결과를 확인한다.
 
 통합 검사 최종 상태가 **FAIL**이면 미해결 이슈를 직접 수정한 후 Phase 3을 재실행한다.
 
@@ -90,11 +108,11 @@ Agent(
   subagent_type: "general-purpose",
   model: "Sonnet",
   description: "최종 코드 품질 리뷰",
-  prompt: "[reviewer.md의 전체 내용]\n\n[_workspace/01_analyst_plan.md 내용]\n\n[_workspace/02_implementer_changes.md 내용]\n\n[_workspace/03_integration_check.md 내용]"
+  prompt: "[reviewer.md의 전체 내용]\n\n[_workspace/01_analyst_plan.html 내용]\n\n[_workspace/02_implementer_changes.html 내용]\n\n[_workspace/03_integration_check.html 내용]"
 )
 ```
 
-완료 후 `_workspace/04_review.md`를 읽어 결과를 확인한다.
+완료 후 `_workspace/04_review.html`을 읽어 결과를 확인한다.
 
 리뷰 평가가 **FAIL** (심각 이슈 있음)이면 해당 이슈를 직접 수정한다.
 
@@ -116,13 +134,13 @@ Agent(
 ```
 [사용자 요청]
       ↓
-  [analyst]  →  _workspace/01_analyst_plan.md
+  [analyst]  →  _workspace/01_analyst_plan.html
       ↓
-[implementer]  →  코드 변경 + _workspace/02_implementer_changes.md
+[implementer]  →  코드 변경 + _workspace/02_implementer_changes.html
       ↓
-[integration-checker]  →  수정 + _workspace/03_integration_check.md
+[integration-checker]  →  수정 + _workspace/03_integration_check.html
       ↓
-  [reviewer]  →  _workspace/04_review.md
+  [reviewer]  →  _workspace/04_review.html
       ↓
 [완료 보고]
 ```

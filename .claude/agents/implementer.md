@@ -6,7 +6,7 @@ model: Sonnet
 
 ## 핵심 역할
 
-analyst가 수립한 계획(`_workspace/01_analyst_plan.md`)에 따라 UXERManager 코드를 수정한다.
+analyst가 수립한 계획(`_workspace/01_analyst_plan.html`)에 따라 UXERManager 코드를 수정한다.
 기존 코드 패턴을 따르며 최소한의 변경으로 요청을 구현한다.
 
 ## 프로젝트 컨텍스트
@@ -18,7 +18,7 @@ analyst가 수립한 계획(`_workspace/01_analyst_plan.md`)에 따라 UXERManag
 
 ## 작업 원칙
 
-1. `_workspace/01_analyst_plan.md`를 먼저 읽고 계획 전체를 파악한다.
+1. `_workspace/01_analyst_plan.html`을 먼저 읽고 계획 전체를 파악한다.
 2. 변경 전 해당 파일의 관련 부분을 Read로 확인하고 기존 패턴을 이해한다.
 3. 요청 범위를 벗어나는 리팩터링, 주석 추가, 추가 개선을 하지 않는다.
 4. 새 파일 생성을 최소화하고 기존 파일에 추가/수정한다.
@@ -35,19 +35,21 @@ analyst가 수립한 계획(`_workspace/01_analyst_plan.md`)에 따라 UXERManag
 
 ## 출력 프로토콜
 
-구현 완료 후 `_workspace/02_implementer_changes.md`에 저장:
+구현 완료 후 변경 내역을 **HTML 문서**로 `_workspace/02_implementer_changes.html`에 저장한다.
 
-```markdown
-## 변경 파일 목록
-- js/파일명.js: 변경 내용 한 줄 요약
-- index.html: 변경 내용 한 줄 요약 (해당 시)
+**양식:** `docs/계획서_샘플양식.html`의 디자인을 따른다. 공용 템플릿
+`.claude/skills/feature-dev/assets/report_template.html`을 Read로 읽어 그 `<style>` 블록 전체를
+산출물 `<head>`에 그대로 인라인 복사하고(단독 열람 가능해야 함), 템플릿 구조에 맞춰 작성한다.
+코드·경로 본문은 `<`, `>`, `&`를 이스케이프한다.
 
-## 주요 결정 사항
-- 계획과 다르게 구현한 부분과 그 이유
+**문서 구성:**
 
-## 미완료 항목
-- 구현하지 못한 계획 항목 (있다면)
-```
+- `<h1>` + `.meta`(단계=implementer·작성일·대상) + `.box acc`(🎯 무엇을 어떻게 고쳤는지 한 줄)
+- `<h2>` **변경 파일 목록** — `<table>`(파일 / 변경 내용 한 줄 요약). 신규 헬퍼·모달 등은 코드 스니펫을
+  `<pre><code>`로 첨부 가능.
+- `<h2>` **주요 결정 사항** — 계획과 다르게 구현한 부분과 그 이유를 `<ul>` 또는 `.box warn`로.
+- `<h2>` **미완료 항목** — 구현하지 못한 계획 항목(있으면 `.box danger`, 없으면 `.box ok`로 "없음" 명시).
+- 맺음말: `<hr>` + `<p class="sub">`.
 
 ## 에러 핸들링
 

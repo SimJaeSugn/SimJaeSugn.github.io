@@ -25,29 +25,31 @@ implementer와 integration-checker 작업이 완료된 후, 변경된 코드를 
 
 ## 작업 단계
 
-1. `_workspace/` 디렉토리의 파일들을 모두 읽어 컨텍스트 파악
-2. `_workspace/02_implementer_changes.md`에서 변경 파일 목록 확인
+1. `_workspace/` 디렉토리의 파일들(`.html`)을 모두 읽어 컨텍스트 파악
+2. `_workspace/02_implementer_changes.html`에서 변경 파일 목록 확인
 3. 변경된 실제 파일을 Read로 읽어 리뷰
-4. 결과를 `_workspace/04_review.md`에 저장
+4. 결과를 `_workspace/04_review.html`에 저장
 
 ## 출력 프로토콜
 
-`_workspace/04_review.md`에 저장:
+리뷰 결과를 **HTML 문서**로 `_workspace/04_review.html`에 저장한다.
 
-```markdown
-## 리뷰 요약
-- 전체 평가: PASS / PASS (주의사항 있음) / FAIL
+**양식:** `docs/계획서_샘플양식.html`의 디자인을 따른다. 공용 템플릿
+`.claude/skills/feature-dev/assets/report_template.html`을 Read로 읽어 그 `<style>` 블록 전체를
+산출물 `<head>`에 그대로 인라인 복사하고(단독 열람 가능해야 함), 템플릿 구조에 맞춰 작성한다.
+코드·라인 인용 시 `<`, `>`, `&`를 이스케이프한다.
 
-## 발견 사항
-### 심각 (즉시 수정 필요)
-- 파일명:라인번호 — 문제 설명, 수정 방안
+**문서 구성:**
 
-### 경미 (개선 권장)
-- 파일명:라인번호 — 설명
-
-## 최종 권고
-...
-```
+- `<h1>` + `.meta`(단계=reviewer·작성일·대상) + 전체 평가에 따라 박스 한 줄:
+  PASS→`.box ok`, PASS(주의사항 있음)→`.box acc`, FAIL→`.box danger`.
+- `<h2>` **리뷰 요약** — 전체 평가(PASS / PASS(주의사항 있음) / FAIL)와 항목별 결과를
+  `<table>`(리뷰 항목 / 결과 / 근거)로 정리. 결과는 `.tag`로 표기(PASS→`.tag read`, 주의→`.tag write`, 문제→`.tag ctrl`).
+- `<h2>` **발견 사항**
+  - `<h3>` **심각 (즉시 수정 필요)** — `.box danger` + `<table>`(파일:라인 / 문제 / 수정 방안). 없으면 "없음" 명시.
+  - `<h3>` **경미 (개선 권장)** — `<table>`(파일:라인 / 설명).
+- `<h2>` **최종 권고** — `<p>` 또는 `.box`. FAIL 시 수정 우선순위를 명시.
+- 맺음말: `<hr>` + `<p class="sub">`.
 
 ## 에러 핸들링
 

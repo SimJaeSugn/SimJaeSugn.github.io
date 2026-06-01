@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+  feature-dev 워크스페이스 산출물 공용 템플릿
+  ────────────────────────────────────────────────────────────
+  출처: docs/계획서_샘플양식.html 의 디자인 시스템을 그대로 차용.
+  사용법(각 에이전트 공통):
+    1) 이 파일의 <style> 블록 전체를 그대로 복사해 산출물 <head>에 인라인한다.
+       (산출물은 외부 의존 없이 단독으로 브라우저에서 열려야 한다.)
+    2) <title>·<h1>·.sub·.meta 를 해당 단계에 맞게 채운다.
+    3) nav.toc 의 앵커를 실제 섹션(h2 id)에 맞춘다. 섹션이 적으면 toc 생략 가능
+       (생략 시 .wrap 의 grid-template-columns 를 1fr 로 두거나 nav 를 제거).
+    4) <main> 안에 단계별 내용을 아래 컴포넌트로 작성한다:
+       - 번호 섹션:  <h2 id="..."><span class="n">1.</span>제목</h2>
+       - 콜아웃 박스: <div class="box acc|ok|warn|danger"><div class="t">제목</div> 내용 </div>
+       - 표:         <table><tr><th>…</th></tr> … </table>
+       - 상태 태그:  <span class="tag read|write|ext|ctrl">완료</span>
+       - 코드:       <pre><code> … <span class="kw">class</span> … </code></pre>
+                     (강조 클래스: cm 주석 · kw 키워드 · st 문자열 · fn 함수 · num 숫자 · cl 클래스)
+    5) 마지막에 <hr> + <p class="sub"> 로 한 줄 맺음말을 둔다.
+  주의: 코드/경로/사용자 입력을 본문에 넣을 때 <, >, & 는 반드시 &lt; &gt; &amp; 로 이스케이프한다.
+-->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{문서 제목}} · feature-dev</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d2129; --ink:#e6e9ef; --mut:#9aa3b2;
+    --line:#2a2f3a; --acc:#5b9dff; --acc2:#7c5cff; --ok:#3fcf8e; --warn:#f0b429;
+    --danger:#ff6b6b; --read:#3fcf8e; --write:#f0b429; --ext:#5b9dff; --ctrl:#7c5cff;
+    --code:#11141a; --mono:'Cascadia Code','Consolas','D2Coding',monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard','Segoe UI','Malgun Gothic',system-ui,sans-serif;
+    line-height:1.7;font-size:15px}
+  .wrap{display:grid;grid-template-columns:280px 1fr;max-width:1400px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  nav.toc a{display:block;color:var(--mut);text-decoration:none;font-size:13.5px;
+    padding:5px 10px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+  nav.toc a.sub{padding-left:22px;font-size:12.5px;opacity:.85}
+  main{padding:48px 56px 120px;min-width:0}
+  h1{font-size:29px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:15px;margin-bottom:8px}
+  .meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);padding:10px 0;margin:22px 0 40px;
+    display:flex;gap:26px;flex-wrap:wrap}
+  .meta b{color:var(--ink);font-weight:600}
+  h2{font-size:23px;margin:54px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:24px}
+  h2 .n{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:17.5px;margin:30px 0 10px;color:#cdd5e3;scroll-margin-top:24px}
+  h4{font-size:15px;margin:20px 0 8px;color:var(--acc)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);background:var(--code);padding:2px 6px;border-radius:5px;
+    font-size:13px;color:#e0c9ff;border:1px solid var(--line)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:11px;
+    padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:16px 0}
+  pre code{background:none;border:none;padding:0;color:#d4dbe8}
+  .cm{color:#6b7689}.kw{color:#7c5cff;font-weight:600}.st{color:#3fcf8e}.fn{color:#5b9dff}.num{color:#f0b429}.cl{color:#ffd97a}
+  .box{border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0;background:var(--panel)}
+  .box.acc{border-left:4px solid var(--acc)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.ok{border-left:4px solid var(--ok)}
+  .box.danger{border-left:4px solid var(--danger)}
+  .box .t{font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdd5e3;font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  td code{font-size:12px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em;white-space:nowrap}
+  .tag.read{background:rgba(63,207,142,.14);color:var(--read);border:1px solid rgba(63,207,142,.3)}
+  .tag.write{background:rgba(240,180,41,.14);color:var(--write);border:1px solid rgba(240,180,41,.3)}
+  .tag.ext{background:rgba(91,157,255,.14);color:var(--ext);border:1px solid rgba(91,157,255,.3)}
+  .tag.ctrl{background:rgba(124,92,255,.14);color:var(--ctrl);border:1px solid rgba(124,92,255,.3)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .pill{font-size:11.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .kbd{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:12px}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .lead{font-size:16.5px;color:#cdd5e3}
+  .lg{color:#ffd97a;font-weight:600}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:32px 22px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="toc">
+    <h2>목차</h2>
+    <a href="#s1">1. {{섹션}}</a>
+    <a href="#s2">2. {{섹션}}</a>
+    <!-- 섹션 수에 맞게 추가. 하위 항목은 class="sub" -->
+  </nav>
+
+  <main>
+    <h1>{{문서 제목}}</h1>
+    <div class="sub">{{한 줄 부제 — 이 산출물이 다루는 범위}}</div>
+    <div class="meta">
+      <span><b>단계</b> {{analyst|implementer|integration-checker|reviewer}}</span>
+      <span><b>작성일</b> {{YYYY-MM-DD}}</span>
+      <span><b>대상</b> {{기능/버그 한 줄}}</span>
+    </div>
+
+    <div class="box acc">
+      <div class="t">🎯 한 줄 요약</div>
+      <p style="margin:4px 0">{{이 산출물의 핵심 결론 한 줄}}</p>
+    </div>
+
+    <h2 id="s1"><span class="n">1.</span>{{섹션 제목}}</h2>
+    <p>{{내용}}</p>
+
+    <!-- 단계별 컴포넌트를 여기에 채운다 (위 주석의 사용법 참고) -->
+
+    <hr>
+    <p class="sub">{{한 줄 맺음말 — 다음 단계로 넘길 핵심 사항}}</p>
+  </main>
+
+</div>
+</body>
+</html>
