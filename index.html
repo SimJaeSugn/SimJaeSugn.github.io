@@ -158,6 +158,13 @@
     <button class="mb-zoom-btn" onclick="zoom(0.87)" title="축소 (Ctrl+-)">－</button>
     <span id="zoomLabel">100%</span>
     <button class="mb-zoom-btn" onclick="zoom(1.15)" title="확대 (Ctrl++)">＋</button>
+    <!-- Electron 전용 창 제어 (기본 숨김, 렌더러에서 감지 시 표시) -->
+    <div class="mb-vsep mb-win-only" style="display:none"></div>
+    <div id="mbWinControls" class="mb-win-controls" style="display:none">
+      <button class="mb-win-btn" id="winMinBtn" title="최소화">－</button>
+      <button class="mb-win-btn" id="winMaxBtn" title="최대화">▢</button>
+      <button class="mb-win-btn win-close" id="winCloseBtn" title="닫기">✕</button>
+    </div>
   </div>
 </div>
 
@@ -1084,6 +1091,33 @@
 <script src="js/agent_v2/client_v2.js"></script>
 <script src="js/agent_v2/observe_v2.js"></script>
 <script src="js/main.js"></script>
+
+<!-- ── Electron 창 제어 (프레임리스 창) ───────────────────────────── -->
+<script>
+(function initElectronWindowControls() {
+  const api = window.electronAPI;
+  if (!api || !api.isElectron || !api.windowControls) return; // 브라우저에서는 비활성
+  document.body.classList.add('electron-app');
+  const ctrls = document.getElementById('mbWinControls');
+  const sep = document.querySelector('.mb-win-only');
+  if (ctrls) ctrls.style.display = 'flex';
+  if (sep) sep.style.display = 'block';
+  const minBtn = document.getElementById('winMinBtn');
+  const maxBtn = document.getElementById('winMaxBtn');
+  const closeBtn = document.getElementById('winCloseBtn');
+  if (minBtn) minBtn.addEventListener('click', () => api.windowControls.minimize());
+  if (maxBtn) maxBtn.addEventListener('click', () => api.windowControls.toggleMaximize());
+  if (closeBtn) closeBtn.addEventListener('click', () => api.windowControls.close());
+  // 최대화 상태에 따라 글리프 갱신
+  const applyMaxState = (isMax) => {
+    if (!maxBtn) return;
+    maxBtn.textContent = isMax ? '❐' : '▢';
+    maxBtn.title = isMax ? '이전 크기로' : '최대화';
+  };
+  api.windowControls.onMaximizeChange(applyMaxState);
+  Promise.resolve(api.windowControls.isMaximized()).then(applyMaxState).catch(() => {});
+})();
+</script>
 
 <!-- ── Status Bar ───────────────────────────── -->
 <div id="statusbar">
