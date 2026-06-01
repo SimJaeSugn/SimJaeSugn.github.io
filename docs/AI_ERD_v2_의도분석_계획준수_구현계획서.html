@@ -200,17 +200,78 @@
 
   <h3 id="topology">3.1 그래프 토폴로지</h3>
   <div class="fig">
-    <div class="ascii">                                          ┌────────── replan(loop) ──────────┐
-                                          ▼                                   │
- START ─▶ analyze ──act/mixed──▶ fetch_tools ─▶ plan ─▶ approve ─yes─▶ exec_proxy ─▶ execute ─▶ verify
-            │  │                                          │ no                                    │
-        answer clarify                                    ▼                          ┌── pass ────┘
-            │     │                                      END (취소)                  │
-            ▼     ▼                                                          partial/fail
-           answer→END   escalate→respond→END                                  ├─ recoverable → replan
-                                                                              └─ unrecoverable → respond
-                                                                                          │
-                                                                                  respond ─▶ END</div>
+    <svg viewBox="0 0 1000 348" font-family="'Pretendard','Segoe UI',sans-serif" font-size="12">
+      <defs>
+        <marker id="t1b" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b9dff"/></marker>
+        <marker id="t1p" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c5cff"/></marker>
+        <marker id="t1g" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#3fcf8e"/></marker>
+        <marker id="t1r" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#ff6b6b"/></marker>
+        <marker id="t1y" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#f0b429"/></marker>
+      </defs>
+
+      <!-- replan loop -->
+      <path d="M902,146 C902,44 407,44 407,144" fill="none" stroke="#7c5cff" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#t1p)"/>
+      <text x="655" y="38" text-anchor="middle" fill="#cdb8ff" font-size="11">↺ replan(loop)</text>
+
+      <!-- spine -->
+      <rect x="10"  y="150" width="58"  height="44" rx="9"  fill="#14171e" stroke="#9aa3b2" stroke-dasharray="3 3"/>
+      <text x="39"  y="176" text-anchor="middle" fill="#9aa3b2" font-size="11">START</text>
+      <rect x="98"  y="146" width="96"  height="52" rx="10" fill="#1d2129" stroke="#f0b429"/>
+      <text x="146" y="170" text-anchor="middle" fill="#ffd97a" font-size="12.5">analyze</text>
+      <text x="146" y="187" text-anchor="middle" fill="#9aa3b2" font-size="9.5">의도 구조화</text>
+      <rect x="234" y="150" width="104" height="44" rx="10" fill="#14171e" stroke="#2a2f3a"/>
+      <text x="286" y="176" text-anchor="middle" fill="#9aa3b2" font-size="12">fetch_tools</text>
+      <rect x="368" y="146" width="78"  height="52" rx="10" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="407" y="170" text-anchor="middle" fill="#bcd4ff" font-size="12.5">plan</text>
+      <text x="407" y="187" text-anchor="middle" fill="#9aa3b2" font-size="9.5">목표→스텝</text>
+      <rect x="476" y="150" width="90"  height="44" rx="10" fill="#14171e" stroke="#2a2f3a"/>
+      <text x="521" y="176" text-anchor="middle" fill="#9aa3b2" font-size="12">approve</text>
+      <rect x="606" y="150" width="102" height="44" rx="10" fill="#14171e" stroke="#2a2f3a"/>
+      <text x="657" y="176" text-anchor="middle" fill="#9aa3b2" font-size="12">exec_proxy</text>
+      <rect x="738" y="150" width="88"  height="44" rx="10" fill="#14171e" stroke="#2a2f3a"/>
+      <text x="782" y="176" text-anchor="middle" fill="#9aa3b2" font-size="12">execute</text>
+      <rect x="856" y="146" width="92"  height="52" rx="10" fill="#1d2129" stroke="#7c5cff"/>
+      <text x="902" y="170" text-anchor="middle" fill="#cdb8ff" font-size="12.5">verify</text>
+      <text x="902" y="187" text-anchor="middle" fill="#9aa3b2" font-size="9.5">준수 검증</text>
+
+      <!-- spine arrows -->
+      <line x1="68"  y1="172" x2="96"  y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <line x1="194" y1="172" x2="232" y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <line x1="338" y1="172" x2="366" y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <line x1="446" y1="172" x2="474" y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <line x1="566" y1="172" x2="604" y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <line x1="708" y1="172" x2="736" y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <line x1="826" y1="172" x2="854" y2="172" stroke="#5b9dff" stroke-width="1.7" marker-end="url(#t1b)"/>
+      <text x="213" y="164" text-anchor="middle" fill="#6f93c8" font-size="9">act/mixed</text>
+      <text x="585" y="164" text-anchor="middle" fill="#6f93c8" font-size="9">yes</text>
+
+      <!-- analyze branches -->
+      <line x1="132" y1="198" x2="86"  y2="248" stroke="#3fcf8e" stroke-width="1.5" marker-end="url(#t1g)"/>
+      <line x1="162" y1="198" x2="250" y2="248" stroke="#f0b429" stroke-width="1.5" marker-end="url(#t1y)"/>
+      <text x="92"  y="222" text-anchor="middle" fill="#8df0bf" font-size="9.5">answer</text>
+      <text x="214" y="222" text-anchor="middle" fill="#f0b429" font-size="9.5">clarify</text>
+      <rect x="14"  y="250" width="120" height="28" rx="7" fill="#1d2129" stroke="#3fcf8e"/>
+      <text x="74"  y="268" text-anchor="middle" fill="#8df0bf" font-size="11">answer → END</text>
+      <rect x="150" y="250" width="212" height="28" rx="7" fill="#1d2129" stroke="#f0b429"/>
+      <text x="256" y="268" text-anchor="middle" fill="#ffd97a" font-size="11">escalate → respond → END</text>
+
+      <!-- approve no -->
+      <line x1="521" y1="194" x2="521" y2="250" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#t1r)"/>
+      <text x="535" y="222" text-anchor="middle" fill="#ff9e9e" font-size="9.5">no</text>
+      <rect x="451" y="252" width="140" height="28" rx="7" fill="#1d2129" stroke="#ff6b6b"/>
+      <text x="521" y="270" text-anchor="middle" fill="#ff9e9e" font-size="11">END (취소)</text>
+
+      <!-- verify outcomes -->
+      <line x1="884" y1="198" x2="832" y2="226" stroke="#3fcf8e" stroke-width="1.5" marker-end="url(#t1g)"/>
+      <line x1="902" y1="198" x2="832" y2="264" stroke="#5b9dff" stroke-width="1.5" marker-end="url(#t1b)"/>
+      <line x1="920" y1="198" x2="832" y2="302" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#t1r)"/>
+      <rect x="640" y="226" width="320" height="28" rx="7" fill="#1d2129" stroke="#3fcf8e"/>
+      <text x="800" y="244" text-anchor="middle" fill="#8df0bf" font-size="11">pass → respond → END</text>
+      <rect x="640" y="264" width="320" height="28" rx="7" fill="#1d2129" stroke="#5b9dff"/>
+      <text x="800" y="282" text-anchor="middle" fill="#bcd4ff" font-size="11">partial/fail · recoverable → replan</text>
+      <rect x="640" y="302" width="320" height="28" rx="7" fill="#1d2129" stroke="#ff6b6b"/>
+      <text x="800" y="320" text-anchor="middle" fill="#ff9e9e" font-size="11">partial/fail · unrecoverable → respond</text>
+    </svg>
     <div class="figcap">그림 1 — v2 토폴로지. <span class="lg">analyze</span>(의도 구조화)와 <span class="lg">verify</span>(준수 검증)가 신규/교체 노드. <code>clarify</code>는 모호 시 즉시 사용자에게 되묻고, <code>verify</code>는 실행 결과를 계획·의도와 대조해 pass/partial/fail로 분기한다. 회색 경로(fetch_tools·approve·exec_proxy·execute·replan·respond)는 v1 재사용.</div>
   </div>
 
@@ -472,44 +533,127 @@
   <!-- 9 -->
   <h2 id="layout"><span class="n">9.</span>디렉토리 · 배포 구조</h2>
   <p class="sub">표기 — 🟢 <b>신규</b> · 🟡 <b>수정</b> · ⚪ <b>기존</b>(불변). v2는 <code>agent/v2/</code>·<code>routers/v2/</code> <b>하위 디렉토리</b>로 격리한다(부모와 동일 규약). 부모 패키지의 <b>기존 v1 파일은 한 줄도 건드리지 않는다</b>.</p>
-<pre><code>proxy/python/
-├── agent/                       <span class="cm">⚪ v1 패키지 — 기존 파일 전부 불변</span>
-│   ├── __init__.py              <span class="cm">⚪ 불변 (v2 추가해도 수정 不要 — v2는 자체 __init__)</span>
-│   ├── graph.py · common/ · nodes/ · tools_proxy.py · db_docs.py …  <span class="cm">⚪ v1 (불변)</span>
-│   └── <span class="fn">v2/</span>                      <span class="cm">🟢 신규: v2 서브패키지 (routers/v2 와 동일 규약)</span>
-│       ├── __init__.py
-│       ├── graph.py             <span class="cm">← analyze→plan→approve→exec_proxy→execute→verify→replan→respond</span>
-│       ├── <span class="fn">nodes/</span>
-│       │   ├── analyze.py       <span class="cm">🟢 의도 분석 (gate 대체) — IntentSpec</span>
-│       │   ├── plan.py          <span class="cm">🟢 목표 연결 계획 — StepV2(goal_id,expectation)</span>
-│       │   ├── verify.py        <span class="cm">🟢 계획 준수 검증 — Verdict</span>
-│       │   └── (answer·execute·exec_proxy·approve·respond·replan)  <span class="cm">← 부모 v1 import 재사용</span>
-│       ├── <span class="fn">common/</span>
-│       │   ├── state.py         <span class="cm">🟢 AgentStateV2 (agent.common.state 상속 + intent·verdict)</span>
-│       │   ├── schemas.py       <span class="cm">🟢 IntentSpec·Goal·StepV2·Verdict·GoalVerdict</span>
-│       │   └── prompts.py       <span class="cm">🟢 ANALYZE/PLAN_V2/VERIFY 프롬프트</span>
-│       └── <span class="fn">eval/</span>                <span class="cm">🟢 테스트 하네스</span>
-│           ├── fixtures.jsonl   <span class="cm">← 대표 질의 + 기대값</span>
-│           ├── scorer.py        <span class="cm">← 케이스 채점 · 집계</span>
-│           └── runner.py        <span class="cm">← CLI 일괄 실행 (python -m agent.v2.eval.runner)</span>
-├── routers/
-│   ├── agent.py                 <span class="cm">⚪ v1 라우터 (불변)</span>
-│   └── v2/                      <span class="cm">🟢 신규</span>
-│       ├── __init__.py
-│       └── agent.py             <span class="cm">← /stream·/resume·/key·/config + /eval (agent.v2.graph 사용)</span>
-├── main.py                      <span class="cm">🟡 수정: v2 라우터 가드 등록(try/except) — 유일한 백엔드 v1 파일 접촉</span>
-└── requirements.txt             <span class="cm">⚪ 불변 (langgraph·langchain-openai 이미 존재)</span>
-
-js/
-├── agent_panel.js               <span class="cm">⚪ 불변 — v1 전용. v2는 건드리지 않음</span>
-├── agent_settings.js            <span class="cm">⚪ 불변 — v1 전용</span>
-├── agent_tools.js               <span class="cm">⚪ 불변 — AGENT_TOOL_CATALOG 단일 소스를 v2가 읽기만 함</span>
-└── agent_v2/                    <span class="cm">🟢 신규: v2 전용 프론트 (자체 패널·클라이언트·관측 렌더)</span>
-    ├── panel_v2.js              <span class="cm">← v2 채팅 패널 셸 (v1 패널과 독립)</span>
-    ├── client_v2.js             <span class="cm">← /agent/v2/* SSE 통신 · phase 루프</span>
-    └── observe_v2.js            <span class="cm">← intent·plan·verdict 관측 카드 렌더</span>
-
-index.html                       <span class="cm">🟡 수정: agent_v2/* &lt;script&gt; 로드 추가(가법적) + v2 패널 마크업</span></code></pre>
+<div class="fig">
+  <svg viewBox="0 0 940 808" font-family="'Cascadia Code','Consolas','D2Coding',monospace" font-size="11.5">
+    <rect x="0" y="0" width="940" height="808" rx="11" fill="#11141a" stroke="#2a2f3a"/>
+    <!-- 계층 가이드 -->
+    <g stroke="#2a2f3a" stroke-width="1">
+      <line x1="32" y1="38"  x2="32" y2="570"/>
+      <line x1="52" y1="66"  x2="52" y2="108"/>
+      <line x1="72" y1="129" x2="72" y2="360"/>
+      <line x1="92" y1="192" x2="92" y2="255"/>
+      <line x1="92" y1="297" x2="92" y2="339"/>
+      <line x1="92" y1="381" x2="92" y2="423"/>
+      <line x1="52" y1="465" x2="52" y2="486"/>
+      <line x1="72" y1="507" x2="72" y2="528"/>
+      <line x1="32" y1="622" x2="32" y2="685"/>
+      <line x1="52" y1="706" x2="52" y2="748"/>
+      <!-- 자식 연결 틱 -->
+      <line x1="32" y1="45"  x2="40"  y2="45"/>
+      <line x1="52" y1="66"  x2="60"  y2="66"/>
+      <line x1="52" y1="87"  x2="60"  y2="87"/>
+      <line x1="52" y1="108" x2="60"  y2="108"/>
+      <line x1="72" y1="129" x2="80"  y2="129"/>
+      <line x1="72" y1="150" x2="80"  y2="150"/>
+      <line x1="72" y1="171" x2="80"  y2="171"/>
+      <line x1="92" y1="192" x2="100" y2="192"/>
+      <line x1="92" y1="213" x2="100" y2="213"/>
+      <line x1="92" y1="234" x2="100" y2="234"/>
+      <line x1="92" y1="255" x2="100" y2="255"/>
+      <line x1="72" y1="276" x2="80"  y2="276"/>
+      <line x1="92" y1="297" x2="100" y2="297"/>
+      <line x1="92" y1="318" x2="100" y2="318"/>
+      <line x1="92" y1="339" x2="100" y2="339"/>
+      <line x1="72" y1="360" x2="80"  y2="360"/>
+      <line x1="92" y1="381" x2="100" y2="381"/>
+      <line x1="92" y1="402" x2="100" y2="402"/>
+      <line x1="92" y1="423" x2="100" y2="423"/>
+      <line x1="32" y1="444" x2="40"  y2="444"/>
+      <line x1="52" y1="465" x2="60"  y2="465"/>
+      <line x1="52" y1="486" x2="60"  y2="486"/>
+      <line x1="72" y1="507" x2="80"  y2="507"/>
+      <line x1="72" y1="528" x2="80"  y2="528"/>
+      <line x1="32" y1="549" x2="40"  y2="549"/>
+      <line x1="32" y1="570" x2="40"  y2="570"/>
+      <line x1="32" y1="622" x2="40"  y2="622"/>
+      <line x1="32" y1="643" x2="40"  y2="643"/>
+      <line x1="32" y1="664" x2="40"  y2="664"/>
+      <line x1="32" y1="685" x2="40"  y2="685"/>
+      <line x1="52" y1="706" x2="60"  y2="706"/>
+      <line x1="52" y1="727" x2="60"  y2="727"/>
+      <line x1="52" y1="748" x2="60"  y2="748"/>
+    </g>
+    <g fill="#6b7689" font-size="10.5">
+      <text x="446" y="53">⚪ v1 패키지 — 기존 파일 전부 불변</text>
+      <text x="446" y="74">⚪ 불변 (v2 추가해도 수정 不要 — v2는 자체 __init__)</text>
+      <text x="446" y="95">⚪ v1 (불변)</text>
+      <text x="446" y="116">🟢 신규: v2 서브패키지 (routers/v2 와 동일 규약)</text>
+      <text x="446" y="158">← analyze→plan→approve→exec_proxy→execute→verify→replan→respond</text>
+      <text x="446" y="200">🟢 의도 분석 (gate 대체) — IntentSpec</text>
+      <text x="446" y="221">🟢 목표 연결 계획 — StepV2(goal_id,expectation)</text>
+      <text x="446" y="242">🟢 계획 준수 검증 — Verdict</text>
+      <text x="446" y="263">← 부모 v1 import 재사용</text>
+      <text x="446" y="305">🟢 AgentStateV2 (agent.common.state 상속 + intent·verdict)</text>
+      <text x="446" y="326">🟢 IntentSpec·Goal·StepV2·Verdict·GoalVerdict</text>
+      <text x="446" y="347">🟢 ANALYZE/PLAN_V2/VERIFY 프롬프트</text>
+      <text x="446" y="368">🟢 테스트 하네스</text>
+      <text x="446" y="389">← 대표 질의 + 기대값</text>
+      <text x="446" y="410">← 케이스 채점 · 집계</text>
+      <text x="446" y="431">← CLI 일괄 실행 (python -m agent.v2.eval.runner)</text>
+      <text x="446" y="473">⚪ v1 라우터 (불변)</text>
+      <text x="446" y="494">🟢 신규</text>
+      <text x="446" y="536">← /stream·/resume·/key·/config + /eval (agent.v2.graph 사용)</text>
+      <text x="446" y="557">🟡 수정: v2 라우터 가드 등록(try/except) — 유일한 백엔드 v1 파일 접촉</text>
+      <text x="446" y="578">⚪ 불변 (langgraph·langchain-openai 이미 존재)</text>
+      <text x="446" y="630">⚪ 불변 — v1 전용. v2는 건드리지 않음</text>
+      <text x="446" y="651">⚪ 불변 — v1 전용</text>
+      <text x="446" y="672">⚪ 불변 — AGENT_TOOL_CATALOG 단일 소스를 v2가 읽기만 함</text>
+      <text x="446" y="693">🟢 신규: v2 전용 프론트 (자체 패널·클라이언트·관측 렌더)</text>
+      <text x="446" y="714">← v2 채팅 패널 셸 (v1 패널과 독립)</text>
+      <text x="446" y="735">← /agent/v2/* SSE 통신 · phase 루프</text>
+      <text x="446" y="756">← intent·plan·verdict 관측 카드 렌더</text>
+      <text x="446" y="787">🟡 수정: agent_v2/* &lt;script&gt; 로드 추가(가법적) + v2 패널 마크업</text>
+    </g>
+    <g>
+      <text x="24"  y="32"  fill="#5b9dff">proxy/python/</text>
+      <text x="44"  y="53"  fill="#5b9dff">agent/</text>
+      <text x="64"  y="74"  fill="#cdd5e3">__init__.py</text>
+      <text x="64"  y="95"  fill="#cdd5e3">graph.py · common/ · nodes/ · tools_proxy.py · db_docs.py …</text>
+      <text x="64"  y="116" fill="#5b9dff">v2/</text>
+      <text x="84"  y="137" fill="#cdd5e3">__init__.py</text>
+      <text x="84"  y="158" fill="#cdd5e3">graph.py</text>
+      <text x="84"  y="179" fill="#5b9dff">nodes/</text>
+      <text x="104" y="200" fill="#cdd5e3">analyze.py</text>
+      <text x="104" y="221" fill="#cdd5e3">plan.py</text>
+      <text x="104" y="242" fill="#cdd5e3">verify.py</text>
+      <text x="104" y="263" fill="#cdd5e3">(answer·execute·exec_proxy·approve·respond·replan)</text>
+      <text x="84"  y="284" fill="#5b9dff">common/</text>
+      <text x="104" y="305" fill="#cdd5e3">state.py</text>
+      <text x="104" y="326" fill="#cdd5e3">schemas.py</text>
+      <text x="104" y="347" fill="#cdd5e3">prompts.py</text>
+      <text x="84"  y="368" fill="#5b9dff">eval/</text>
+      <text x="104" y="389" fill="#cdd5e3">fixtures.jsonl</text>
+      <text x="104" y="410" fill="#cdd5e3">scorer.py</text>
+      <text x="104" y="431" fill="#cdd5e3">runner.py</text>
+      <text x="44"  y="452" fill="#5b9dff">routers/</text>
+      <text x="64"  y="473" fill="#cdd5e3">agent.py</text>
+      <text x="64"  y="494" fill="#5b9dff">v2/</text>
+      <text x="84"  y="515" fill="#cdd5e3">__init__.py</text>
+      <text x="84"  y="536" fill="#cdd5e3">agent.py</text>
+      <text x="44"  y="557" fill="#f0b429">main.py</text>
+      <text x="44"  y="578" fill="#cdd5e3">requirements.txt</text>
+      <text x="24"  y="609" fill="#5b9dff">js/</text>
+      <text x="44"  y="630" fill="#cdd5e3">agent_panel.js</text>
+      <text x="44"  y="651" fill="#cdd5e3">agent_settings.js</text>
+      <text x="44"  y="672" fill="#cdd5e3">agent_tools.js</text>
+      <text x="44"  y="693" fill="#5b9dff">agent_v2/</text>
+      <text x="64"  y="714" fill="#cdd5e3">panel_v2.js</text>
+      <text x="64"  y="735" fill="#cdd5e3">client_v2.js</text>
+      <text x="64"  y="756" fill="#cdd5e3">observe_v2.js</text>
+      <text x="24"  y="787" fill="#f0b429">index.html</text>
+    </g>
+  </svg>
+</div>
   <div class="box acc">
     <div class="t">백엔드는 <code>agent/v2/</code>(중첩) · 프론트는 <code>js/agent_v2/</code>(형제) — 의도된 비대칭</div>
     백엔드 v1은 <b>패키지</b>(<code>agent/</code>)이므로 <code>routers/v2/</code>처럼 <code>agent/v2/</code>로 <b>중첩</b>한다. 반면 프론트 v1은 패키지가 아니라
@@ -531,20 +675,47 @@ index.html                       <span class="cm">🟡 수정: agent_v2/* &lt;sc
 
   <h4>불변식 ① 의존 방향은 단방향 — v1 → v2 참조 금지</h4>
   <div class="fig">
-    <div class="ascii">  v1 (부모의 기존 모듈)                          v2 (하위 디렉토리)
-  ┌───────────────────────────┐   ✗ 참조 금지   ┌───────────────────────┐
-  │ agent/{graph,common,nodes,│ ◀─────╳───────  │ agent/v2/             │
-  │   tools_proxy,db_docs}    │                 │ routers/v2/           │
-  │ routers/agent.py          │   ───────────▶  │ js/agent_v2/          │
-  │ agent_panel.js            │   ○ 읽기 전용   │                       │
-  └───────────────────────────┘ (frozen 원시모듈)└───────────────────────┘
-              │                                            │
-              ▼                                            ▼
-  ┌──────────────────────────────────────────────────────────┐
-  │  공유 frozen 원시모듈 (양쪽이 읽기만, v2가 수정 不可)        │
-  │  utils/keystore·crypto · db/adapters · agent/common/llm    │
-  │  agent/tools_proxy · agent/db_docs · agent_tools.js(catalog)│
-  └──────────────────────────────────────────────────────────┘</div>
+    <svg viewBox="0 0 880 314" font-family="'Pretendard','Segoe UI',sans-serif" font-size="12">
+      <defs>
+        <marker id="d4r" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#ff6b6b"/></marker>
+        <marker id="d4g" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#3fcf8e"/></marker>
+        <marker id="d4m" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#9aa3b2"/></marker>
+      </defs>
+
+      <!-- v1 box -->
+      <rect x="20" y="20" width="300" height="124" rx="12" fill="#171a21" stroke="#9aa3b2"/>
+      <text x="36" y="44" fill="#cdd5e3" font-size="12.5" font-weight="600">v1 (부모의 기존 모듈)</text>
+      <text x="36" y="74"  fill="#9aa3b2" font-size="11" font-family="'Cascadia Code','Consolas',monospace">agent/{graph,common,nodes,tools_proxy,db_docs}</text>
+      <text x="36" y="98"  fill="#9aa3b2" font-size="11" font-family="'Cascadia Code','Consolas',monospace">routers/agent.py</text>
+      <text x="36" y="122" fill="#9aa3b2" font-size="11" font-family="'Cascadia Code','Consolas',monospace">agent_panel.js</text>
+
+      <!-- v2 box -->
+      <rect x="560" y="20" width="300" height="124" rx="12" fill="#171a21" stroke="#7c5cff"/>
+      <text x="576" y="44" fill="#cdb8ff" font-size="12.5" font-weight="600">v2 (하위 디렉토리)</text>
+      <text x="576" y="76"  fill="#cdd5e3" font-size="11" font-family="'Cascadia Code','Consolas',monospace">agent/v2/</text>
+      <text x="576" y="100" fill="#cdd5e3" font-size="11" font-family="'Cascadia Code','Consolas',monospace">routers/v2/</text>
+      <text x="576" y="124" fill="#cdd5e3" font-size="11" font-family="'Cascadia Code','Consolas',monospace">js/agent_v2/</text>
+
+      <!-- 참조 금지 : v1 ◀╳ v2 (blocked) -->
+      <line x1="556" y1="62" x2="324" y2="62" stroke="#ff6b6b" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#d4r)"/>
+      <text x="440" y="52" text-anchor="middle" fill="#ff9e9e" font-size="11">✗ 참조 금지</text>
+      <text x="440" y="68" text-anchor="middle" fill="#ff6b6b" font-size="13">╳</text>
+
+      <!-- 읽기 전용 : v2 ──▶ v1 (read-only) -->
+      <line x1="324" y1="104" x2="556" y2="104" stroke="#3fcf8e" stroke-width="1.6" marker-end="url(#d4g)"/>
+      <text x="440" y="120" text-anchor="middle" fill="#8df0bf" font-size="11">○ 읽기 전용</text>
+      <text x="440" y="134" text-anchor="middle" fill="#6b8f7e" font-size="9.5">(frozen 원시모듈)</text>
+
+      <!-- down to shared -->
+      <line x1="170" y1="144" x2="170" y2="210" stroke="#9aa3b2" stroke-width="1.5" marker-end="url(#d4m)"/>
+      <line x1="710" y1="144" x2="710" y2="210" stroke="#9aa3b2" stroke-width="1.5" marker-end="url(#d4m)"/>
+
+      <!-- shared frozen box -->
+      <rect x="20" y="212" width="840" height="92" rx="12" fill="#11141a" stroke="#2a2f3a" stroke-dasharray="5 3"/>
+      <text x="440" y="240" text-anchor="middle" fill="#cdd5e3" font-size="12.5" font-weight="600">공유 frozen 원시모듈 (양쪽이 읽기만, v2가 수정 不可)</text>
+      <text x="440" y="268" text-anchor="middle" fill="#9aa3b2" font-size="11" font-family="'Cascadia Code','Consolas',monospace">utils/keystore·crypto · db/adapters · agent/common/llm</text>
+      <text x="440" y="290" text-anchor="middle" fill="#9aa3b2" font-size="11" font-family="'Cascadia Code','Consolas',monospace">agent/tools_proxy · agent/db_docs · agent_tools.js(catalog)</text>
+    </svg>
     <div class="figcap">그림 4 — v2가 <code>agent/v2/</code>로 부모 패키지 <b>안에</b> 들어와도, 의존은 <b>v2 → v1(읽기 전용)</b> 한 방향만 허용한다. 부모의 v1 모듈(<code>agent/graph.py</code>·<code>agent/__init__.py</code> 등)은 자식 <code>agent.v2</code>를 <b>절대 import하지 않는다</b>(파이썬 표준 "부모는 자식을 모른다" 규약). 따라서 <code>agent/v2/</code>를 통째로 삭제해도 v1은 그대로 동작한다.</div>
   </div>
   <table>
@@ -608,14 +779,15 @@ app.include_router(agent.router, prefix=<span class="st">"/agent"</span>)       
   <!-- 10 -->
   <h2 id="roadmap"><span class="n">10.</span>구현 로드맵</h2>
   <p>v1을 깨지 않는 순서로 — <b>골격(병렬 가동)</b> → <b>의도</b> → <b>계획 연결</b> → <b>검증</b> → <b>테스트 하네스</b> → (선택)<b>승격</b>. 각 단계는 독립적으로 검증 가능하다.</p>
+  <p class="sub">구현 현황 (2026-05-31 기준): <b>V2-M1 완료</b> — <code>/agent/v2</code> 골격 + 격리 계약 확립(v1 미러·diff 화이트리스트 통과·실패격리 가드 검증). 의도분석(M2)·계획연결(M3)·준수검증(M4)·테스트 하네스(M5) 예정. <span class="pill">이 표의 상태 열은 CLAUDE.md "하네스: v2 계획서·로드맵 동기화"로 매 마일스톤 갱신된다.</span></p>
   <table>
-    <tr><th width="74">단계</th><th>핵심 목표</th><th width="150">산출물</th><th width="90">선행</th></tr>
-    <tr><td><b>V2-M1</b></td><td><b>골격 + 격리</b> — <code>routers/v2</code> + <code>agent/v2</code> 그래프(초기엔 v1 미러) + <code>js/agent_v2/*</code> 자체 패널. <code>/agent/v2</code> 가동·<b>격리 계약 확립</b>(§9.1)·A/B 비교</td><td>agent/v2/graph.py · routers/v2/agent.py · main.py(가드 등록) · js/agent_v2/* · index.html(로드)</td><td>—</td></tr>
-    <tr><td><b>V2-M2</b></td><td><b>의도 분석</b> — <code>IntentSpec</code>·<code>Goal</code> + <code>analyze</code> 노드 + <code>clarify</code> 분기 + <code>intent</code> SSE·관측 카드</td><td>analyze.py · schemas.py · prompts.py(ANALYZE)</td><td>M1</td></tr>
-    <tr><td><b>V2-M3</b></td><td><b>계획-의도 연결</b> — <code>StepV2(goal_id,expectation)</code> + <code>plan</code> 재작성(goals 소비·목표 커버리지·과잉 제거) + <code>plan</code> SSE</td><td>plan.py · schemas.py(StepV2)</td><td>M2</td></tr>
-    <tr><td><b>V2-M4</b></td><td><b>준수 검증</b> — <code>verify</code> 노드 + <code>Verdict</code> + 3분기(pass/partial→replan/fail) + <code>verdict</code> SSE·준수 리포트</td><td>verify.py · schemas.py(Verdict) · graph.py(엣지)</td><td>M3</td></tr>
-    <tr><td><b>V2-M5</b></td><td><b>테스트 하네스</b> — <code>fixtures.jsonl</code> + <code>scorer</code> + <code>/eval</code>·CLI runner + v1↔v2 스코어카드 비교</td><td>eval/* · routers/v2/agent.py(/eval)</td><td>M2(채점은 M4 권장)</td></tr>
-    <tr><td><b>V2-M6</b> <span class="tag ctrl">선택</span></td><td><b>승격</b> — v2가 지표상 v1 우위 확인 시 prefix 전환·v1 제거·README 동기화</td><td>main.py · README 3종 · v1 디렉토리 제거</td><td>M4·M5</td></tr>
+    <tr><th width="74">단계</th><th width="92">상태</th><th>핵심 목표</th><th width="150">산출물</th><th width="80">선행</th></tr>
+    <tr><td><b>V2-M1</b></td><td><span class="tag read">✅ 완료</span></td><td><b>골격 + 격리</b> — <code>routers/v2</code> + <code>agent/v2</code> 그래프(초기엔 v1 미러) + <code>js/agent_v2/*</code> 자체 패널. <code>/agent/v2</code> 가동·<b>격리 계약 확립</b>(§9.1)·A/B 비교</td><td>agent/v2/graph.py · routers/v2/agent.py · main.py(가드 등록) · js/agent_v2/* · index.html(로드)</td><td>—</td></tr>
+    <tr><td><b>V2-M2</b></td><td><span class="pill">예정</span></td><td><b>의도 분석</b> — <code>IntentSpec</code>·<code>Goal</code> + <code>analyze</code> 노드(gate 교체) + <code>clarify</code> 분기 + <code>intent</code> SSE·관측 카드</td><td>agent/v2/nodes/analyze.py · agent/v2/common/schemas.py · prompts.py(ANALYZE)</td><td>M1</td></tr>
+    <tr><td><b>V2-M3</b></td><td><span class="pill">예정</span></td><td><b>계획-의도 연결</b> — <code>StepV2(goal_id,expectation)</code> + <code>plan</code> 재작성(goals 소비·목표 커버리지·과잉 제거) + <code>plan</code> SSE</td><td>agent/v2/nodes/plan.py · schemas.py(StepV2)</td><td>M2</td></tr>
+    <tr><td><b>V2-M4</b></td><td><span class="pill">예정</span></td><td><b>준수 검증</b> — <code>verify</code> 노드 + <code>Verdict</code> + 3분기(pass/partial→replan/fail) + <code>verdict</code> SSE·준수 리포트</td><td>agent/v2/nodes/verify.py · schemas.py(Verdict) · graph.py(엣지)</td><td>M3</td></tr>
+    <tr><td><b>V2-M5</b></td><td><span class="pill">예정</span></td><td><b>테스트 하네스</b> — <code>fixtures.jsonl</code> + <code>scorer</code> + <code>/eval</code>·CLI runner + v1↔v2 스코어카드 비교</td><td>agent/v2/eval/* · routers/v2/agent.py(/eval)</td><td>M2(채점은 M4 권장)</td></tr>
+    <tr><td><b>V2-M6</b> <span class="tag ctrl">선택</span></td><td><span class="pill">예정</span></td><td><b>승격</b> — v2가 지표상 v1 우위 확인 시 prefix 전환·v1 제거·README 동기화</td><td>main.py · README 3종 · v1 디렉토리 제거</td><td>M4·M5</td></tr>
   </table>
 
   <div class="box acc">
@@ -646,15 +818,15 @@ app.include_router(agent.router, prefix=<span class="st">"/agent"</span>)       
   <h2 id="scenarios"><span class="n">11.</span>검증 시나리오</h2>
   <p>각 단계 완료 판정용 수용 테스트. <b>입력/상황 → 기대 결과</b> 형태이며, v1 결함을 정조준한 케이스를 포함한다.</p>
 
-  <h4>V2-M1 — 골격 · 병렬 가동 · <b>격리</b></h4>
+  <h4>V2-M1 — 골격 · 병렬 가동 · <b>격리</b> <span class="tag read">✅ 완료 (2026-05-31)</span></h4>
   <table>
-    <tr><th width="74">ID</th><th width="42%">입력 / 상황</th><th>기대 결과</th></tr>
-    <tr><td>V2-1.1</td><td>기존 v1 패널에서 모든 조작</td><td>v1과 <b>완전 동일</b> 동작 · 네트워크는 <code>/agent/*</code> 호출</td></tr>
-    <tr><td>V2-1.2</td><td>v2 패널에서 "정규화가 뭐야?"</td><td><code>/agent/v2/stream</code> 호출 · 토큰 스트리밍 정상</td></tr>
-    <tr><td>V2-1.3</td><td>v1·v2 동시 사용(탭/패널 2개)</td><td>서로 간섭 없음(<code>thread_id</code>·전역·DOM 독립) · v1 라우터 무영향</td></tr>
-    <tr><td>V2-1.4 <span class="tag ctrl">격리</span></td><td><code>git diff main</code> 검사</td><td>기존 파일 변경이 <code>main.py</code>·<code>index.html</code> <b>추가분으로만</b> 한정 · v1 파일(<code>routers/agent.py</code>·<code>agent/**</code>·<code>agent_panel.js</code> 등) <b>diff 0</b></td></tr>
-    <tr><td>V2-1.5 <span class="tag ctrl">격리</span></td><td><code>agent/v2/</code>·<code>routers/v2/</code>·<code>js/agent_v2/</code>를 통째로 삭제 후 기동</td><td>경고 로그만 남기고 앱·v1 <b>정상 기동</b>(가드 등록) — v2 삭제가 v1에 무영향</td></tr>
-    <tr><td>V2-1.6 <span class="tag ctrl">격리</span></td><td>부모 v1 모듈(<code>agent/</code>의 기존 파일)·<code>routers/agent.py</code>에서 <code>agent.v2</code>·<code>routers.v2</code> 참조 검색(grep)</td><td>참조 <b>0건</b> — v1 → v2 의존 없음(부모는 자식을 모름, 단방향 확인)</td></tr>
+    <tr><th width="74">ID</th><th width="36%">입력 / 상황</th><th>기대 결과</th><th width="116">검증 결과</th></tr>
+    <tr><td>V2-1.1</td><td>기존 v1 패널에서 모든 조작</td><td>v1과 <b>완전 동일</b> 동작 · 네트워크는 <code>/agent/*</code> 호출</td><td>✅ diff 0 실측 (v1 불변)</td></tr>
+    <tr><td>V2-1.2</td><td>v2 패널에서 "정규화가 뭐야?"</td><td><code>/agent/v2/stream</code> 호출 · 토큰 스트리밍 정상</td><td>◑ 부분 — 앱 부팅 시 <code>/agent/v2/*</code> 라우트 등록 확인. <b>브라우저 UI 스트리밍 E2E는 미검증</b>(앱+키 필요)</td></tr>
+    <tr><td>V2-1.3</td><td>v1·v2 동시 사용(탭/패널 2개)</td><td>서로 간섭 없음(<code>thread_id</code>·전역·DOM 독립) · v1 라우터 무영향</td><td>✅ 코드 리뷰 — 독립 thread_id(<code>v2_</code>)·graph·전역·DOM 확인</td></tr>
+    <tr><td>V2-1.4 <span class="tag ctrl">격리</span></td><td><code>git diff main</code> 검사</td><td>기존 파일 변경이 <code>main.py</code>·<code>index.html</code> <b>추가분으로만</b> 한정 · v1 파일(<code>routers/agent.py</code>·<code>agent/**</code>·<code>agent_panel.js</code> 등) <b>diff 0</b></td><td>✅ 화이트리스트 빈 결과 실측</td></tr>
+    <tr><td>V2-1.5 <span class="tag ctrl">격리</span></td><td><code>agent/v2/</code>·<code>routers/v2/</code>·<code>js/agent_v2/</code>를 통째로 삭제 후 기동</td><td>경고 로그만 남기고 앱·v1 <b>정상 기동</b>(가드 등록) — v2 삭제가 v1에 무영향</td><td>✅ import-hook 강제 파손 테스트 PASS</td></tr>
+    <tr><td>V2-1.6 <span class="tag ctrl">격리</span></td><td>부모 v1 모듈(<code>agent/</code>의 기존 파일)·<code>routers/agent.py</code>에서 <code>agent.v2</code>·<code>routers.v2</code> 참조 검색(grep)</td><td>참조 <b>0건</b> — v1 → v2 의존 없음(부모는 자식을 모름, 단방향 확인)</td><td>✅ 단방향 grep 0건 실측</td></tr>
   </table>
 
   <h4>V2-M2 — 의도 분석</h4>

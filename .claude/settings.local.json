@@ -119,7 +119,13 @@
       "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force '_verify_tmp' -ErrorAction SilentlyContinue\")",
       "Bash(rm -rf _workspace_prev)",
       "Bash(mv _workspace _workspace_prev)",
-      "Bash(mkdir _workspace)"
+      "Bash(mkdir _workspace)",
+      "Read(//e/e/03.프로젝트/**)",
+      "Read(//e/e/03.프로젝트/SimJaeSugn.github.io/proxy/**)",
+      "Read(//e/e/03.프로젝트/SimJaeSugn.github.io/proxy/python/**)",
+      "Bash(python -m py_compile agent/v2/graph.py routers/v2/agent.py main.py)",
+      "Bash(python -m py_compile proxy/python/agent/v2/graph.py proxy/python/routers/v2/agent.py proxy/python/main.py)",
+      "Bash(echo \"py_compile EXIT:$?\")"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

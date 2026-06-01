@@ -1,4 +1,5 @@
 import argparse
+import logging
 import sys
 import uvicorn
 from fastapi import FastAPI
@@ -35,6 +36,13 @@ app.include_router(execute.router, prefix="/execute")
 app.include_router(health.router, prefix="/health")
 app.include_router(schema.router, prefix="/schema")
 app.include_router(agent.router, prefix="/agent")
+
+# ── Agent v2 (병렬·격리) — try/except 가드. v2가 깨져도 앱·v1 정상 기동(§9.1 불변식 ②) ──
+try:
+    from routers.v2 import agent as agent_v2
+    app.include_router(agent_v2.router, prefix="/agent/v2")
+except Exception as e:  # import 실패·반쪽 삭제 등
+    logging.warning("v2 agent router disabled: %s", e)
 
 @app.get("/ping")
 def ping():

@@ -883,7 +883,7 @@ UXERManager는 세 가지 실행 환경을 지원하는 레이어 구조입니�
 SimJaeSugn.github.io/
 │
 ├── index.html                     ← 앱 진입점
-├── js/                            ← 프론트엔드 JS 모듈 (26개)
+├── js/                            ← 프론트엔드 JS 모듈 (26개 + v2 3개)
 │   ├── state.js                   ← 전역 상태
 │   ├── canvas.js                  ← 렌더링 엔진
 │   ├── entities.js
@@ -891,6 +891,8 @@ SimJaeSugn.github.io/
 │   ├── ui.js
 │   ├── agent_panel.js             ← 우측 패널 Agent 탭·채팅 UI·스트림/interrupt 루프
 │   ├── agent_tools.js             ← Agent 클라이언트 툴(엔티티·관계·레이아웃) + 드래프트 커밋
+│   ├── agent_settings.js          ← Agent 설정 모달
+│   ├── agent_v2/                  ← v2 격리 채널 (panel_v2 · client_v2 · observe_v2)
 │   ├── layout.js
 │   ├── export.js
 │   ├── import.js
@@ -935,8 +937,8 @@ SimJaeSugn.github.io/
 │       ├── main.py                ← FastAPI 진입점
 │       ├── requirements.txt
 │       ├── build.ps1              ← PyInstaller 빌드
-│       ├── routers/               ← config / execute / health / schema / agent
-│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy) — 자연어 ERD 제어
+│       ├── routers/               ← config / execute / health / schema / agent · v2/agent (v2 격리 미러)
+│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy · v2/) — 자연어 ERD 제어
 │       ├── db/adapters/           ← postgres / mysql / mssql / oracle
 │       └── utils/                 ← crypto / keystore / audit_logger
 │
