@@ -27,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ev.key === 'Enter')  { ev.preventDefault(); confirmNewDiag(); }
     if (ev.key === 'Escape') { ev.preventDefault(); closeNewDiagModal(); }
   });
+  document.getElementById('promptInput').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter')  { ev.preventDefault(); ev.stopPropagation(); doPrompt(); }
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closePromptModal(); }
+  });
   if (typeof updateStatusBar === 'function') updateStatusBar();
   if (typeof _initPropDividerDrag === 'function') _initPropDividerDrag();
   if (typeof _renderEmptyPropPanel === 'function') _renderEmptyPropPanel();

@@ -659,6 +659,18 @@
   </div>
 </div>
 
+<!-- ── Prompt Modal ──────────────────────────── -->
+<div class="modal-overlay" id="promptOverlay" onmousedown="overlayClose(event,'promptOverlay')">
+  <div class="modal" style="min-width:320px;width:380px">
+    <h3 id="promptTitle">입력</h3>
+    <input id="promptInput" class="form-input" style="width:100%;margin:8px 0;">
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closePromptModal()">취소</button>
+      <button class="btn" id="promptOkBtn" onclick="doPrompt()">확인</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Snapshot List Modal ───────────────────── -->
 <div class="modal-overlay" id="snapshotOverlay" onmousedown="overlayCloseExtra(event,'snapshotOverlay')">
   <div class="modal" style="width:500px" onmousedown.stop>

@@ -942,8 +942,9 @@ function _updateNoteV2Card(card, note) {
     addBtn.onmousedown = e => e.stopPropagation();
     addBtn.onclick = e => {
       e.stopPropagation();
-      const tag = prompt('태그 입력:');
-      if (tag && tag.trim()) { note.tags.push(tag.trim()); renderNoteV2Overlays(); saveState(); }
+      askPrompt('태그 입력', '', (tag) => {
+        if (tag && tag.trim()) { note.tags.push(tag.trim()); renderNoteV2Overlays(); saveState(); }
+      });
     };
     footer.appendChild(addBtn);
   }
@@ -1657,6 +1658,27 @@ function closeConfirm() {
   pendingConfirmFn = null;
 }
 
+// ── Prompt Dialog ─────────────────────────────────────────────────
+let pendingPromptFn = null;
+
+function askPrompt(title, defaultValue, fn) {
+  document.getElementById('promptTitle').textContent = title;
+  const input = document.getElementById('promptInput');
+  input.value = defaultValue || '';
+  pendingPromptFn = fn;
+  document.getElementById('promptOverlay').classList.add('active');
+  setTimeout(() => { input.focus(); input.select(); }, 0);
+}
+function doPrompt() {
+  const val = document.getElementById('promptInput').value;
+  document.getElementById('promptOverlay').classList.remove('active');
+  const fn = pendingPromptFn; pendingPromptFn = null; if (fn) fn(val);
+}
+function closePromptModal() {
+  document.getElementById('promptOverlay').classList.remove('active');
+  pendingPromptFn = null;
+}
+
 // ── Overlay 닫기 ─────────────────────────────────────────────────
 function overlayClose(e, overlayId) {
   if (e.target.id === overlayId) {
@@ -1669,6 +1691,7 @@ function overlayClose(e, overlayId) {
     if (overlayId === 'agentSettingsOverlay') closeAgentSettingsModal();
     if (overlayId === 'importDiagSelectOverlay') closeImportDiagSelectModal();
     if (overlayId === 'mwNotRunningOverlay') document.getElementById('mwNotRunningOverlay')?.classList.remove('active');
+    if (overlayId === 'promptOverlay')       closePromptModal();
   }
 }
 
@@ -1827,20 +1850,21 @@ function persistSnapshots() {
 function saveSnapshot() {
   const now = new Date();
   const defaultName = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
-  const name = prompt('스냅샷 이름을 입력하세요:', defaultName);
-  if (name === null) return;
-  flushCurrentState();
-  const state = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
-  const snap = {
-    id: 'snap_' + Date.now().toString(36),
-    name: name.trim() || defaultName,
-    ts: now.toISOString(),
-    state
-  };
-  SNAPSHOTS.unshift(snap);
-  if (SNAPSHOTS.length > SNAPSHOT_MAX) SNAPSHOTS.length = SNAPSHOT_MAX;
-  persistSnapshots();
-  showToast(`스냅샷 '${snap.name}' 저장됨`);
+  askPrompt('스냅샷 이름을 입력하세요', defaultName, (name) => {
+    if (name === null) return;
+    flushCurrentState();
+    const state = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
+    const snap = {
+      id: 'snap_' + Date.now().toString(36),
+      name: name.trim() || defaultName,
+      ts: now.toISOString(),
+      state
+    };
+    SNAPSHOTS.unshift(snap);
+    if (SNAPSHOTS.length > SNAPSHOT_MAX) SNAPSHOTS.length = SNAPSHOT_MAX;
+    persistSnapshots();
+    showToast(`스냅샷 '${snap.name}' 저장됨`);
+  });
 }
 
 function openSnapshotListModal() {
