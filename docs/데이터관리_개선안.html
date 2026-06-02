@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>데이터 관리 기능 개선안 · AgenticERM</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d2129; --ink:#e6e9ef; --mut:#9aa3b2;
+    --line:#2a2f3a; --acc:#5b9dff; --acc2:#7c5cff; --ok:#3fcf8e; --warn:#f0b429;
+    --danger:#ff6b6b; --read:#3fcf8e; --write:#f0b429; --ext:#5b9dff; --ctrl:#7c5cff;
+    --code:#11141a; --mono:'Cascadia Code','Consolas','D2Coding',monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard','Segoe UI','Malgun Gothic',system-ui,sans-serif;
+    line-height:1.7;font-size:15px}
+  .wrap{display:grid;grid-template-columns:280px 1fr;max-width:1400px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  nav.toc a{display:block;color:var(--mut);text-decoration:none;font-size:13.5px;
+    padding:5px 10px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+  nav.toc a.sub{padding-left:22px;font-size:12.5px;opacity:.85}
+  main{padding:48px 56px 120px;min-width:0}
+  h1{font-size:29px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:15px;margin-bottom:8px}
+  .meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);padding:10px 0;margin:22px 0 40px;
+    display:flex;gap:26px;flex-wrap:wrap}
+  .meta b{color:var(--ink);font-weight:600}
+  h2{font-size:23px;margin:54px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:24px}
+  h2 .n{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:17.5px;margin:30px 0 10px;color:#cdd5e3;scroll-margin-top:24px}
+  h4{font-size:15px;margin:20px 0 8px;color:var(--acc)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);background:var(--code);padding:2px 6px;border-radius:5px;
+    font-size:13px;color:#e0c9ff;border:1px solid var(--line)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:11px;
+    padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:16px 0}
+  pre code{background:none;border:none;padding:0;color:#d4dbe8}
+  .cm{color:#6b7689}.kw{color:#7c5cff;font-weight:600}.st{color:#3fcf8e}.fn{color:#5b9dff}.num{color:#f0b429}.cl{color:#ffd97a}
+  .box{border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0;background:var(--panel)}
+  .box.acc{border-left:4px solid var(--acc)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.ok{border-left:4px solid var(--ok)}
+  .box.danger{border-left:4px solid var(--danger)}
+  .box .t{font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdd5e3;font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  td code{font-size:12px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em;white-space:nowrap}
+  .tag.read{background:rgba(63,207,142,.14);color:var(--read);border:1px solid rgba(63,207,142,.3)}
+  .tag.write{background:rgba(240,180,41,.14);color:var(--write);border:1px solid rgba(240,180,41,.3)}
+  .tag.ext{background:rgba(91,157,255,.14);color:var(--ext);border:1px solid rgba(91,157,255,.3)}
+  .tag.ctrl{background:rgba(124,92,255,.14);color:var(--ctrl);border:1px solid rgba(124,92,255,.3)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .pill{font-size:11.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .kbd{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:12px}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .lead{font-size:16.5px;color:#cdd5e3}
+  .lg{color:#ffd97a;font-weight:600}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:32px 22px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="toc">
+    <h2>목차</h2>
+    <a href="#s1">1. 현황 분석</a>
+    <a href="#s2">2. 발견한 중복·문제</a>
+    <a href="#s2a" class="sub">의미적 중복</a>
+    <a href="#s2b" class="sub">기능적 중복</a>
+    <a href="#s3">3. 개선안</a>
+    <a href="#s3a" class="sub">개념 3축 정리</a>
+    <a href="#s3b" class="sub">A. 단일 직렬화 계층</a>
+    <a href="#s3c" class="sub">B. 명칭 통일</a>
+    <a href="#s3d" class="sub">C. 버전 관리 통합</a>
+    <a href="#s3e" class="sub">D. 메뉴 재그룹화</a>
+    <a href="#s4">4. 적용 우선순위</a>
+    <a href="#s5">5. 영향 범위</a>
+  </nav>
+
+  <main>
+    <h1>데이터 관리 기능 개선안</h1>
+    <div class="sub">저장 · 전체 백업 · 스냅샷 · 공유 URL · 자동저장 — 기능적·의미적 중복 제거 설계</div>
+    <div class="meta">
+      <span><b>단계</b> 설계(design)</span>
+      <span><b>작성일</b> 2026-06-02</span>
+      <span><b>대상</b> 데이터 관리 기능 통합</span>
+    </div>
+
+    <div class="box acc">
+      <div class="t">🎯 한 줄 요약</div>
+      <p style="margin:4px 0">거의 모든 데이터 관리 기능이 <b>동일한 상태 페이로드</b>
+        <code>{ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap }</code> 를
+        <b>5곳에 복붙</b>해 직렬화하고 있으며, "저장 / 내보내기 / 백업" <b>명칭이 매체·역할과 어긋난다</b>.
+        단일 직렬화 계층 + 명칭 1:1 정리로 중복을 제거한다.</p>
+    </div>
+
+    <!-- ───────────────────────── 1 ───────────────────────── -->
+    <h2 id="s1"><span class="n">1.</span>현황 분석 (실제 코드 기준)</h2>
+    <p>아래 기능들은 사실상 같은 페이로드를 <b>어디에(매체)</b>·<b>얼마나(범위)</b>만 달리해 저장한다.</p>
+    <table>
+      <tr><th>기능</th><th>함수</th><th>페이로드</th><th>저장 위치</th><th>범위</th></tr>
+      <tr><td>자동저장</td><td><code>saveState()</code> <span class="pill">state.js</span></td><td>전체 페이로드</td><td>localStorage <code>STORAGE_KEY</code></td><td>최신 1개(자동)</td></tr>
+      <tr><td>되돌리기</td><td><code>undo()</code>/<code>redo()</code></td><td>전체 페이로드 스택</td><td>메모리(휘발)</td><td>세션 한정</td></tr>
+      <tr><td>스냅샷</td><td><code>saveSnapshot()</code> <span class="pill">ui.js</span></td><td>전체 페이로드</td><td>localStorage <code>SNAPSHOT_KEY</code></td><td>N개(이름·시각)</td></tr>
+      <tr><td>공유 URL</td><td><code>generateShareUrl()</code> <span class="pill">share.js</span></td><td>전체 페이로드(LZ 압축)</td><td>URL <code>?erd=</code></td><td>전체</td></tr>
+      <tr><td><b>저장하기</b> (JSON 내보내기)</td><td><code>exportData()</code> <span class="pill">export.js</span></td><td><b>{diagrams(선택), activeDiagramId}</b></td><td>파일(.json)</td><td>선택 다이어그램</td></tr>
+      <tr><td>전체 백업</td><td><code>exportFullBackup()</code> <span class="pill">export.js</span></td><td>페이로드+스냅샷+템플릿+UI설정+AI키</td><td>파일(.json)</td><td>그룹 선택</td></tr>
+    </table>
+    <div class="box ok">
+      <div class="t">참고 — 동일 직렬화 코드가 흩어진 위치</div>
+      <p style="margin:4px 0"><code>JSON.stringify({diagrams, activeDiagramId, viewMode, notationStyle, gridSnap})</code> 가
+        <code>saveState</code> · <code>saveSnapshot</code> · <code>generateShareUrl</code> ·
+        <code>exportFullBackup</code>(data.main) 4곳에 그대로 반복되고,
+        <code>exportData</code> 만 일부 필드를 빠뜨린 채 5번째로 존재한다.</p>
+    </div>
+
+    <!-- ───────────────────────── 2 ───────────────────────── -->
+    <h2 id="s2"><span class="n">2.</span>발견한 중복·문제</h2>
+
+    <h3 id="s2a">의미적 중복 <span class="tag ctrl">semantic</span></h3>
+
+    <div class="box warn">
+      <div class="t">① 명칭이 매체·역할과 어긋남</div>
+      <ul style="margin:4px 0">
+        <li>같은 <code>exportData()</code> 가 메뉴에선 <b>"JSON 내보내기"</b>, 단축키(<code>shortcuts.js</code>)에선 <b>"JSON 저장"</b> 으로 불린다 → "저장"과 "내보내기"가 혼용.</li>
+        <li>"저장하기"는 실제로는 <b>선택한 다이어그램만 파일로 내보내기</b>인데, '저장'이라는 단어 때문에 "전체가 저장된다"고 오해하기 쉽다.</li>
+        <li>정작 "전체 백업"이 진짜 "전부 저장"에 해당 → 두 기능의 <b>이름이 역할을 구분하지 못한다</b>.</li>
+      </ul>
+    </div>
+
+    <div class="box warn">
+      <div class="t">④ "버전 보관"이 3곳에 분산</div>
+      <p style="margin:4px 0">되돌리기(세션 메모리) · 스냅샷(localStorage) · 자동저장(localStorage)이 모두
+        "이전 상태로 되돌리기/보관"인데 서로 다른 UI·저장소로 흩어져 있어, 사용자 관점에서 "버전을 남긴다"가 어디인지 모호하다.</p>
+    </div>
+
+    <div class="box warn">
+      <div class="t">⑤ 스냅샷이 백업 안에 중첩</div>
+      <p style="margin:4px 0">전체 백업의 <code>snapshots</code> 그룹이 스냅샷을 포함 → "버전 모음(스냅샷)"이 "백업(파일)" 안에 들어가,
+        같은 목적(버전 보관)의 저장소가 이중화된다.</p>
+    </div>
+
+    <h3 id="s2b">기능적 중복 <span class="tag write">functional</span></h3>
+
+    <div class="box ok">
+      <div class="t">② 재검토 — "저장하기"의 필드 누락은 <b>의도된 동작</b> (반영 시 정정)</div>
+      <p style="margin:4px 0">반영 작업 중 가져오기 경로(<code>handleImportFile</code> → 다이어그램 선택 후 <b>현재 작업본에 병합</b>)를 확인한 결과,
+        <code>exportData()</code> 는 "전체 저장"이 아니라 <b>"선택 다이어그램을 다른 작업본에 병합하는 내보내기"</b> 였다.
+        <code>viewMode</code>·<code>notationStyle</code>·<code>gridSnap</code> 은 <b>작업본 전역 설정</b>이므로
+        전송 파일에서 제외하는 것이 <b>옳다</b>(가져온 다이어그램이 받는 쪽 표기법·그리드를 바꾸면 안 됨).</p>
+      <p style="margin:4px 0">→ 따라서 데이터 손실 버그가 아니라 의도된 스코핑이며, 진짜 문제는 <b>① 명칭</b>이다.
+        필드 추가 대신 <b>명칭 통일(B)</b>로 해결했다 ("JSON 저장/내보내기" → "다이어그램 내보내기").</p>
+    </div>
+
+    <div class="box danger">
+      <div class="t">③ 직렬화 로직 5중 복붙</div>
+      <p style="margin:4px 0">동일한 직렬화가 5곳에 하드코딩되어, 필드를 추가하면 5곳을 동기화해야 하고
+        실제로 한 곳(②)이 이미 어긋났다. 단일 함수로 통일하지 않으면 드리프트가 재발한다.</p>
+    </div>
+
+    <!-- ───────────────────────── 3 ───────────────────────── -->
+    <h2 id="s3"><span class="n">3.</span>개선안</h2>
+
+    <h3 id="s3a">개념 3축 정리</h3>
+    <p>데이터 관리를 <b>목적</b>에 따라 셋으로 명확히 가른다. <span class="lg">한 기능 = 한 목적, 한 단어 = 한 매체.</span></p>
+    <table>
+      <tr><th>축</th><th>의미</th><th>포함 기능</th><th>매체</th></tr>
+      <tr><td><b>작업본</b> (현재 ERD)</td><td>편집 중인 것의 자동 보존</td><td>자동저장 · 되돌리기</td><td>브라우저</td></tr>
+      <tr><td><b>버전</b> (이력)</td><td>의도적으로 남기는 시점</td><td>스냅샷 + 타임라인 + 자동저장 복구</td><td>브라우저</td></tr>
+      <tr><td><b>이식/공유</b></td><td>다른 환경·사람에게</td><td>다이어그램 파일 · 전체 백업 · 공유 URL · 이미지/DDL</td><td>파일 · URL</td></tr>
+    </table>
+
+    <h3 id="s3b">A. 단일 직렬화 계층 <span class="tag read">②③ 근절</span></h3>
+    <p>모든 기능이 <b>하나의 함수</b>로 페이로드를 만들고 복원한다.</p>
+    <pre><code><span class="cm">// 신규 — 모든 저장·복원 경로가 공유</span>
+<span class="kw">function</span> <span class="fn">serializeWorkspace</span>({ scope = <span class="st">'all'</span>, include = [] } = {}) { <span class="cm">/* … */</span> }
+<span class="kw">function</span> <span class="fn">deserializeWorkspace</span>(data, opts = {}) { <span class="cm">/* … */</span> }</code></pre>
+    <ul>
+      <li><code>scope</code> 로 "선택 다이어그램 vs 전체"를, <code>include</code> 로 "스냅샷/템플릿/설정/키 포함 여부"를 옵션화 →
+        <b>저장하기·전체백업이 같은 함수의 옵션 차이</b>로 합쳐진다.</li>
+      <li><code>exportData</code> 도 동일 페이로드를 쓰게 되어 <b>필드 누락(②)이 자동 해결</b>된다.</li>
+      <li><code>saveState</code> · <code>saveSnapshot</code> · <code>generateShareUrl</code> · <code>loadState</code> ·
+        <code>restoreFromSnapshot</code> · import 복원이 모두 이 계층을 호출 → 드리프트 원천 차단.</li>
+    </ul>
+
+    <h3 id="s3c">B. 명칭 통일 <span class="tag read">① 해소</span></h3>
+    <table>
+      <tr><th>현재</th><th>개선</th></tr>
+      <tr><td>"JSON 내보내기" / "JSON 저장" (혼용)</td><td><b>"다이어그램 내보내기 (.json)"</b> — '저장' 단어 제거, 부분 내보내기임을 명확화</td></tr>
+      <tr><td>"전체 백업 내보내기" / "전체 백업 저장"</td><td><b>"전체 백업 (.json)"</b> — 진짜 백업/저장은 이것만</td></tr>
+      <tr><td>자동저장 (무명)</td><td>상태바/툴팁에 <b>"자동 저장됨"</b> 표기로 노출 (기존 "변경됨" 배지 활용)</td></tr>
+    </table>
+    <div class="box acc">
+      <div class="t">명명 규칙</div>
+      <p style="margin:4px 0"><b>"저장" = 자동저장(브라우저)</b> · <b>"내보내기/백업" = 파일</b> · <b>"공유" = URL</b>.
+        단어가 매체를 1:1로 가리키게 한다.</p>
+    </div>
+
+    <h3 id="s3d">C. 버전 관리 통합 <span class="tag read">④⑤ 해소</span></h3>
+    <ul>
+      <li><b>스냅샷 · 되돌리기 히스토리 · 자동저장 복구</b>를 <b>하나의 "버전/타임라인" 패널</b>로 묶어 노출.
+        (이미 타임라인 HUD · 스냅샷 목록 · diff 비교가 있으므로 <b>진입점만 통합</b>한다.)</li>
+      <li>전체 백업의 <code>snapshots</code> 그룹은 유지하되 "버전도 함께 백업"이라고 명시해 중첩의 의미를 분명히 한다.</li>
+    </ul>
+
+    <h3 id="s3e">D. 내보내기 메뉴 재그룹화</h3>
+    <ul>
+      <li><b>파일 &gt; 내보내기</b>: <b>데이터</b>(다이어그램 .json / 전체 백업 .json / 공유 URL) ·
+        <b>문서</b>(이미지·SVG·MD·HTML·PDF) · <b>스키마</b>(DDL) 3소그룹.</li>
+      <li><b>파일 &gt; 가져오기</b>: 다이어그램 .json / 전체 백업 .json / DDL — 내보내기와 1:1 대칭.</li>
+    </ul>
+
+    <!-- ───────────────────────── 4 ───────────────────────── -->
+    <h2 id="s4"><span class="n">4.</span>적용 우선순위 · 반영 상태</h2>
+    <table>
+      <tr><th>#</th><th>작업</th><th>내용</th><th>상태</th></tr>
+      <tr><td>1</td><td>명칭 통일 (B)</td><td>"JSON 저장/내보내기" → "다이어그램 내보내기", "저장" 단어 제거. 메뉴·툴팁·모달·단축키·커맨드 팔레트 일괄</td><td><span class="tag read">반영됨</span></td></tr>
+      <tr><td>2</td><td>단일 직렬화 계층 (A)</td><td><code>serializeWorkspace()</code> 추가 → 자동저장·스냅샷·공유·백업·복원 5곳을 단일 함수로 통일 (드리프트 차단)</td><td><span class="tag read">반영됨</span></td></tr>
+      <tr><td>③</td><td><code>exportData</code> 필드 "누락" (②)</td><td>재검토 결과 의도된 동작 → 필드 추가 대신 명칭으로 해결</td><td><span class="tag ext">정정</span></td></tr>
+      <tr><td>4</td><td>버전 패널 통합 (C) + 메뉴 재그룹화 (D)</td><td>스냅샷·되돌리기·자동저장 복구를 한 패널로 · 내보내기 메뉴 3소그룹화</td><td><span class="tag write">후속(미반영)</span></td></tr>
+    </table>
+
+    <!-- ───────────────────────── 5 ───────────────────────── -->
+    <h2 id="s5"><span class="n">5.</span>영향 범위</h2>
+    <table>
+      <tr><th>파일</th><th>영향</th></tr>
+      <tr><td><code>js/export.js</code></td><td><code>exportData</code> 페이로드 통일 · <code>exportFullBackup</code> 을 직렬화 계층 위로</td></tr>
+      <tr><td><code>js/state.js</code></td><td><code>saveState</code> · <code>loadState</code> · <code>restoreFromSnapshot</code> 가 직렬화 계층 사용</td></tr>
+      <tr><td><code>js/ui.js</code></td><td><code>saveSnapshot</code> · 버전/타임라인 진입점 통합</td></tr>
+      <tr><td><code>js/share.js</code></td><td><code>generateShareUrl</code> 이 직렬화 계층 사용</td></tr>
+      <tr><td><code>js/import.js</code></td><td>가져오기 복원이 <code>deserializeWorkspace</code> 사용</td></tr>
+      <tr><td><code>js/shortcuts.js</code> · <code>index.html</code></td><td>단축키 라벨·메뉴 명칭 통일 및 재그룹화</td></tr>
+    </table>
+    <div class="box ok">
+      <div class="t">불변식 (호환 유지)</div>
+      <ul style="margin:4px 0">
+        <li>localStorage 키(<code>STORAGE_KEY</code>=<code>uxerd_v3</code> · <code>SNAPSHOT_KEY</code>)와
+          백업 포맷 마커는 <b>변경하지 않는다</b> → 기존 사용자 데이터·백업 파일 호환 유지.</li>
+        <li>기존 백업 파일(<code>backupVersion: 3</code>) 가져오기를 계속 지원한다.</li>
+      </ul>
+    </div>
+
+    <hr>
+    <p class="sub">결론: "저장하기 / 전체 백업 / 스냅샷 / 공유 URL"을 목적별로 한 번씩만 존재하게 하고,
+      내부적으론 단일 직렬화 계층을 공유시킨다. 우선순위 1·2번(명칭 통일 + 누락 수정)은 즉시 적용 가능하다.</p>
+  </main>
+
+</div>
+</body>
+</html>

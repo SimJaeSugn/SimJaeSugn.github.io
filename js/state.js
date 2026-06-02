@@ -84,9 +84,17 @@ function loadDiagramIntoWorkspace(d) {
   renderEntityTree();
 }
 
+// ── 작업본 단일 직렬화 계층 ─────────────────────────────────────
+// 자동저장·스냅샷·공유 URL·전체 백업·복원이 모두 이 페이로드를 공유한다.
+// (필드 추가 시 이 한 곳만 고치면 됨 — 직렬화 드리프트 방지)
+// 주의: flushCurrentState() 는 호출자 책임. 가져오기처럼 flush가 부적절한 경로가 있다.
+function serializeWorkspace() {
+  return { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap };
+}
+
 function saveState() {
   flushCurrentState();
-  const snapshot = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
+  const snapshot = JSON.stringify(serializeWorkspace());
   // 직전 상태와 동일하면 undo 스택에 추가하지 않음
   if (undoStack.length && undoStack[undoStack.length - 1] === snapshot) return;
   sessionModified = true;

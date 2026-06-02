@@ -5,7 +5,7 @@
 
 function generateShareUrl() {
   flushCurrentState();
-  const state = { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap };
+  const state = serializeWorkspace();
   let compressed;
   try {
     compressed = LZString.compressToEncodedURIComponent(JSON.stringify(state));

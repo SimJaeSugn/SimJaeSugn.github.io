@@ -56,7 +56,7 @@ function _fallbackDownload(filename, data, type = 'application/json') {
   URL.revokeObjectURL(url);
 }
 
-// ── JSON 내보내기 ─────────────────────────────────────────────
+// ── 다이어그램 내보내기 (선택 다이어그램만 .json) ─────────────
 let _exportDiagIds = new Set();
 let _ddlEntityIds = new Set();
 
@@ -134,7 +134,7 @@ async function _doExportWithGroups(groups) {
     appVersion: 'uxerd',
   };
   if (groups.includes('diagrams')) {
-    data.main = { diagrams, activeDiagramId, viewMode, notationStyle, gridSnap };
+    data.main = serializeWorkspace();
   }
   if (groups.includes('snapshots')) {
     data.snapshots = JSON.parse(JSON.stringify(SNAPSHOTS));

@@ -15,7 +15,7 @@ function handleFullBackupImport(e) {
     try {
       const data = JSON.parse(ev.target.result);
       if (!data.backupVersion) {
-        alert('전체 백업 파일 형식이 아닙니다.\n일반 JSON은 "JSON 불러오기"를 사용하세요.');
+        alert('전체 백업 파일 형식이 아닙니다.\n일반 JSON은 "다이어그램 불러오기"를 사용하세요.');
         e.target.value = '';
         return;
       }
@@ -47,7 +47,7 @@ function _doImportWithGroups(data, groups) {
       gridSnap      = !!m.gridSnap;
       activeDiagramId = m.activeDiagramId && diagrams.find(d => d.id === m.activeDiagramId)
         ? m.activeDiagramId : diagrams[0].id;
-      const mainSnap = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
+      const mainSnap = JSON.stringify(serializeWorkspace());
       try { localStorage.setItem(STORAGE_KEY, mainSnap); } catch {}
       undoStack = [mainSnap]; redoStack = [];
       loadDiagramIntoWorkspace(getActiveDiagram());

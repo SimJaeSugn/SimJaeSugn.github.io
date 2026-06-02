@@ -1887,7 +1887,7 @@ function saveSnapshot() {
   askPrompt('스냅샷 이름을 입력하세요', defaultName, (name) => {
     if (name === null) return;
     flushCurrentState();
-    const state = JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap });
+    const state = JSON.stringify(serializeWorkspace());
     const snap = {
       id: 'snap_' + Date.now().toString(36),
       name: name.trim() || defaultName,
@@ -2321,7 +2321,7 @@ const CMD_LIST = [
   // 파일
   { label: '엔티티 추가',                category: '파일', icon: '📋', scId: 'addEnt',  action: () => openAddEntityModal() },
   { label: '관계 추가',                  category: '파일', icon: '⟷', scId: 'addRel',  action: () => openAddRelationModal() },
-  { label: 'JSON 내보내기',              category: '파일', icon: '💾', scId: 'save',    action: () => exportData() },
+  { label: '다이어그램 내보내기',         category: '파일', icon: '💾', scId: 'save',    action: () => exportData() },
   { label: '전체 백업 내보내기',          category: '파일', icon: '💾', scId: 'saveAll', action: () => exportFullBackup() },
   { label: 'DDL 생성',                   category: '파일', icon: '🗄', action: () => openDDLModal() },
   { label: '이미지 내보내기 (섹션 포함)', category: '파일', icon: '🖼', action: () => downloadImage(true) },
@@ -2332,7 +2332,7 @@ const CMD_LIST = [
   { label: 'HTML 내보내기',              category: '파일', icon: '🌐', action: () => exportHTML() },
   { label: '인쇄 / PDF 저장',            category: '파일', icon: '🖨', action: () => exportPDF() },
   { label: '내보내기 폴더 재설정',        category: '설정', icon: '📁', action: () => resetExportDir() },
-  { label: 'JSON 불러오기',              category: '파일', icon: '📂', action: () => importData() },
+  { label: '다이어그램 불러오기',         category: '파일', icon: '📂', action: () => importData() },
   { label: '전체 백업 불러오기',          category: '파일', icon: '📥', action: () => importFullBackup() },
   { label: 'DDL 가져오기',               category: '파일', icon: '⬆', action: () => openDDLImportModal() },
   // 편집

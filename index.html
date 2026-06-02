@@ -27,7 +27,7 @@
         <div class="mb-item" onclick="mbClose();openAddRelationModal()"><span class="mb-ico"><i data-lucide="spline"></i></span><span class="mb-text">관계 추가</span><span class="mb-kbd">R</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">내보내기</div>
-        <div class="mb-item" onclick="mbClose();exportData()"><span class="mb-ico"><i data-lucide="save"></i></span><span class="mb-text">JSON 내보내기</span><span class="mb-kbd">Ctrl+S</span></div>
+        <div class="mb-item" onclick="mbClose();exportData()"><span class="mb-ico"><i data-lucide="save"></i></span><span class="mb-text">다이어그램 내보내기</span><span class="mb-kbd">Ctrl+S</span></div>
         <div class="mb-item" onclick="mbClose();exportFullBackup()"><span class="mb-ico"><i data-lucide="save"></i></span><span class="mb-text">전체 백업 내보내기</span><span class="mb-kbd">Ctrl+Shift+S</span></div>
         <div class="mb-item" onclick="mbClose();openDDLModal()"><span class="mb-ico"><i data-lucide="database"></i></span><span class="mb-text">DDL 생성</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(true)"><span class="mb-ico"><i data-lucide="image"></i></span><span class="mb-text">이미지 내보내기 (섹션 포함)</span></div>
@@ -39,7 +39,7 @@
         <div class="mb-item" onclick="mbClose();exportPDF()"><span class="mb-ico"><i data-lucide="printer"></i></span><span class="mb-text">인쇄 / PDF 저장</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">불러오기</div>
-        <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico"><i data-lucide="folder-open"></i></span><span class="mb-text">JSON 불러오기</span></div>
+        <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico"><i data-lucide="folder-open"></i></span><span class="mb-text">다이어그램 불러오기</span></div>
         <div class="mb-item" onclick="mbClose();importFullBackup()"><span class="mb-ico"><i data-lucide="download"></i></span><span class="mb-text">전체 백업 불러오기</span></div>
         <div class="mb-item" onclick="mbClose();openDDLImportModal()"><span class="mb-ico"><i data-lucide="import"></i></span><span class="mb-text">DDL 가져오기</span></div>
       </div>
@@ -190,7 +190,7 @@
   <button class="qb-btn" onclick="openAddEntityModal()" title="엔티티 추가 (N)"><i data-lucide="square-plus"></i></button>
   <button class="qb-btn" onclick="openAddRelationModal()" title="관계 추가 (R)"><i data-lucide="spline"></i></button>
   <div class="qb-sep"></div>
-  <button class="qb-btn" onclick="exportData()" title="JSON 내보내기 (Ctrl+S)"><i data-lucide="save"></i></button>
+  <button class="qb-btn" onclick="exportData()" title="다이어그램 내보내기 (Ctrl+S)"><i data-lucide="save"></i></button>
   <div class="qb-sep"></div>
   <button class="qb-btn" onclick="fitAll()" title="전체 맞춤 (Home)"><i data-lucide="maximize"></i></button>
   <button class="qb-btn" onclick="resetView()" title="뷰 초기화"><i data-lucide="rotate-ccw"></i></button>
@@ -672,7 +672,7 @@
 <!-- ── JSON Export Diagram Select Modal ──────── -->
 <div class="modal-overlay" id="exportDiagSelectOverlay" onmousedown="overlayClose(event,'exportDiagSelectOverlay')">
   <div class="modal" style="width:360px" onmousedown.stop>
-    <h3>📤 JSON 내보내기</h3>
+    <h3>📤 다이어그램 내보내기</h3>
     <p style="color:#a6adc8;font-size:13px;margin-bottom:14px;">내보낼 다이어그램을 선택하세요.</p>
     <div id="exportDiagList" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;margin-bottom:16px;"></div>
     <div class="modal-actions">
@@ -892,7 +892,7 @@
                 <div class="sc-card-hdr" style="color:var(--ac);">💾 저장</div>
                 <div class="sc-row" data-sc-id="save">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
-                  <div class="sc-desc">JSON 저장<span class="sc-desc-note">현재 다이어그램만</span></div>
+                  <div class="sc-desc">다이어그램 내보내기<span class="sc-desc-note">현재/선택 다이어그램만</span></div>
                 </div>
                 <div class="sc-row" data-sc-id="saveAll">
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Shift</span><span class="sc-key-sep">+</span><span class="sc-key">S</span></div>
