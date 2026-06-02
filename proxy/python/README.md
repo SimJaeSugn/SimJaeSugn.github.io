@@ -85,6 +85,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/v2/config | v2 Agent 설정 저장 (공유 키스토어) |
 | GET | /stddict/status | 표준사전 초기화 여부 + 테이블별 건수 |
 | GET | /stddict/list | 표준사전 검색 결과 행 + 총건수 (table·q·onlyApproved·limit·offset) |
+| GET | /stddict/index | 자동완성용 경량 인덱스 — 한 테이블의 (name, abbr) 전체 (프론트가 1회 로드해 클라이언트 필터) |
 | POST | /stddict/row | 표준사전 행 삽입 (감사 컬럼 자동 세팅) |
 | PUT | /stddict/row/:id | 표준사전 행 수정 (upd_* 자동, reg_* 보존) |
 | DELETE | /stddict/row/:id | 표준사전 행 삭제 (table 쿼리) |

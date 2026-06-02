@@ -530,8 +530,35 @@ function _sanitizeDefault(dv) {
   return dv;
 }
 
+// FK 의존성 위상정렬 — 참조되는(부모) 엔티티가 참조하는(자식)보다 먼저 오도록 정렬.
+// (FK: ent.attrs[kind='fk'].ref.entity = 부모 엔티티 id) 사이클은 best-effort로 끊는다.
+// 선택 집합(entities) 밖을 참조하는 FK는 무시한다.
+function _ddlTopoSort(entities) {
+  const list = entities || [];
+  const byId = new Map(list.map(e => [e.id, e]));
+  const visited = new Set();
+  const inProgress = new Set();
+  const result = [];
+  function visit(ent) {
+    if (visited.has(ent.id) || inProgress.has(ent.id)) return;
+    inProgress.add(ent.id);
+    (ent.attrs || []).forEach(a => {
+      if (a.kind === 'fk' && a.ref && a.ref.entity && a.ref.entity !== ent.id) {
+        const parent = byId.get(a.ref.entity);
+        if (parent) visit(parent);
+      }
+    });
+    inProgress.delete(ent.id);
+    visited.add(ent.id);
+    result.push(ent);
+  }
+  list.forEach(visit);
+  return result;
+}
+
 function buildDDL(dialect, entities, opts) {
   entities = entities || ENTITIES;
+  entities = _ddlTopoSort(entities);   // 관계(FK) 고려: 부모 → 자식 순서로 CREATE
   opts = Object.assign({ includeFK: true, includeIndex: true, includeComment: true }, opts);
 
   const esc = s => (s || '').replace(/'/g, "''");

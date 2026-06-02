@@ -140,7 +140,9 @@
       "Bash(PYTHONIOENCODING=utf-8 python3 *)",
       "Bash(PYTHONIOENCODING=utf-8 grep -n \"showToast\\\\|overlayCloseExtra\\\\|modal-overlay\\\\|modal-actions\\\\|btn-save-m\\\\|btn-cancel-m\\\\|form-input\" /e/03.프로젝트/SimJaeSugn.github.io/js/sql_runner.js)",
       "Bash(./node_modules/.bin/electron _verify_seed.js)",
-      "Bash(./venv/Scripts/python.exe -c \"import routers.stddict; import main; print\\('import OK, routes:', len\\(main.app.routes\\)\\)\")"
+      "Bash(./venv/Scripts/python.exe -c \"import routers.stddict; import main; print\\('import OK, routes:', len\\(main.app.routes\\)\\)\")",
+      "Bash(grep -rn \"data-theme\\\\|theme-light\\\\|\\\\\\\\[data-theme\" css/*.css)",
+      "PowerShell(taskkill *)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

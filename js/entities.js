@@ -52,6 +52,7 @@ function openAddEntityModal() {
   document.getElementById('entDbType').value = modalDbType;
   document.getElementById('attrList').innerHTML = '';
   addAttrRow();
+  _initTermTypeahead();
   renderIndexList([]);
   renderColorSwatches(null);
   document.getElementById('entOverlay').classList.add('active');
@@ -87,6 +88,7 @@ function openEditEntityModal(entity) {
   const list = document.getElementById('attrList');
   list.innerHTML = '';
   entity.attrs.forEach(a => addAttrRow(a));
+  _initTermTypeahead();
   renderIndexList(entity.indexes || []);
   renderColorSwatches(entity.colorTag || null);
   document.getElementById('entOverlay').classList.add('active');
@@ -94,6 +96,103 @@ function openEditEntityModal(entity) {
 }
 
 function closeEntModal() { document.getElementById('entOverlay').classList.remove('active'); }
+
+/** 논리명을 용어사전(term)에서 찾아 물리명(영문약어) 자동 입력 */
+async function genEntityPhysical() {
+  const logEl = document.getElementById('entLogical');
+  const physEl = document.getElementById('entPhysical');
+  const logical = (logEl?.value || '').trim();
+  if (!logical) { showToast('논리명을 먼저 입력하세요.'); logEl?.focus(); return; }
+  if (typeof stdLookupTerm !== 'function') { showToast('용어사전 모듈을 사용할 수 없습니다.'); return; }
+
+  const btn = document.getElementById('entGenPhysical');
+  if (btn) btn.disabled = true;
+  try {
+    const term = await stdLookupTerm(logical);
+    if (term && term.abbr) {
+      physEl.value = term.abbr;
+      showToast(`✓ 물리명 자동 입력: ${term.abbr}`);
+    } else {
+      showToast(`용어사전에서 "${logical}"을(를) 찾지 못했습니다.`);
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── 논리명 타입어헤드 (용어사전 term 기반 자동완성) — 엔티티·속성 공용 ──
+// 키 입력마다 사이드카에 요청하지 않는다: 세션당 1회 메모리 인덱스를 로드(stdEnsureTermIndex)해
+// 두고, 입력 시 클라이언트에서 즉시 필터(stdFilterTermIndex)한다.
+let _termTaInit = false;
+
+function _ensureAttrTermDatalist() {
+  let dl = document.getElementById('attrTermList');
+  if (!dl) { dl = document.createElement('datalist'); dl.id = 'attrTermList'; document.body.appendChild(dl); }
+  return dl;
+}
+
+function _renderTermDatalist(kw) {
+  if (typeof stdFilterTermIndex !== 'function') return;
+  const rows = stdFilterTermIndex(kw, 10);
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  _ensureAttrTermDatalist().innerHTML = rows
+    .map(r => `<option value="${esc(r.name)}"${r.abbr ? ` label="${esc(r.abbr)}"` : ''}></option>`)
+    .join('');
+}
+
+// 입력값으로 메모리 인덱스 필터 → 공유 datalist 채움 (HTTP 없음)
+function _termTypeahead(value) {
+  const kw = (value || '').trim();
+  if (kw.length < 1) return;
+  if (typeof stdEnsureTermIndex !== 'function') return;
+  // 인덱스가 로드돼 있으면 즉시(마이크로태스크) 필터, 미로드면 1회 로드 후 필터
+  stdEnsureTermIndex().then(() => _renderTermDatalist(kw));
+}
+
+// 엔티티 논리명(#entLogical) + 속성 논리명(.attr-logical, 위임)에 1회만 리스너 부착
+function _initTermTypeahead() {
+  // 모달 열릴 때 인덱스를 미리 로드(첫 키 입력 지연 방지)
+  if (typeof stdEnsureTermIndex === 'function') stdEnsureTermIndex();
+  if (_termTaInit) return;
+  const list = document.getElementById('attrList');
+  const entLog = document.getElementById('entLogical');
+  if (!list && !entLog) return;   // 모달 DOM 미생성
+  _termTaInit = true;
+  if (list) {
+    list.addEventListener('input', (e) => {
+      const inp = e.target;
+      if (inp && inp.classList && inp.classList.contains('attr-logical')) _termTypeahead(inp.value);
+    });
+  }
+  if (entLog) {
+    if (!entLog.getAttribute('list')) entLog.setAttribute('list', 'attrTermList');
+    entLog.addEventListener('input', () => _termTypeahead(entLog.value));
+  }
+}
+
+/** 속성 행: 논리명을 용어사전(term)에서 찾아 물리명(영문약어) 자동 입력 */
+async function genAttrPhysical(btn) {
+  const row = btn.closest('.attr-entry');
+  if (!row) return;
+  const logEl  = row.querySelector('.attr-logical');
+  const physEl = row.querySelector('.attr-physical');
+  const logical = (logEl?.value || '').trim();
+  if (!logical) { showToast('속성 논리명을 먼저 입력하세요.'); logEl?.focus(); return; }
+  if (typeof stdLookupTerm !== 'function') { showToast('용어사전 모듈을 사용할 수 없습니다.'); return; }
+
+  btn.disabled = true;
+  try {
+    const term = await stdLookupTerm(logical);
+    if (term && term.abbr) {
+      physEl.value = term.abbr;
+      showToast(`✓ 물리명 자동 입력: ${term.abbr}`);
+    } else {
+      showToast(`용어사전에서 "${logical}"을(를) 찾지 못했습니다.`);
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 function clearFormErrs() {
   document.querySelectorAll('.form-err').forEach(el => { el.classList.remove('show'); el.textContent = ''; });
@@ -112,7 +211,9 @@ function addAttrRow(attr = {}) {
   entry.innerHTML = `
     <div class="attr-row-main">
       <div class="attr-drag-handle" title="드래그하여 순서 변경">⠿</div>
-      <input class="form-input attr-logical"  value="${esc(logicalName)}"  placeholder="논리명" />
+      <input class="form-input attr-logical" list="attrTermList" value="${esc(logicalName)}"  placeholder="논리명" />
+      <button type="button" class="attr-gen-phys" title="논리명을 용어사전에서 찾아 물리명 자동 생성" onclick="genAttrPhysical(this)"
+        style="flex-shrink:0;width:26px;align-self:stretch;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--bd2);border-radius:6px;background:var(--bg-surface);color:var(--ac);cursor:pointer"><i data-lucide="wand-2" style="width:14px;height:14px"></i></button>
       <input class="form-input attr-physical" value="${esc(physicalName)}" placeholder="물리명" />
       <select class="form-select attr-type">${buildTypeOptions(modalDbType, type)}</select>
       <select class="form-select attr-kind" onchange="onKindChange(this)">
@@ -132,6 +233,8 @@ function addAttrRow(attr = {}) {
       <button class="btn-rm" onclick="this.closest('.attr-entry').remove()" title="삭제">×</button>
     </div>`;
   document.getElementById('attrList').appendChild(entry);
+  if (typeof refreshIcons === 'function') refreshIcons();   // 동적 행의 wand 아이콘 변환
+  _initTermTypeahead();                                     // 논리명 자동완성 리스너(1회)
   if (kind === 'fk') populateRefEntitySelect(entry, ref?.entity, ref?.attr);
 
   const handle = entry.querySelector('.attr-drag-handle');

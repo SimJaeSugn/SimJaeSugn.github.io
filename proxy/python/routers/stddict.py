@@ -167,6 +167,24 @@ def list_rows(
         con.close()
 
 
+# ── GET /stddict/index ───────────────────────────────────────────────────────
+# 자동완성용 경량 인덱스 — 한 테이블의 (name, abbr)만 전부 반환.
+# 프론트가 세션당 1회 로드해 클라이언트에서 필터한다(키 입력마다 요청 방지).
+@router.get("/index")
+def get_index(table: str = Query("term")):
+    _check_table(table)
+    _ensure_db()
+    has_abbr = "abbr" in STD_COLS[table]
+    con = _conn()
+    try:
+        cols = "name, abbr" if has_abbr else "name"
+        rows = con.execute(f"SELECT {cols} FROM {table} ORDER BY name").fetchall()
+        items = [{"name": r["name"], "abbr": (r["abbr"] if has_abbr else None)} for r in rows]
+        return {"items": items}
+    finally:
+        con.close()
+
+
 # ── POST /stddict/row ────────────────────────────────────────────────────────
 class RowBody(BaseModel):
     table: str

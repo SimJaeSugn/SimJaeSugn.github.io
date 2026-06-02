@@ -403,7 +403,19 @@ function _feGetPreDDL(selectedPnames) {
   const existingNames = new Set(_feExistingTables.map(t => t.name.toLowerCase()));
   const ts = Date.now();
 
-  selectedPnames.forEach(pname => {
+  // DROP/RENAME 은 관계(FK) 역순 — 자식(참조하는)을 부모(참조되는)보다 먼저 처리해
+  // FK 제약으로 부모 테이블이 먼저 삭제되어 실패하는 것을 막는다.
+  const pnameOf = ent => (ent.physicalName || ent.id);
+  let orderedPnames = selectedPnames;
+  if (typeof _ddlTopoSort === 'function') {
+    const sel = new Set(selectedPnames);
+    const selEntities = ENTITIES.filter(e => sel.has(pnameOf(e)));
+    const childFirst = _ddlTopoSort(selEntities).map(pnameOf).reverse();
+    // 엔티티에 매칭 안 된 pname 은 뒤에 보존
+    orderedPnames = childFirst.concat(selectedPnames.filter(p => !childFirst.includes(p)));
+  }
+
+  orderedPnames.forEach(pname => {
     if (!existingNames.has(pname.toLowerCase())) return;
     const action = _feConflicts[pname] || 'rename';
     if (action === 'drop') {

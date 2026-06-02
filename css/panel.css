@@ -242,7 +242,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tree-ent-count {
-  color: var(--tx-sub); font-size: 10px; font-weight: 600; flex-shrink: 0;
+  color: var(--tx-main); font-size: 10px; font-weight: 700; flex-shrink: 0;
   background: var(--bg-raised); padding: 1px 6px; border-radius: 8px;
 }
 .tree-attr-list { padding-bottom: 3px; }

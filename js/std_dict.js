@@ -159,6 +159,7 @@ async function _stdSeedFromVendor() {
     const fd = new FormData();
     fd.append('file', new Blob([bytes], { type: 'application/octet-stream' }), 'std.sqlite');
     await _stdFetch('/restore', { method: 'POST', body: fd });
+    stdInvalidateTermIndex();   // 시드로 전체 교체됨 → 자동완성 인덱스 무효화
     return true;
   } catch(e) {
     showToast('❌ 시드 주입 실패: ' + e.message);
@@ -196,6 +197,7 @@ async function stdInsert(table, obj) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table, values: obj }),
     })).json();
+    if (table === 'term') stdInvalidateTermIndex();
     return r.id ?? null;
   } catch(e) {
     showToast('❌ 삽입 오류: ' + e.message);
@@ -214,6 +216,7 @@ async function stdUpdate(table, id, obj) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table, values: obj }),
     });
+    if (table === 'term') stdInvalidateTermIndex();
     return true;
   } catch(e) {
     showToast('❌ 수정 오류: ' + e.message);
@@ -228,6 +231,7 @@ async function stdUpdate(table, id, obj) {
 async function stdDelete(table, id) {
   try {
     await _stdFetch('/row/' + id + '?table=' + encodeURIComponent(table), { method: 'DELETE' });
+    if (table === 'term') stdInvalidateTermIndex();
     return true;
   } catch(e) {
     showToast('❌ 삭제 오류: ' + e.message);
@@ -261,11 +265,92 @@ function stdGet(table, id) {
   return _stdRowCache[id] || null;
 }
 
+/**
+ * 용어사전(term)에서 논리명(표준용어명)으로 일치 행 조회.
+ * 공백·대소문자 무시 정확 일치 우선. 못 찾으면 null.
+ * @returns {Promise<Object|null>} term 행({name, abbr, ...}) 또는 null
+ */
+async function stdLookupTerm(logicalName) {
+  const kw = (logicalName || '').trim();
+  if (!kw) return null;
+  const { rows } = await stdList('term', kw, { limit: 50 });
+  if (!rows || !rows.length) return null;
+  const norm = s => (s == null ? '' : String(s)).replace(/\s+/g, '').toLowerCase();
+  const target = norm(kw);
+  return rows.find(r => norm(r.name) === target) || null;
+}
+
+/**
+ * 용어사전 자동완성(타입어헤드)용 — 키워드로 term 행 목록을 조용히 조회.
+ * 실패 시 빈 배열 반환(토스트 없음 — 타이핑 중 호출되므로).
+ * @returns {Promise<Array>} term 행 배열
+ */
+async function stdSuggestTerms(keyword, limit = 10) {
+  const kw = (keyword || '').trim();
+  if (!kw) return [];
+  try {
+    const qs = new URLSearchParams({
+      table: 'term', q: kw, onlyApproved: 'false',
+      limit: String(limit), offset: '0',
+    });
+    const { rows } = await (await _stdFetch('/list?' + qs.toString())).json();
+    return rows || [];
+  } catch {
+    return [];
+  }
+}
+
+// ── 자동완성 인덱스 (세션 메모리 캐시) ────────────────────────────
+// 용어 전체 (name, abbr)를 1회 로드해 두고 클라이언트에서 필터한다.
+// (키 입력마다 사이드카 요청하지 않음. 사전 변경 시 무효화)
+let _stdTermIndex = null;          // [{name, abbr}] 또는 null(미로드)
+let _stdTermIndexLoading = null;   // 진행 중 Promise (중복 로드 방지)
+
+async function stdEnsureTermIndex() {
+  if (_stdTermIndex) return _stdTermIndex;
+  if (_stdTermIndexLoading) return _stdTermIndexLoading;
+  _stdTermIndexLoading = (async () => {
+    try {
+      const { items } = await (await _stdFetch('/index?table=term')).json();
+      _stdTermIndex = items || [];
+    } catch {
+      _stdTermIndex = null;   // 실패 시 캐시하지 않음 → 다음에 재시도(사이드카 기동 후 자가복구)
+    }
+    _stdTermIndexLoading = null;
+    return _stdTermIndex || [];
+  })();
+  return _stdTermIndexLoading;
+}
+
+/** 사전 변경 시 인덱스 캐시 무효화 (다음 사용 시 재로드) */
+function stdInvalidateTermIndex() {
+  _stdTermIndex = null;
+}
+
+/** 메모리 인덱스에서 클라이언트 필터 (공백·대소문자 무시 contains). 미로드면 []. */
+function stdFilterTermIndex(keyword, limit = 10) {
+  if (!_stdTermIndex) return [];
+  const kw = (keyword == null ? '' : String(keyword)).replace(/\s+/g, '').toLowerCase();
+  if (!kw) return [];
+  const out = [];
+  for (let i = 0; i < _stdTermIndex.length; i++) {
+    const t = _stdTermIndex[i];
+    const n = (t.name == null ? '' : String(t.name)).replace(/\s+/g, '').toLowerCase();
+    if (n.indexOf(kw) !== -1) {
+      out.push(t);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
 /** 엑셀(.xlsx) 업로드 → 사이드카가 파싱·전체 재구성 → { counts } */
 async function _stdImportExcel(file) {
   const fd = new FormData();
   fd.append('file', file, file.name);
-  return await (await _stdFetch('/import-excel', { method: 'POST', body: fd })).json();
+  const r = await (await _stdFetch('/import-excel', { method: 'POST', body: fd })).json();
+  stdInvalidateTermIndex();   // 전체 교체됨 → 자동완성 인덱스 무효화
+  return r;
 }
 
 // ── .sqlite 내보내기 (사이드카 작업본 다운로드) ───────────────────
@@ -810,8 +895,8 @@ function _stdHandleExcelFile(input) {
       color: var(--tx-main, #e6e9ef);
     }
     .btn-std-tab.active {
-      background: var(--ac, #5b9dff22);
-      color: var(--ac, #5b9dff);
+      background: var(--ac, #5b9dff);
+      color: #fff;
       border-color: var(--ac, #5b9dff);
       font-weight: 600;
     }
