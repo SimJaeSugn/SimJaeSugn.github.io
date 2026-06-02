@@ -82,7 +82,7 @@ https://<계정>.github.io/<저장소명>/
 
 | 영역 | 설명 |
 |---|---|
-| **메뉴바** | `파일` · `편집` · `보기` · `도구` · `공유` · `Help` 6개 드롭다운 메뉴. 우측에 줌 ＋－ 컨트롤. **Electron 빌드에서는** OS 타이틀바를 숨기고(프레임리스) 메뉴바 우측에 창 최소화·최대화·닫기 버튼을 표시하며, 메뉴바 빈 영역을 드래그해 창을 이동 |
+| **메뉴바** | `파일` · `편집` · `보기` · `도구` · `공유` · `Help` 6개 드롭다운 메뉴. 우측에 줌 ＋－ 컨트롤. **Electron 빌드에서는** `titleBarStyle: 'hidden'` + Windows Controls Overlay(WCO)를 사용하여 OS 네이티브 창 버튼(최소화·최대화·닫기)이 오른쪽 상단에 오버레이로 표시되며, Windows 11 Snap Layouts가 활성화됨. 메뉴바 빈 영역을 드래그해 창 이동 가능 |
 | **퀵바 (빠른 실행 도구 모음)** | 자주 쓰는 기능 버튼 모음. `▭` 위치 핸들로 상단 ↔ 좌측 도킹 전환 가능. 메뉴 항목을 드래그해 커스텀 버튼 추가 가능 |
 | **캔버스** | ERD 작업 영역. 드래그 이동, 휠 줌, 컨텍스트 메뉴 지원 |
 | **좌측 탐색기 패널** | VSCode 스타일 좌측 패널. **다이어그램** 섹션(추가·이름변경·삭제·색상·드래그 정렬·전환) + **엔티티** 섹션(목록·속성 펼침·클릭 시 캔버스 포커스). `Ctrl+B` 또는 메뉴바 레이아웃 버튼으로 토글 |
@@ -756,7 +756,7 @@ AgenticERM을 Windows 데스크탑 앱(.exe 설치파일)으로 빌드할 수 �
 
 | 폴더 | 역할 |
 |------|------|
-| `electron/` | Electron main process. 프레임리스 BrowserWindow로 ERD 프론트엔드를 로드하고 Python 사이드카를 관리. 메뉴바의 창 제어(최소화·최대화·닫기) IPC 처리 |
+| `electron/` | Electron main process. `titleBarStyle:'hidden'` + WCO(Windows Controls Overlay) 방식으로 ERD 프론트엔드를 로드하고 Python 사이드카를 관리. WCO 색상 갱신 IPC(`set-title-bar-overlay`) 처리 |
 | `proxy/python/` | FastAPI 기반 DB 미들웨어 사이드카. PyInstaller로 단일 exe 패키징 |
 
 ### 사전 요구사항
@@ -868,6 +868,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/diagrams.js` | 다이어그램 목록 CRUD·LocalStorage 영속성 |
 | `js/timeline.js` | 스냅샷 저장·복원·타임라인 HUD |
 | `js/sql_runner.js` | sql.js WASM 인터페이스·쿼리 실행 |
+| `js/std_dict.js` | 표준사전(단어·도메인·용어) 관리 — 사이드카(`/stddict`) HTTP CRUD·검색·엑셀 업로드·시드 복원 (Electron 전용) |
 | `js/join_explorer.js` | FK 그래프 탐색·JOIN SQL 생성 |
 | `js/normalize.js` | 정규화 위반 감지 (1NF·N:M) |
 | `js/share.js` | LZ-String 압축 공유 URL 생성·복원 |
@@ -879,6 +880,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/reverse_engineer.js` | 운영 DB 스키마 역공학 |
 | `js/forward_engineer.js` | DDL 생성 (Forward Engineering) |
 | `js/profile_manager.js` | DB 접속 프로파일 관리 |
+| `js/pc_store.js` | PC앱(Electron) 워크스페이스 영속화 — Ctrl+S로 모든 다이어그램+스냅샷을 사이드카 단일 파일에 저장/복원 (웹은 미사용) |
 | `js/main.js` | 앱 진입점 초기화 (상태 복원·렌더 부트스트랩) |
 
 ---
@@ -889,7 +891,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 SimJaeSugn.github.io/
 │
 ├── index.html                     ← 앱 진입점
-├── js/                            ← 프론트엔드 JS 모듈 (29개 + v2 3개)
+├── js/                            ← 프론트엔드 JS 모듈 (30개 + v2 3개)
 │   ├── state.js                   ← 전역 상태
 │   ├── canvas.js                  ← 렌더링 엔진
 │   ├── entities.js
@@ -908,6 +910,7 @@ SimJaeSugn.github.io/
 │   ├── diagrams.js
 │   ├── timeline.js
 │   ├── sql_runner.js
+│   ├── std_dict.js                ← 표준사전 관리 (사이드카 /stddict HTTP CRUD·엑셀 업로드)
 │   ├── join_explorer.js
 │   ├── normalize.js
 │   ├── share.js
@@ -915,6 +918,7 @@ SimJaeSugn.github.io/
 │   ├── broadcast.js
 │   ├── shortcuts.js
 │   ├── minimap_worker.js
+│   ├── pc_store.js                ← PC앱 워크스페이스 영속화 (Ctrl+S 단일 파일 저장+스냅샷)
 │   ├── main.js
 │   ├── config.js
 │   ├── db_connect.js
@@ -935,7 +939,8 @@ SimJaeSugn.github.io/
 │   ├── lz-string.min.js           ← 공유 URL 압축
 │   ├── sql-wasm.js                ← sql.js (SQLite WASM 로더)
 │   ├── sql-wasm.wasm              ← sql.js WASM 바이너리
-│   └── peerjs.min.js              ← PeerJS (WebRTC P2P)
+│   ├── peerjs.min.js              ← PeerJS (WebRTC P2P)
+│   └── std.sqlite                 ← 표준사전 시드 DB (word 4,284 / domain 177 / term 15,368행, ~5.2MB)
 │
 ├── proxy/
 │   ├── nodejs/                    ← Node.js 독립 실행형 미들웨어 (포트 3737)
@@ -954,9 +959,9 @@ SimJaeSugn.github.io/
 │       ├── main.py                ← FastAPI 진입점
 │       ├── requirements.txt
 │       ├── build.ps1              ← PyInstaller 빌드
-│       ├── routers/               ← config / execute / health / schema / agent · v2/agent (v2 격리 미러)
+│       ├── routers/               ← config / execute / health / schema / agent · stddict (표준사전) · workspace (PC앱 저장) · v2/agent (v2 격리 미러)
 │       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy · v2/) — 자연어 ERD 제어
-│       ├── db/adapters/           ← postgres / mysql / mssql / oracle
+│       ├── db/                    ← connector(외부 DB 라우팅) · system_db(내부 시스템 DB aerm_storage) · adapters/(postgres/mysql/mssql/oracle)
 │       └── utils/                 ← crypto / keystore / audit_logger
 │
 ├── electron/                      ← Electron 데스크탑 앱 패키저
@@ -965,6 +970,9 @@ SimJaeSugn.github.io/
 │   ├── package.json               ← electron-builder 설정
 │   ├── installer.iss              ← Inno Setup 스크립트
 │   └── resources/icon.ico
+│
+├── tools/                         ← 개발 전용 빌드 스크립트 (배포 제외)
+│   └── build_std_sqlite.py        ← xlsx → vendor/std.sqlite 변환 (openpyxl 필요)
 │
 └── .github/workflows/pages.yml   ← GitHub Pages 자동 배포
 ```
@@ -981,6 +989,7 @@ SimJaeSugn.github.io/
 | Python | 3.11+ | FastAPI 사이드카 |
 | PyInstaller | 6+ | Python → 단일 exe |
 | Inno Setup | 7 | Windows 설치파일 생성 |
+| openpyxl | 3+ | 사이드카 표준사전 엑셀 업로드(`/stddict/import-excel`) 및 시드 재생성(`tools/build_std_sqlite.py`) |
 
 ### 프론트엔드
 
@@ -994,6 +1003,20 @@ python -m http.server 8080
 ```
 
 > `file://`로 직접 열어도 대부분 기능 동작. Web Worker(미니맵)는 HTTP 서버 필요.
+
+### 표준사전 시드 재생성 (선택)
+
+`vendor/std.sqlite`가 이미 커밋되어 있으므로 일반 개발에서는 불필요합니다.
+엑셀 데이터(`docs/std-all-*.xlsx`)가 변경된 경우에만 아래 명령으로 재생성합니다.
+
+```powershell
+# 실행 위치: 프로젝트 루트
+pip install openpyxl          # 최초 1회
+python tools/build_std_sqlite.py
+# → vendor/std.sqlite (갱신)
+```
+
+> `tools/build_std_sqlite.py`는 개발 전용 스크립트로, Electron 배포 패키지에 포함되지 않습니다.
 
 ### Node.js 미들웨어
 
@@ -1045,6 +1068,12 @@ npm start           # 개발 모드 실행
 
 **초기 설정:** `Settings` → `Pages` → `Source`: **GitHub Actions** 선택
 
+> **표준사전 관련 배포 참고:**
+> - `vendor/std.sqlite` (~5.2MB)는 배포에 포함됩니다 (시드 — 최초/복원 시 시스템 DB `~/.uxermanager/aerm_storage.db`의 표준사전 테이블로 주입됨).
+> - 표준사전 CRUD·검색·엑셀 업로드는 Python 사이드카(`/stddict`)가 시스템 DB `aerm_storage`를 직접 소유하므로 **Electron 데스크탑 환경 전용**입니다(github.io 순수 브라우저에서는 사이드카가 없어 동작하지 않음). 이 시스템 DB는 내부 sqlite 기능이 공유하는 고정 DB로 외부 DB 접속 프로파일에 노출되지 않습니다.
+> - `tools/build_std_sqlite.py`는 개발 전용 스크립트로 배포에 포함되지 않습니다.
+> - `docs/std-all-*.xlsx` 원본 파일도 배포 필요 없습니다.
+
 ### 2. Electron 설치파일 (Windows)
 
 > **프록시 포함 단독 실행** — Python 프록시 서버(포트 3737)가 앱에 내장되어 있어 별도 미들웨어 설치 없이 AgenticERM.exe 하나만 실행하면 DB 연결까지 모두 동작합니다.
@@ -1077,6 +1106,10 @@ npm install
 npm run build:win
 # → electron\dist\win-unpacked\
 ```
+
+> **패키지 포함 여부:** `electron/package.json`의 `extraFiles`에 `vendor/` 전체가 포함되므로
+> `vendor/std.sqlite`는 자동으로 배포 패키지에 포함됩니다. `tools/` 디렉토리는
+> `extraFiles` 목록에 없으므로 배포 패키지에서 자동 제외됩니다.
 
 **3단계 — Inno Setup 설치파일** (실행 위치: 프로젝트 루트)
 

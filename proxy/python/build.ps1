@@ -21,6 +21,7 @@ pyinstaller `
     --collect-all langsmith `
     --collect-all openai `
     --collect-all tiktoken `
+    --collect-all openpyxl `
     --copy-metadata langgraph `
     --copy-metadata langchain-core `
     --copy-metadata langchain-openai `

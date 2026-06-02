@@ -6,7 +6,7 @@ const SC_DEFAULTS = {
   fitAll:  { ctrl: false, shift: false, alt: false, key: 'Home',   label: '전체 맞춤' },
   undo:    { ctrl: true,  shift: false, alt: false, key: 'z',      label: '실행취소' },
   redo:    { ctrl: true,  shift: false, alt: false, key: 'y',      label: '다시실행' },
-  save:    { ctrl: true,  shift: false, alt: false, key: 's',      label: '다이어그램 내보내기' },
+  save:    { ctrl: true,  shift: false, alt: false, key: 's',      label: '저장(PC앱)·다이어그램 내보내기(웹)' },
   saveAll: { ctrl: true,  shift: true,  alt: false, key: 's',      label: '전체 백업 내보내기' },
   search:  { ctrl: true,  shift: false, alt: false, key: 'f',      label: '검색' },
   copy:    { ctrl: true,  shift: false, alt: false, key: 'c',      label: '복사' },

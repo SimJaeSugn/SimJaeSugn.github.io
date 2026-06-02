@@ -83,10 +83,25 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/v2/key | v2 OpenAI 키 저장 (공유 키스토어) |
 | GET | /agent/v2/config | v2 Agent 설정 조회 (공유 키스토어) |
 | POST | /agent/v2/config | v2 Agent 설정 저장 (공유 키스토어) |
+| GET | /stddict/status | 표준사전 초기화 여부 + 테이블별 건수 |
+| GET | /stddict/list | 표준사전 검색 결과 행 + 총건수 (table·q·onlyApproved·limit·offset) |
+| POST | /stddict/row | 표준사전 행 삽입 (감사 컬럼 자동 세팅) |
+| PUT | /stddict/row/:id | 표준사전 행 수정 (upd_* 자동, reg_* 보존) |
+| DELETE | /stddict/row/:id | 표준사전 행 삭제 (table 쿼리) |
+| POST | /stddict/import-excel | 엑셀(.xlsx) 업로드 → 3시트 파싱 후 전체 재구성 |
+| POST | /stddict/restore | sqlite 업로드 → 작업본 전체 교체 (시드 초기화·복원) |
+| GET | /stddict/export | 표준사전 작업본 sqlite 다운로드 |
+| GET | /workspace | PC앱 워크스페이스(모든 다이어그램+스냅샷) 조회 |
+| PUT | /workspace | PC앱 워크스페이스 저장 (단일 파일 `aerm_workspace.json`) |
 
 > `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
 > `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.
 > OpenAI 키는 DB 비밀번호와 동일한 마스터 키로 암호화되어 `~/.uxermanager/config.json` 의 `aiKey` 필드에 저장된다.
+
+> `/stddict/*` 는 표준사전(word·domain·term)을 사이드카가 sqlite 로 직접 소유·CRUD하는 엔드포인트로 **Python 프록시 전용**이다(Electron 데스크탑 환경 전용). 엑셀 파싱에 `openpyxl` 의존성이 필요하며 `requirements.txt`에 포함된다.
+> 데이터는 **시스템 DB `aerm_storage`**(`~/.uxermanager/aerm_storage.db`)의 테이블로 저장된다. 이 시스템 DB는 내부 sqlite 기능이 공유하는 고정 DB로, 접속정보가 하드코딩(`db/system_db.py`)되어 있으며 외부 DB 접속 프로파일(`/config/profiles`)에 노출되지 않는다. `restore`·`import-excel`은 시스템 DB의 다른 테이블을 보존한 채 표준사전 테이블만 교체한다.
+
+> `/workspace` 는 PC앱(Electron) 전용으로, Ctrl+S 저장 시 모든 다이어그램 + 스냅샷을 단일 파일 `~/.uxermanager/aerm_workspace.json`에 저장하고 앱 시작 시 복원한다. 웹(github.io)에서는 사용하지 않고 기존 localStorage 방식을 유지한다.
 
 ---
 
@@ -103,6 +118,8 @@ proxy/python/
 │   ├── health.py          ← /health 라우터
 │   ├── schema.py          ← /schema 라우터
 │   ├── agent.py           ← /agent/stream, /agent/key 라우터 (자연어 ERD 제어)
+│   ├── stddict.py         ← /stddict 라우터 (표준사전 sqlite 직접 CRUD·엑셀 import)
+│   ├── workspace.py       ← /workspace 라우터 (PC앱 워크스페이스 단일 파일 저장/복원)
 │   └── v2/                ← v2 라우터 패키지 (agent v1 격리 미러)
 │       └── agent.py       ← /agent/v2/stream·/resume·/key·/config 라우터
 ├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
@@ -116,7 +133,8 @@ proxy/python/
 │       ├── common/        ← schemas(IntentSpec·Goal·StepV2·PlanV2·Verdict) · state(AgentStateV2) · prompts(ANALYZE_SYSTEM·PLAN_V2_SYSTEM)
 │       └── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
 ├── db/
-│   ├── connector.py       ← dbType → 어댑터 라우팅
+│   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB)
+│   ├── system_db.py       ← 내부 시스템 DB(aerm_storage) 고정 접속·레거시 정리 — 프로파일 미노출
 │   └── adapters/
 │       ├── postgres.py    ← asyncpg 어댑터
 │       ├── mysql.py       ← aiomysql 어댑터
@@ -141,3 +159,7 @@ Node.js 미들웨어와 동일한 경로를 사용합니다.
 | Linux | `/home/{username}/.uxermanager/config.json` |
 
 비밀번호는 AES-256-GCM으로 암호화 저장되며, 암호화 키는 `~/.uxermanager/key`에 자동 생성됩니다.
+
+내부 시스템 DB는 `~/.uxermanager/aerm_storage.db`(db name: `aerm_storage`)에 저장됩니다. 표준사전 등 시스템 내부에서 sqlite 를 쓰는 기능이 이 단일 DB를 공유하며, 접속정보는 `db/system_db.py`에 고정되어 외부 DB 접속 프로파일에 노출되지 않습니다. 표준사전은 최초 사용·시드 복원 시 프론트가 `vendor/std.sqlite`(시드) bytes를 `/stddict/restore`로 전송해 초기화합니다.
+
+PC앱(Electron) 워크스페이스는 `~/.uxermanager/aerm_workspace.json` 단일 파일에 저장됩니다. Ctrl+S 저장 시 모든 다이어그램 + 스냅샷이 이 파일에 기록되고, 앱 시작 시 복원됩니다(웹은 localStorage 유지).

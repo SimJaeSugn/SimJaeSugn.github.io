@@ -5,8 +5,10 @@ loadToolboxState();
 loadQuickbarState();
 
 // 공유 URL(?erd=) 복원 — 성공하면 loadState를 건너뜀
+let _restoredFromUrl = false;
 if (typeof tryRestoreFromUrl === 'function' && tryRestoreFromUrl()) {
   // URL에서 복원 성공 — 이후 render() 호출로 처리됨
+  _restoredFromUrl = true;
 } else if (!loadState()) {
   const d = createDefaultDiagram('기본 ERD');
   diagrams.push(d);
@@ -20,6 +22,24 @@ syncToolDropdownLabels();
 render();
 // 실행취소 기준 상태 — 로드 직후 빈 스택이면 현재 상태를 baseline으로 확보
 if (!undoStack.length) undoStack.push(JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap }));
+
+// PC앱(Electron): 영속 파일(aerm_workspace.json)에서 복원 — 공유 URL 복원 시엔 건너뜀.
+// localStorage 로 1차 렌더 후, 파일이 있으면 그 내용으로 덮어쓴다(파일=데스크탑 영속 저장소).
+// 복원이 끝날 때까지 로딩 오버레이로 ERD를 덮어 사용자 입력을 차단한다.
+if (!_restoredFromUrl && typeof isPcApp === 'function' && isPcApp() && typeof loadWorkspacePC === 'function') {
+  _pcShowLoading();
+  loadWorkspacePC().then(ok => {
+    if (ok) {
+      renderDiagramPanel();
+      setViewMode(viewMode);
+      render();
+      if (typeof renderEntityTree === 'function') renderEntityTree();
+      // 실행취소 baseline 을 파일 복원 상태로 재설정
+      undoStack.length = 0;
+      undoStack.push(JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap }));
+    }
+  }).finally(() => _pcHideLoading());
+}
 
 // ── DOMContentLoaded ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -137,7 +157,13 @@ document.addEventListener('keydown', e => {
   if (matchSC(e, 'redo') || (ctrl && e.shiftKey && e.key.toLowerCase() === 'z')) {
     e.preventDefault(); redo(); return;
   }
-  if (matchSC(e, 'save'))    { e.preventDefault(); exportData(); return; }
+  if (matchSC(e, 'save'))    {
+    e.preventDefault();
+    // PC앱: 모든 다이어그램을 단일 파일에 저장 + 스냅샷 자동 생성 / 웹: 기존 다이어그램 내보내기
+    if (typeof isPcApp === 'function' && isPcApp()) saveWorkspacePC();
+    else exportData();
+    return;
+  }
   if (matchSC(e, 'saveAll')) { e.preventDefault(); exportFullBackup(); return; }
   if (matchSC(e, 'dup')) {
     e.preventDefault();

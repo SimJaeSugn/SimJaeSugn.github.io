@@ -51,7 +51,13 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    frame: false,
+    // frame: false 제거 — WCO 방식에서는 titleBarStyle로 대체
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    titleBarOverlay: process.platform === 'win32' ? {
+      color: '#1e1e2e',       // 다크 테마 기준 초기값 (--bg-base)
+      symbolColor: '#cdd6f4', // 다크 테마 기준 (--tx-main)
+      height: 32,
+    } : false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -60,22 +66,17 @@ function createWindow() {
   });
   mainWindow.loadFile(getIndexPath());
   mainWindow.on('closed', () => { mainWindow = null; });
-  // 최대화/해제 상태를 렌더러(메뉴바 버튼)에 통지
-  mainWindow.on('maximize', () => mainWindow.webContents.send('window-maximized', true));
-  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window-maximized', false));
+  // maximize/unmaximize 이벤트 리스너 불필요 (WCO가 OS에서 직접 처리)
 }
 
 ipcMain.handle('get-sidecar-port', () => SIDECAR_PORT);
 
-// 메뉴바 창 제어 버튼 → 창 조작
-ipcMain.on('window-minimize', () => mainWindow && mainWindow.minimize());
-ipcMain.on('window-maximize-toggle', () => {
-  if (!mainWindow) return;
-  if (mainWindow.isMaximized()) mainWindow.unmaximize();
-  else mainWindow.maximize();
+// 신규: 테마 변경 시 WCO 색상 업데이트 (Windows 전용)
+ipcMain.on('set-title-bar-overlay', (_e, opts) => {
+  if (mainWindow && process.platform === 'win32') {
+    try { mainWindow.setTitleBarOverlay(opts); } catch (_) {}
+  }
 });
-ipcMain.on('window-close', () => mainWindow && mainWindow.close());
-ipcMain.handle('window-is-maximized', () => mainWindow ? mainWindow.isMaximized() : false);
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);

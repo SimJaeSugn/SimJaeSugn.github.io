@@ -1,10 +1,19 @@
 import argparse
 import logging
+import os
 import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import agent, config, execute, health, schema
+from routers import agent, config, execute, health, schema, stddict, workspace
+
+# PyInstaller --noconsole(windowed) 빌드 또는 stdout 미연결 환경에서는
+# sys.stdout/stderr 가 None 이라, uvicorn 기본 로깅 포매터의 stdout.isatty()
+# 호출이 죽는다(AttributeError → Unable to configure formatter). 더미 스트림으로 대체.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 
 ALLOWED_ORIGINS = [
     "https://simjaesugn.github.io",
@@ -36,6 +45,8 @@ app.include_router(execute.router, prefix="/execute")
 app.include_router(health.router, prefix="/health")
 app.include_router(schema.router, prefix="/schema")
 app.include_router(agent.router, prefix="/agent")
+app.include_router(stddict.router, prefix="/stddict")
+app.include_router(workspace.router, prefix="/workspace")
 
 # ── Agent v2 (병렬·격리) — try/except 가드. v2가 깨져도 앱·v1 정상 기동(§9.1 불변식 ②) ──
 try:

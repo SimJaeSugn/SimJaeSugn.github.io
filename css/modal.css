@@ -4,6 +4,8 @@
   z-index: 500; display: none; align-items: center; justify-content: center;
 }
 .modal-overlay.active { display: flex; }
+/* 확인 다이얼로그는 다른 모달(표준사전 등, z-index 500) 위에 떠야 한다 */
+#confirmOverlay { z-index: 2200; }
 
 /* ── Modal ───────────────────────────────────── */
 .modal {

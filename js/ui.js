@@ -1881,24 +1881,33 @@ function persistSnapshots() {
   try { localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(SNAPSHOTS)); } catch {}
 }
 
+/** 프롬프트 없이 즉시 스냅샷 생성 (이름 미지정 시 타임스탬프). 생성된 snap 반환 */
+function autoSnapshot(name) {
+  const now = new Date();
+  const finalName = (name && name.trim())
+    || (now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' }));
+  flushCurrentState();
+  const state = JSON.stringify(serializeWorkspace());
+  const snap = {
+    id: 'snap_' + Date.now().toString(36),
+    name: finalName,
+    ts: now.toISOString(),
+    state
+  };
+  SNAPSHOTS.unshift(snap);
+  if (SNAPSHOTS.length > SNAPSHOT_MAX) SNAPSHOTS.length = SNAPSHOT_MAX;
+  persistSnapshots();
+  // 버전 관리 모달이 열려 있으면 목록 즉시 갱신
+  if (document.getElementById('snapshotOverlay')?.classList.contains('active')) renderSnapshotList();
+  return snap;
+}
+
 function saveSnapshot() {
   const now = new Date();
   const defaultName = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
   askPrompt('스냅샷 이름을 입력하세요', defaultName, (name) => {
     if (name === null) return;
-    flushCurrentState();
-    const state = JSON.stringify(serializeWorkspace());
-    const snap = {
-      id: 'snap_' + Date.now().toString(36),
-      name: name.trim() || defaultName,
-      ts: now.toISOString(),
-      state
-    };
-    SNAPSHOTS.unshift(snap);
-    if (SNAPSHOTS.length > SNAPSHOT_MAX) SNAPSHOTS.length = SNAPSHOT_MAX;
-    persistSnapshots();
-    // 버전 관리 모달이 열려 있으면 목록 즉시 갱신
-    if (document.getElementById('snapshotOverlay')?.classList.contains('active')) renderSnapshotList();
+    const snap = autoSnapshot(name);
     showToast(`스냅샷 '${snap.name}' 저장됨`);
   });
 }
@@ -2257,6 +2266,15 @@ function applyTemplate(id) {
   showToast(`'${tmpl.name}' 템플릿 적용 (${tmpl.attrs.length}개 컬럼)`);
 }
 
+// ── WCO 색상 매핑 테이블 (테마명 → {color, symbolColor}) ──
+const WCO_COLORS = {
+  dark:      { color: '#1e1e2e', symbolColor: '#cdd6f4' },
+  light:     { color: '#eff1f5', symbolColor: '#4c4f69' },
+  frappe:    { color: '#303446', symbolColor: '#c6d0f5' },
+  macchiato: { color: '#24273a', symbolColor: '#cad3f5' },
+  vscode:    { color: '#1e1e1e', symbolColor: '#d4d4d4' },
+};
+
 // ── 테마 ─────────────────────────────────────────────────────────
 function applyTheme(name, save = true) {
   const theme = THEMES[name];
@@ -2273,6 +2291,12 @@ function applyTheme(name, save = true) {
   document.querySelectorAll('.theme-card').forEach(el => {
     el.classList.toggle('ts-active', el.dataset.theme === name);
   });
+  // WCO 색상 갱신 (Windows Electron 전용)
+  const api = window.electronAPI;
+  if (api && api.isElectron && api.platform === 'win32' && api.setTitleBarOverlay) {
+    const wco = WCO_COLORS[name] || WCO_COLORS.dark;
+    api.setTitleBarOverlay({ ...wco, height: 32 });
+  }
 }
 
 function openThemeModal() {
