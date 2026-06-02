@@ -213,6 +213,21 @@ const THEMES = {
     },
     preview: { bg:'#24273a', header:'#363a4f', line:'#8aadf4', accent:'#ed8796' },
   },
+  vscode: {
+    name: 'VS Code',
+    color: {
+      headerBg:'#333333', headerText:'#d4d4d4', bodyBg:'#252526',
+      border:'#454545', pkBg:'#3a1d1d', pkText:'#f48771',
+      fkBg:'#3a2a18', fkText:'#ce9178', normalText:'#b5cea8',
+      typeText:'#858585', line:'#569cd6', lineCard:'#c586c0',
+      shadow:'rgba(0,0,0,0.6)', hover:'#37373d',
+      selHdr:'#094771', hovHdr:'#3e3e42', lineHover:'#7cb7e8',
+      lineFill:'rgba(86,156,214,0.35)', selGlow:'rgba(86,156,214,0.55)', gridColor:'#2a2a2a',
+      snapGrid:'rgba(60,60,60,0.5)', selFill:'rgba(86,156,214,0.08)',
+      ac_y:'#dcdcaa', sectionLabelBg:'rgba(30,30,30,0.88)',
+    },
+    preview: { bg:'#1e1e1e', header:'#333333', line:'#569cd6', accent:'#f48771' },
+  },
 };
 
 let currentTheme = 'dark';

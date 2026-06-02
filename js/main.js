@@ -84,9 +84,11 @@ document.addEventListener('keydown', e => {
     if (typeof toggleAllPanels === 'function') toggleAllPanels();
     return;
   }
-  // 입력 필드 포커스 중에는 이하 단축키 무시
-  const tag = document.activeElement?.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  // 입력 필드·편집 영역(메모장 textarea, 메모장v2 contenteditable) 포커스 중에는
+  // 이하 단축키(복사·붙여넣기·전체선택 등)를 무시하고 기본 입력 동작에 맡긴다.
+  const _ae = document.activeElement;
+  const tag = _ae?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || _ae?.isContentEditable) return;
   // 타임라인 미리보기 중에는 ENTITIES/RELATIONS가 임시(비영속) 상태이므로
   // 데이터를 변경/영속화하는 전역 단축키를 차단한다(HUD의 ←/→/Enter/Esc는 HUD 핸들러가 처리).
   if (typeof _tlPreviewMode !== 'undefined' && _tlPreviewMode) return;

@@ -186,8 +186,8 @@ function toggleBcSync() {
   `;
   badge.title   = '탭 동기화';
   badge.onclick = toggleBcSync;
-  // 툴바 sessionBadge 앞에 삽입
-  const anchor = document.getElementById('sessionBadge');
+  // 메뉴바 배지 앵커 앞에 삽입
+  const anchor = document.getElementById('mbBadgeAnchor');
   if (anchor) anchor.parentNode.insertBefore(badge, anchor);
 })();
 

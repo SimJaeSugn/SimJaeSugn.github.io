@@ -332,8 +332,21 @@
 /* ── 스티커 메모 편집 (구 규칙 제거 — 패널 내부 textarea로 관리) ── */
 /* #noteEditInput 의 position:fixed 규칙은 삭제됨 */
 
-/* ── 변경 뱃지 ─────────────────────────────────── */
-#sessionBadge { background:var(--ac-r); color:var(--bg-base); font-size:10px; font-weight:bold; padding:1px 6px; border-radius:8px; display:none; }
+/* ── 변경됨 상태 배지 (하단 상태바, 핀 스타일) ── */
+#sessionBadge {
+  display: none; align-items: center; gap: 5px;
+  padding: 1px 8px 1px 6px; border-radius: 8px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.2px; line-height: 1.6;
+  color: var(--ac-o); background: var(--fk-bg);
+  pointer-events: auto; user-select: none;
+}
+#sessionBadge.visible { display: inline-flex; }
+#sessionBadge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ac-o); flex-shrink: 0;
+  animation: sb-pulse 1.8s ease-in-out infinite;
+}
+@keyframes sb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 

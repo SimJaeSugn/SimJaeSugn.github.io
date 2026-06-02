@@ -132,7 +132,8 @@
       "Bash(grep -oE '<div class=\"mb-item[^>]*__TRACKED_VAR__\\\\\\(\\\\\\)[^>]*>.*?</div>' index.html)",
       "Bash(ls -la electron/)",
       "Bash(find . -maxdepth 2 -iname \"package.json\" -not -path \"*/node_modules/*\")",
-      "Bash(find . -maxdepth 2 \\\\\\( -iname \"electron-builder.*\" -o -iname \"forge.config.*\" -o -iname \"*.iss\" \\\\\\) -not -path \"*/node_modules/*\")"
+      "Bash(find . -maxdepth 2 \\\\\\( -iname \"electron-builder.*\" -o -iname \"forge.config.*\" -o -iname \"*.iss\" \\\\\\) -not -path \"*/node_modules/*\")",
+      "Bash(grep -ivE 'showToast|//')"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

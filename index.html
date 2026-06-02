@@ -14,7 +14,8 @@
 <!-- ── Menu Bar ──────────────────────────────────────────── -->
 <div id="menubar">
   <span class="mb-brand">AgenticERM</span>
-  <span id="sessionBadge" title="저장되지 않은 변경사항" style="display:none;">● 변경됨</span>
+  <!-- 탭 동기화·P2P 연결 배지 삽입 앵커 (변경됨 배지는 하단 상태바로 이동) -->
+  <span id="mbBadgeAnchor"></span>
 
   <div class="mb-menus">
 
@@ -1217,6 +1218,7 @@
   <span id="sb-notes">메모 0</span>
   <span id="sb-sel-wrap" style="display:none"><span class="sb-sep">·</span><span id="sb-sel-text"></span></span>
   <div class="sb-right">
+    <span id="sessionBadge" title="저장되지 않은 변경사항">변경됨</span>
     <span id="sb-coords">0, 0</span>
     <span class="sb-sep">·</span>
     <span id="sb-zoom-stat">100%</span>

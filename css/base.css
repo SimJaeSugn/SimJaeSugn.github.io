@@ -159,3 +159,40 @@ svg.lucide {
   --fk-bg-dim:   rgba(245,169,127,0.15);
   --surface-dim: rgba(54,58,79,0.3);
 }
+
+/* ── VS Code (Dark+) ─────────────────────────────────────────── */
+[data-theme="vscode"] {
+  --bg-base:     #1e1e1e;
+  --bg-panel:    #252526;
+  --bg-surface:  #3c3c3c;
+  --bg-surface2: #2d2d2d;
+  --bg-raised:   #505050;
+  --tx-main:     #d4d4d4;
+  --tx-sub:      #9d9d9d;
+  --tx-muted:    #6e7681;
+  --tx-attr:     #c5c5c5;
+  --bd:          #3c3c3c;
+  --bd2:         #505050;
+  --ac:          #569cd6;
+  --ac-g:        #89d185;
+  --ac-p:        #c586c0;
+  --ac-o:        #ce9178;
+  --ac-r:        #f48771;
+  --ac-y:        #dcdcaa;
+  --ac-hover:    #7cb7e8;
+  --ac-g-hover:  #a6e0a0;
+  --sel-bg:      #094771;
+  --pk-bg:       #3a1d1d;
+  --fk-bg:       #3a2a18;
+  --danger-bg:   #4b1818;
+  --grid:        #2a2a2a;
+  --sel-fill:    rgba(86,156,214,0.08);
+  --shadow:      rgba(0,0,0,0.6);
+  --bg-overlay:        rgba(30,30,30,0.96);
+  --bg-panel-overlay:  rgba(37,37,38,0.98);
+  --bg-mini-overlay:   rgba(37,37,38,0.92);
+  --ac-dim:      rgba(86,156,214,0.25);
+  --pk-bg-dim:   rgba(244,135,113,0.15);
+  --fk-bg-dim:   rgba(206,145,120,0.15);
+  --surface-dim: rgba(60,60,60,0.3);
+}

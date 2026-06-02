@@ -91,7 +91,7 @@ function saveState() {
   if (undoStack.length && undoStack[undoStack.length - 1] === snapshot) return;
   sessionModified = true;
   const badge = document.getElementById('sessionBadge');
-  if (badge) badge.style.display = 'inline';
+  if (badge) badge.classList.add('visible');
   undoStack.push(snapshot);
   if (undoStack.length > UNDO_MAX) undoStack.shift();
   redoStack = [];

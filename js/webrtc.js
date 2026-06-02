@@ -392,7 +392,7 @@ function _rtcUpdateUI() {
     ].join(';');
     badge.onclick = openRtcModal;
     const anchor = document.getElementById('bcSyncBadge')
-                || document.getElementById('sessionBadge');
+                || document.getElementById('mbBadgeAnchor');
     if (anchor) anchor.parentNode.insertBefore(badge, anchor);
   };
   document.readyState === 'loading'

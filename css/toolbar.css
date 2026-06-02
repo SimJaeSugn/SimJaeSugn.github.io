@@ -35,10 +35,7 @@
   letter-spacing: 0.04em;
   flex-shrink: 0;
 }
-#sessionBadge {
-  font-size: 10px; color: var(--ac-r);
-  margin-right: 6px; flex-shrink: 0;
-}
+/* #sessionBadge 는 하단 상태바로 이동 (스타일은 components.css) */
 .mb-menus {
   display: flex; align-items: stretch;
   height: 100%;
