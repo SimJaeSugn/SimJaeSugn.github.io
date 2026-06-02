@@ -26,10 +26,13 @@
         <div class="mb-item" onclick="mbClose();openAddEntityModal()"><span class="mb-ico"><i data-lucide="square-plus"></i></span><span class="mb-text">엔티티 추가</span><span class="mb-kbd">N</span></div>
         <div class="mb-item" onclick="mbClose();openAddRelationModal()"><span class="mb-ico"><i data-lucide="spline"></i></span><span class="mb-text">관계 추가</span><span class="mb-kbd">R</span></div>
         <div class="mb-sep"></div>
-        <div class="mb-grp">내보내기</div>
+        <div class="mb-grp">데이터 (작업 파일)</div>
         <div class="mb-item" onclick="mbClose();exportData()"><span class="mb-ico"><i data-lucide="save"></i></span><span class="mb-text">다이어그램 내보내기</span><span class="mb-kbd">Ctrl+S</span></div>
-        <div class="mb-item" onclick="mbClose();exportFullBackup()"><span class="mb-ico"><i data-lucide="save"></i></span><span class="mb-text">전체 백업 내보내기</span><span class="mb-kbd">Ctrl+Shift+S</span></div>
-        <div class="mb-item" onclick="mbClose();openDDLModal()"><span class="mb-ico"><i data-lucide="database"></i></span><span class="mb-text">DDL 생성</span></div>
+        <div class="mb-item" onclick="mbClose();exportFullBackup()"><span class="mb-ico"><i data-lucide="archive"></i></span><span class="mb-text">전체 백업 내보내기</span><span class="mb-kbd">Ctrl+Shift+S</span></div>
+        <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico"><i data-lucide="folder-open"></i></span><span class="mb-text">다이어그램 불러오기</span></div>
+        <div class="mb-item" onclick="mbClose();importFullBackup()"><span class="mb-ico"><i data-lucide="archive-restore"></i></span><span class="mb-text">전체 백업 불러오기</span></div>
+        <div class="mb-sep"></div>
+        <div class="mb-grp">문서 내보내기</div>
         <div class="mb-item" onclick="mbClose();downloadImage(true)"><span class="mb-ico"><i data-lucide="image"></i></span><span class="mb-text">이미지 내보내기 (섹션 포함)</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(false)"><span class="mb-ico"><i data-lucide="image"></i></span><span class="mb-text">이미지 내보내기 (섹션 제외)</span></div>
         <div class="mb-item" onclick="mbClose();downloadImage(true,true)"><span class="mb-ico"><i data-lucide="image"></i></span><span class="mb-text">이미지 내보내기 (고해상도 2x)</span></div>
@@ -38,9 +41,8 @@
         <div class="mb-item" onclick="mbClose();exportHTML()"><span class="mb-ico"><i data-lucide="globe"></i></span><span class="mb-text">HTML 내보내기</span></div>
         <div class="mb-item" onclick="mbClose();exportPDF()"><span class="mb-ico"><i data-lucide="printer"></i></span><span class="mb-text">인쇄 / PDF 저장</span></div>
         <div class="mb-sep"></div>
-        <div class="mb-grp">불러오기</div>
-        <div class="mb-item" onclick="mbClose();importData()"><span class="mb-ico"><i data-lucide="folder-open"></i></span><span class="mb-text">다이어그램 불러오기</span></div>
-        <div class="mb-item" onclick="mbClose();importFullBackup()"><span class="mb-ico"><i data-lucide="download"></i></span><span class="mb-text">전체 백업 불러오기</span></div>
+        <div class="mb-grp">스키마 (DDL)</div>
+        <div class="mb-item" onclick="mbClose();openDDLModal()"><span class="mb-ico"><i data-lucide="database"></i></span><span class="mb-text">DDL 생성 (내보내기)</span></div>
         <div class="mb-item" onclick="mbClose();openDDLImportModal()"><span class="mb-ico"><i data-lucide="import"></i></span><span class="mb-text">DDL 가져오기</span></div>
       </div>
     </div>
@@ -112,10 +114,9 @@
         <div class="mb-item" onclick="mbClose();runNormalizeDiagnosis()"><span class="mb-ico"><i data-lucide="triangle-alert"></i></span><span class="mb-text">정규화 진단</span></div>
         <div class="mb-item" onclick="mbClose();clearNormDiagnosis()"><span class="mb-ico"><i data-lucide="check"></i></span><span class="mb-text">진단 배지 제거</span></div>
         <div class="mb-sep"></div>
-        <div class="mb-grp">스냅샷</div>
+        <div class="mb-grp">버전</div>
+        <div class="mb-item" onclick="mbClose();openVersionModal()"><span class="mb-ico"><i data-lucide="history"></i></span><span class="mb-text">버전 관리</span><span class="mb-kbd" style="opacity:.6">스냅샷·타임라인</span></div>
         <div class="mb-item" onclick="mbClose();saveSnapshot()"><span class="mb-ico"><i data-lucide="camera"></i></span><span class="mb-text">스냅샷 저장</span></div>
-        <div class="mb-item" onclick="mbClose();openSnapshotListModal()"><span class="mb-ico"><i data-lucide="clipboard-list"></i></span><span class="mb-text">스냅샷 목록</span></div>
-        <div class="mb-item" onclick="mbClose();openTimelineModal()"><span class="mb-ico"><i data-lucide="timer"></i></span><span class="mb-text">타임라인 슬라이더</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">Remote</div>
         <div class="mb-item" onclick="mbClose();openReverseEngineerModal()"><span class="mb-ico"><i data-lucide="refresh-cw"></i></span><span class="mb-text">리버스엔지니어링</span></div>
@@ -730,10 +731,15 @@
 
 <!-- ── Snapshot List Modal ───────────────────── -->
 <div class="modal-overlay" id="snapshotOverlay" onmousedown="overlayCloseExtra(event,'snapshotOverlay')">
-  <div class="modal" style="width:500px" onmousedown.stop>
-    <h3>변경 이력 스냅샷</h3>
-    <div id="snapshotList" style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;margin-bottom:8px;"></div>
-    <div id="snapshotEmpty" style="color:#45475a;font-size:13px;text-align:center;padding:24px 0;display:none;">저장된 스냅샷이 없습니다.</div>
+  <div class="modal" style="width:520px" onmousedown.stop>
+    <h3>🕘 버전 관리</h3>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <button class="btn-save-m" onclick="saveSnapshot()" title="현재 상태를 이름 붙여 버전(스냅샷)으로 저장">＋ 스냅샷 저장</button>
+      <button class="btn" onclick="closeSnapshotModal();openTimelineModal()" title="타임라인 슬라이더로 시점 이동">⏱ 타임라인</button>
+      <span style="margin-left:auto;color:var(--ac-g);font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="편집 내용은 브라우저에 자동 저장되어, 닫았다 열어도 복원됩니다.">● 자동 저장됨</span>
+    </div>
+    <div id="snapshotList" style="display:flex;flex-direction:column;gap:6px;max-height:380px;overflow-y:auto;margin-bottom:8px;"></div>
+    <div id="snapshotEmpty" style="color:var(--tx-muted);font-size:13px;text-align:center;padding:24px 0;display:none;">저장된 버전(스냅샷)이 없습니다.<br>＋ 스냅샷 저장으로 현재 상태를 남겨보세요.</div>
     <div class="modal-actions"><button class="btn-cancel-m" onclick="closeSnapshotModal()">닫기</button></div>
   </div>
 </div>

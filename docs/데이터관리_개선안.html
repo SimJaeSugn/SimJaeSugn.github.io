@@ -228,7 +228,9 @@
       <tr><td>1</td><td>명칭 통일 (B)</td><td>"JSON 저장/내보내기" → "다이어그램 내보내기", "저장" 단어 제거. 메뉴·툴팁·모달·단축키·커맨드 팔레트 일괄</td><td><span class="tag read">반영됨</span></td></tr>
       <tr><td>2</td><td>단일 직렬화 계층 (A)</td><td><code>serializeWorkspace()</code> 추가 → 자동저장·스냅샷·공유·백업·복원 5곳을 단일 함수로 통일 (드리프트 차단)</td><td><span class="tag read">반영됨</span></td></tr>
       <tr><td>③</td><td><code>exportData</code> 필드 "누락" (②)</td><td>재검토 결과 의도된 동작 → 필드 추가 대신 명칭으로 해결</td><td><span class="tag ext">정정</span></td></tr>
-      <tr><td>4</td><td>버전 패널 통합 (C) + 메뉴 재그룹화 (D)</td><td>스냅샷·되돌리기·자동저장 복구를 한 패널로 · 내보내기 메뉴 3소그룹화</td><td><span class="tag write">후속(미반영)</span></td></tr>
+      <tr><td>4</td><td>버전 관리 통합 (C)</td><td>스냅샷 목록·저장·비교·복원·타임라인을 단일 <b>"버전 관리"</b> 모달로 통합. 도구 메뉴 3개(스냅샷 저장/목록/타임라인) → 2개(버전 관리/스냅샷 저장)</td><td><span class="tag read">반영됨</span></td></tr>
+      <tr><td>5</td><td>메뉴 재그룹화 (D)</td><td>파일 메뉴를 <b>데이터(작업 파일) · 문서 내보내기 · 스키마(DDL)</b> 3그룹으로 재편 (내보내기/불러오기 혼재 해소)</td><td><span class="tag read">반영됨</span></td></tr>
+      <tr><td>C-1</td><td>"자동저장 복구" 탭 (C 일부)</td><td>재검토 결과 자동저장은 자동 복원(부팅 시)이라 수동 "복구" 버튼은 무의미 → 버튼 대신 "● 자동 저장됨" 안내로 노출</td><td><span class="tag ext">정정</span></td></tr>
     </table>
 
     <!-- ───────────────────────── 5 ───────────────────────── -->

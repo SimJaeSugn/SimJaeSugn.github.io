@@ -1897,6 +1897,8 @@ function saveSnapshot() {
     SNAPSHOTS.unshift(snap);
     if (SNAPSHOTS.length > SNAPSHOT_MAX) SNAPSHOTS.length = SNAPSHOT_MAX;
     persistSnapshots();
+    // 버전 관리 모달이 열려 있으면 목록 즉시 갱신
+    if (document.getElementById('snapshotOverlay')?.classList.contains('active')) renderSnapshotList();
     showToast(`스냅샷 '${snap.name}' 저장됨`);
   });
 }
@@ -1905,6 +1907,8 @@ function openSnapshotListModal() {
   renderSnapshotList();
   document.getElementById('snapshotOverlay').classList.add('active');
 }
+// 버전 관리(스냅샷·복원·비교·타임라인 진입점 통합) — openSnapshotListModal 의 새 이름
+function openVersionModal() { openSnapshotListModal(); }
 
 function closeSnapshotModal() {
   document.getElementById('snapshotOverlay').classList.remove('active');
@@ -2397,8 +2401,8 @@ const CMD_LIST = [
   { label: 'JOIN 경로 탐색기', category: '도구', icon: '🔗', action: () => openJoinExplorer() },
   { label: '정규화 진단',      category: '도구', icon: '⚠', action: () => runNormalizeDiagnosis() },
   { label: '진단 배지 제거',   category: '도구', icon: '✓', action: () => clearNormDiagnosis() },
+  { label: '버전 관리 (스냅샷·타임라인)', category: '도구', icon: '🕘', action: () => openVersionModal() },
   { label: '스냅샷 저장',      category: '도구', icon: '📷', action: () => saveSnapshot() },
-  { label: '스냅샷 목록',      category: '도구', icon: '📋', action: () => openSnapshotListModal() },
   { label: '타임라인 슬라이더', category: '도구', icon: '⏱', action: () => openTimelineModal() },
   { label: '단축키 편집기',    category: '도구', icon: '⌨', action: () => openShortcutsModal() },
   // 공유
