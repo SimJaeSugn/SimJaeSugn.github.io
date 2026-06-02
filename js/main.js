@@ -63,6 +63,12 @@ document.addEventListener('keydown', e => {
     if (typeof toggleAgentPanel === 'function') toggleAgentPanel();
     return;
   }
+  // 하단 패널 토글 (기본 Ctrl+J) — SQL 입력 등 입력 필드 포커스 중에도 동작
+  if (typeof matchSC === 'function' && matchSC(e, 'toggleBottom')) {
+    e.preventDefault();
+    if (typeof toggleBottomPanel === 'function') toggleBottomPanel();
+    return;
+  }
   // 입력 필드 포커스 중에는 이하 단축키 무시
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -110,6 +116,7 @@ document.addEventListener('keydown', e => {
   if (matchSC(e, 'addEnt'))  { e.preventDefault(); openAddEntityModal(); }
   if (matchSC(e, 'addRel'))  { e.preventDefault(); openAddRelationModal(); }
   if (matchSC(e, 'fitAll'))  { e.preventDefault(); fitAll(); return; }
+  if (matchSC(e, 'toggleExplorer')) { e.preventDefault(); if (typeof toggleExplorerPanel === 'function') toggleExplorerPanel(); return; }
   if (matchSC(e, 'undo'))    { e.preventDefault(); undo(); return; }
   if (matchSC(e, 'redo') || (ctrl && e.shiftKey && e.key.toLowerCase() === 'z')) {
     e.preventDefault(); redo(); return;

@@ -99,6 +99,27 @@ function _doImportWithGroups(data, groups) {
           if (panel) { panel.style.width = pw + 'px'; _applyQuickbarState(); render(); }
         }
       }
+      if (s.explorerOpen !== undefined) {
+        try { localStorage.setItem('_explorerOpen', s.explorerOpen); } catch {}
+        if (typeof explorerOpen !== 'undefined') {
+          explorerOpen = (s.explorerOpen !== '0');
+          if (typeof _applyExplorerState === 'function') _applyExplorerState();
+        }
+      }
+      if (s.bottomH) {
+        const bh = parseInt(s.bottomH);
+        if (bh >= 120 && bh <= 800) {
+          try { localStorage.setItem('_bottomH', bh); } catch {}
+          if (typeof BOTTOM_H !== 'undefined') BOTTOM_H = bh;
+        }
+      }
+      if (s.bottomOpen !== undefined) {
+        try { localStorage.setItem('_bottomOpen', s.bottomOpen); } catch {}
+        if (typeof bottomOpen !== 'undefined') {
+          bottomOpen = (s.bottomOpen === '1');
+          if (typeof _applyBottomState === 'function') _applyBottomState();
+        }
+      }
       if (s.shortcuts) {
         try { localStorage.setItem('_shortcuts', s.shortcuts); } catch {}
         if (typeof loadShortcuts === 'function') loadShortcuts();

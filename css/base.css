@@ -3,6 +3,15 @@ body { background: var(--bg-base); font-family: 'Segoe UI', sans-serif; overflow
 canvas { display: block; cursor: grab; }
 canvas.dragging { cursor: grabbing; }
 
+/* ── Lucide 아이콘 (vendor/lucide.min.js) ─────────────── */
+svg.lucide {
+  width: 1em; height: 1em;
+  display: inline-block; vertical-align: -0.125em; flex-shrink: 0;
+}
+.qb-btn svg.lucide, .mb-zoom-btn svg.lucide { width: 1.05em; height: 1.05em; vertical-align: middle; }
+.qb-dock-handle svg.lucide { width: 1em; height: 1em; }
+.mb-ico svg.lucide, .ctx-ico svg.lucide { width: 1em; height: 1em; }
+
 /* ── CSS Custom Properties (Dark / default) ──────────────────── */
 :root {
   --bg-base:     #1e1e2e;

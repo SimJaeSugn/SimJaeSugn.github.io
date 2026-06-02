@@ -152,6 +152,9 @@ async function _doExportWithGroups(groups) {
       data.settings.qbDock    = localStorage.getItem('_qbDock')  || 'top';
       data.settings.qbCustom  = localStorage.getItem('_qbCustom') || '[]';
       data.settings.panelW    = localStorage.getItem('_panelW') || null;
+      data.settings.explorerOpen = localStorage.getItem('_explorerOpen') ?? '1';
+      data.settings.bottomOpen   = localStorage.getItem('_bottomOpen') ?? '0';
+      data.settings.bottomH      = localStorage.getItem('_bottomH') || null;
       data.settings.shortcuts = localStorage.getItem('_shortcuts') || '{}';
     }
     if (groups.includes('aiKey')) {

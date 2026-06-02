@@ -53,9 +53,9 @@ function renameDiagram(id, e) {
   e.stopPropagation();
   const d = diagrams.find(x => x.id === id);
   if (!d) return;
-  const item = document.querySelector(`.diag-item[data-id="${id}"]`);
+  const item = document.querySelector(`.ex-diag-item[data-id="${id}"]`);
   if (!item) return;
-  const nameEl = item.querySelector('.diag-item-name');
+  const nameEl = item.querySelector('.ex-diag-name');
   const oldName = d.name;
   const input = document.createElement('input');
   input.className = 'diag-rename-input';
@@ -106,63 +106,10 @@ const DIAG_TAB_COLORS = [
   { id: 'teal',   bg: '#89dceb', label: '하늘' },
 ];
 
+// 다이어그램·엔티티 목록은 좌측 탐색기(explorer.js)로 이관되었다.
+// 이 함수는 호환을 위해 유지하되, 좌측 탐색기 렌더를 위임 호출한다.
 function renderDiagramPanel() {
-  const list = document.getElementById('diagramList');
-  list.innerHTML = '';
-  let _diagDragSrc = null;
-
-  diagrams.forEach(d => {
-    const item = document.createElement('div');
-    item.className = 'diag-item' + (d.id === activeDiagramId ? ' active' : '');
-    item.dataset.id = d.id;
-    item.draggable = true;
-
-    const tabColor = DIAG_TAB_COLORS.find(c => c.id === (d.tabColor || null)) || DIAG_TAB_COLORS[0];
-    item.style.borderLeftColor = tabColor.bg;
-
-    item.innerHTML = `
-      <span class="diag-color-dot" title="탭 색상 변경" style="background:${tabColor.bg};"
-        onclick="openDiagColorPicker('${d.id}',event)"></span>
-      <span class="diag-item-name">${escHtml(d.name)}</span>
-      <div class="diag-item-btns">
-        <button class="diag-btn" title="이름 변경" onclick="renameDiagram('${d.id}',event)">✏</button>
-        <button class="diag-btn danger" title="삭제" onclick="deleteDiagram('${d.id}',event)">✕</button>
-      </div>`;
-
-    item.addEventListener('click', e => {
-      if (e.target.closest('.diag-item-btns') || e.target.classList.contains('diag-color-dot')) return;
-      switchDiagram(d.id);
-    });
-
-    // 드래그로 탭 순서 변경
-    item.addEventListener('dragstart', e => {
-      _diagDragSrc = d.id;
-      e.dataTransfer.effectAllowed = 'move';
-      setTimeout(() => item.style.opacity = '0.4', 0);
-    });
-    item.addEventListener('dragend', () => { item.style.opacity = ''; });
-    item.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      item.style.background = 'var(--sel-bg)';
-    });
-    item.addEventListener('dragleave', () => { item.style.background = ''; });
-    item.addEventListener('drop', e => {
-      e.preventDefault();
-      item.style.background = '';
-      if (!_diagDragSrc || _diagDragSrc === d.id) return;
-      const fromIdx = diagrams.findIndex(x => x.id === _diagDragSrc);
-      const toIdx   = diagrams.findIndex(x => x.id === d.id);
-      if (fromIdx < 0 || toIdx < 0) return;
-      const [moved] = diagrams.splice(fromIdx, 1);
-      diagrams.splice(toIdx, 0, moved);
-      _diagDragSrc = null;
-      renderDiagramPanel();
-      saveState();
-    });
-
-    list.appendChild(item);
-  });
+  if (typeof renderExplorerDiagrams === 'function') renderExplorerDiagrams();
   renderEntityTree();
 }
 
@@ -206,58 +153,10 @@ function applyDiagTabColor(colorId) {
 }
 
 // ── 엔티티 트리 렌더링 ──────────────────────────────────────────
+// 엔티티 목록도 좌측 탐색기(explorer.js)로 이관되었다. 호환을 위해 함수명을 유지하되
+// 좌측 탐색기 엔티티 렌더로 위임한다. (여러 모듈이 renderEntityTree()를 호출함)
 function renderEntityTree() {
-  const tree = document.getElementById('entityTree');
-  if (!tree) return;
-  tree.innerHTML = '';
-  if (!ENTITIES.length) {
-    tree.innerHTML = '<div class="tree-empty">엔티티 없음</div>';
-    return;
-  }
-  const sorted = [...ENTITIES].sort((a, b) =>
-    entDisplayName(a).localeCompare(entDisplayName(b), 'ko')
-  );
-  sorted.forEach(ent => {
-    const id = ent.id;
-    const expanded = expandedEntities.has(id);
-    const name = entDisplayName(ent);
-    const attrCount = (ent.attrs || []).length;
-
-    const hdr = document.createElement('div');
-    hdr.className = 'tree-ent-hdr' + (ent === selectedEntity ? ' tree-selected' : '');
-    hdr.innerHTML = `
-      <span class="tree-expand-icon">${expanded ? '▾' : '▸'}</span>
-      <span class="tree-ent-name" title="${escHtml(name)}">${escHtml(name)}</span>
-      <span class="tree-ent-count">${attrCount}</span>`;
-    hdr.addEventListener('click', () => {
-      if (expandedEntities.has(id)) expandedEntities.delete(id);
-      else expandedEntities.add(id);
-      renderEntityTree();
-    });
-    tree.appendChild(hdr);
-
-    if (expanded && attrCount > 0) {
-      const list = document.createElement('div');
-      list.className = 'tree-attr-list';
-      ent.attrs.forEach((a, idx) => {
-        const row = document.createElement('div');
-        row.className = 'tree-attr';
-        const isLast = idx === attrCount - 1;
-        const lineChar = isLast ? '└' : '├';
-        const badgeCls = a.kind === 'pk' ? 'tree-badge tree-badge-pk' : (a.kind === 'fk' ? 'tree-badge tree-badge-fk' : 'tree-badge tree-badge-normal');
-        const badgeTxt = a.kind === 'pk' ? 'PK' : (a.kind === 'fk' ? 'FK' : '');
-        const aName = escHtml(attrDisplayName(a) || a.logicalName || a.physicalName || '');
-        const aType = escHtml(a.type || '');
-        row.innerHTML = `
-          <span class="tree-line">${lineChar}</span>
-          <span class="${badgeCls}">${badgeTxt}</span>
-          <span class="tree-attr-name" title="${aName}">${aName}</span>
-          <span class="tree-attr-type">${aType}</span>`;
-        list.appendChild(row);
-      });
-      tree.appendChild(list);
-    }
-  });
+  if (typeof renderExplorerEntities === 'function') renderExplorerEntities();
 }
 
 // ── 패널 토글 ──────────────────────────────────────────────────
@@ -290,6 +189,7 @@ function toggleDiagramPanel() {
   const rOff = panelOpen ? PANEL_W + 12 : 12;
   const _zp = document.getElementById('zoomPanel');
   if (_zp) _zp.style.right = rOff + 'px';
+  if (typeof _syncLayoutButtons === 'function') _syncLayoutButtons();
   render();
 }
 

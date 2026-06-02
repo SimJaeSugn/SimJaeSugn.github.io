@@ -99,15 +99,13 @@ function _qbBarH() {
 }
 function _qbBarW() { return _qbLarge ? 52 : 42; }
 
-// 패널 top을 퀵바의 실제 높이에 맞춰 동기화
+// 패널 top을 퀵바의 실제 높이에 맞춰 동기화 (우측 #diagramPanel · 좌측 #explorerPanel 공통)
 function _syncPanelTop() {
+  const top = (!_quickbarOpen || _qbDock === 'left') ? '32px' : (32 + _qbBarH()) + 'px';
   const panel = document.getElementById('diagramPanel');
-  if (!panel) return;
-  if (!_quickbarOpen || _qbDock === 'left') {
-    panel.style.top = '32px';
-  } else {
-    panel.style.top = (32 + _qbBarH()) + 'px';
-  }
+  if (panel) panel.style.top = top;
+  const ex = document.getElementById('explorerPanel');
+  if (ex) ex.style.top = top;
 }
 
 function _applyQuickbarState() {
@@ -137,10 +135,17 @@ function _applyQuickbarState() {
 
   // 좌측 도킹 시 하단 플로팅 패널·상태바가 퀵바에 덮이지 않도록 left 보정
   const qbLeftPx = (_quickbarOpen && isLeft) ? _qbBarW() : 0;
+  const exW = (typeof explorerOpen !== 'undefined' && explorerOpen && typeof EXPLORER_W !== 'undefined') ? EXPLORER_W : 0;
   const blp = document.getElementById('bottomLeftPanel');
   const sb  = document.getElementById('statusbar');
-  if (blp) blp.style.left = (qbLeftPx + 16) + 'px';
+  if (blp) blp.style.left = (qbLeftPx + exW + 16) + 'px';
   if (sb)  sb.style.left  = qbLeftPx ? qbLeftPx + 'px' : '';
+
+  // 좌측 Explorer 패널·리오픈 탭도 좌측 도킹 퀵바 폭만큼 우측에서 시작 (겹침 방지)
+  const exPanel = document.getElementById('explorerPanel');
+  const exTab   = document.getElementById('explorerReopenTab');
+  if (exPanel) exPanel.style.left = qbLeftPx + 'px';
+  if (exTab)   exTab.style.left   = qbLeftPx + 'px';
 }
 
 function toggleQuickbar() {
@@ -271,8 +276,19 @@ function _renderCustomQbItems() {
     btn.draggable = true;
     btn.dataset.qbIdx = idx;
     const ico = document.createElement('span');
-    ico.textContent = item.icon;
-    if (/[가-힣]/.test(item.icon)) ico.style.cssText = 'font-size:11px;font-weight:bold';
+    // 아이콘명이 없으면(구버전 저장 항목) 동일 action의 메뉴에서 역추출해 보정
+    if (!item.iconLucide && item.action) {
+      const mbItem = [...document.querySelectorAll('.mb-item')].find(el =>
+        (el.getAttribute('onclick') || '').replace(/^mbClose\(\);\s*/, '').trim() === item.action);
+      const luc = mbItem ? _mbIconName(mbItem.querySelector('.mb-ico')) : '';
+      if (luc) item.iconLucide = luc;
+    }
+    if (item.iconLucide) {
+      ico.innerHTML = `<i data-lucide="${item.iconLucide}"></i>`;
+    } else {
+      ico.textContent = item.icon;
+      if (/[가-힣]/.test(item.icon)) ico.style.cssText = 'font-size:11px;font-weight:bold';
+    }
     const del = document.createElement('span');
     del.className = 'qb-cbtn-del';
     del.textContent = '×';
@@ -290,6 +306,7 @@ function _renderCustomQbItems() {
     _attachQbReorderDrag(btn, idx);
     area.appendChild(btn);
   });
+  if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 function _attachQbReorderDrag(el, idx) {
@@ -333,10 +350,26 @@ function _loadCustomQbItems() {
   _renderCustomQbItems();
 }
 
+// mb-ico 요소에서 Lucide 아이콘 이름을 추출한다.
+// createIcons() 변환 전(<i data-lucide>)·변환 후(<svg class="lucide lucide-NAME">) 모두 대응.
+function _mbIconName(icoEl) {
+  if (!icoEl) return '';
+  const iEl = icoEl.querySelector('i[data-lucide]');
+  if (iEl) return iEl.getAttribute('data-lucide') || '';
+  const svg = icoEl.querySelector('svg');
+  if (svg) {
+    const m = (svg.getAttribute('class') || '').match(/lucide-([a-z0-9]+(?:-[a-z0-9]+)*)/i);
+    if (m) return m[1];
+  }
+  return '';
+}
+
 function _initQuickbarDnd() {
   // 메뉴 아이템에 draggable 부여
   document.querySelectorAll('.mb-item').forEach(item => {
-    const ico    = item.querySelector('.mb-ico')?.textContent?.trim() || '';
+    const icoEl  = item.querySelector('.mb-ico');
+    const icoLuc = _mbIconName(icoEl);
+    const ico    = icoEl?.textContent?.trim() || '';
     const txt    = item.querySelector('.mb-text')?.textContent?.trim() || '';
     const action = (item.getAttribute('onclick') || '').replace(/^mbClose\(\);\s*/, '').trim();
     if (!action || !txt) return;
@@ -346,6 +379,7 @@ function _initQuickbarDnd() {
       e.dataTransfer.effectAllowed = 'copy';
       e.dataTransfer.setData('application/qb-item', JSON.stringify({
         icon: ico || txt.slice(0, 1),
+        iconLucide: icoLuc,
         text: txt,
         action
       }));

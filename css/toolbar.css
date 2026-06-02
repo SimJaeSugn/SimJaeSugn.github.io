@@ -110,7 +110,7 @@
   margin: 0 4px; flex-shrink: 0;
 }
 .mb-zoom-btn {
-  background: var(--bg-surface); color: var(--tx-main); border: none;
+  background: none; color: var(--tx-main); border: none;
   width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
   font-size: 15px; font-weight: bold; line-height: 1;
   display: flex; align-items: center; justify-content: center;

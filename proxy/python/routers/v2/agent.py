@@ -1,11 +1,12 @@
-"""에이전트 v2 라우터 — v1 routers/agent.py 미러.
+"""에이전트 v2 라우터.
 
-V2-M1: v1과 동일 토폴로지·동작. graph import 한 줄만 agent.v2.graph 로 교체.
+V2-M1: v1과 동일 토폴로지·동작 미러로 시작.
+P0: analyze→4분기→plan 골격 배선 + intent·plan 관측 SSE 이벤트 추가(기존 이벤트 불변).
 thread_id 는 'v2_' 접두(§9.1 불변식 ③ 네임스페이스 분리).
 audit 로그는 AGENT_V2 / AGENT_V2_RESUME 로 식별 분리.
 
 엔드포인트
-    POST /agent/v2/stream  — 질의 → 그래프 실행 → SSE(meta·token·interrupt·done·error)
+    POST /agent/v2/stream  — 질의 → 그래프 실행 → SSE(meta·intent·plan·token·interrupt·done·error)
     POST /agent/v2/resume  — interrupt 결과 회신 → 그래프 재개 → SSE 계속
     GET  /agent/v2/key     — OpenAI 키 설정 여부
     POST /agent/v2/key     — OpenAI 키 저장(암호화)
@@ -14,6 +15,8 @@ audit 로그는 AGENT_V2 / AGENT_V2_RESUME 로 식별 분리.
 
 SSE 이벤트
     meta      {threadId}
+    intent    {kind,summary,goals,...}  analyze 노드 산출 IntentSpec (P0 신규)
+    plan      {steps}        plan 노드 산출 StepV2[] (P0 신규)
     token     {t}            answer/respond 노드의 토큰
     interrupt {type, calls}  클라이언트 툴 실행 위임 (이후 /resume 필요)
     done      {}             그래프 종료
@@ -48,6 +51,7 @@ def _new_thread_id_v2() -> str:
 async def _run(graph_input, cfg):
     """그래프를 astream 으로 구동하며 SSE 프레임을 yield.
 
+    intent·plan SSE 이벤트가 추가됨 (기존 이벤트 불변).
     interrupt 를 만나면 'interrupt' 이벤트를 내고 즉시 종료한다(클라가 /resume).
     끝까지 가면 'done' 을 낸다.
     """
@@ -60,12 +64,30 @@ async def _run(graph_input, cfg):
             token = getattr(msg, "content", "") or ""
             if token and node in ("answer", "respond"):
                 yield _sse("token", {"t": token})
+
         elif mode == "updates":
-            if isinstance(chunk, dict) and "__interrupt__" in chunk:
+            if not isinstance(chunk, dict):
+                continue
+
+            # 신규: analyze 노드 → intent SSE 이벤트
+            if "analyze" in chunk:
+                intent = chunk["analyze"].get("intent")
+                if intent:
+                    yield _sse("intent", intent)
+
+            # 신규: plan 노드 → plan SSE 이벤트
+            elif "plan" in chunk:
+                steps = chunk["plan"].get("plan") or []
+                if steps:
+                    yield _sse("plan", {"steps": steps})
+
+            # 기존: interrupt 처리 — 독립 if (intent/plan 분기와 한 청크에 공존해도 누락되지 않도록)
+            if "__interrupt__" in chunk:
                 intr = chunk["__interrupt__"]
                 value = intr[0].value if isinstance(intr, (list, tuple)) else getattr(intr, "value", {})
                 yield _sse("interrupt", value)
-                return  # 클라이언트 resume 대기
+                return   # 클라이언트 resume 대기
+
     yield _sse("done", {})
 
 

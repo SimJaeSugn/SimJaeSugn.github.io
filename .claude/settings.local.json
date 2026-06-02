@@ -125,7 +125,11 @@
       "Read(//e/e/03.프로젝트/SimJaeSugn.github.io/proxy/python/**)",
       "Bash(python -m py_compile agent/v2/graph.py routers/v2/agent.py main.py)",
       "Bash(python -m py_compile proxy/python/agent/v2/graph.py proxy/python/routers/v2/agent.py proxy/python/main.py)",
-      "Bash(echo \"py_compile EXIT:$?\")"
+      "Bash(echo \"py_compile EXIT:$?\")",
+      "Bash(rm -f _workspace/01_analyst_plan.html)",
+      "Bash(rmdir _workspace)",
+      "Bash(grep -q '\"__TRACKED_VAR__\"\\\\|,__TRACKED_VAR__=\\\\|__TRACKED_VAR__:' vendor/lucide.min.js)",
+      "Bash(grep -oE '<div class=\"mb-item[^>]*__TRACKED_VAR__\\\\\\(\\\\\\)[^>]*>.*?</div>' index.html)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

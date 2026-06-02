@@ -77,7 +77,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/key | OpenAI 키 저장 (AES-256-GCM 암호화) |
 | GET | /agent/config | Agent 설정 조회 (provider/modelMain/modelFast/keyConfigured) |
 | POST | /agent/config | Agent 설정 저장 (provider/modelMain/modelFast) |
-| POST | /agent/v2/stream | v2 자연어 질의 → 그래프 실행 SSE (v1 미러 — 독립 인스턴스) |
+| POST | /agent/v2/stream | v2 자연어 질의 → 그래프 실행 SSE (analyze→4분기→plan SSE 포함, 독립 인스턴스) |
 | POST | /agent/v2/resume | v2 interrupt 결과 회신 → 그래프 재개 SSE |
 | GET | /agent/v2/key | v2 OpenAI 키 설정 여부 확인 (공유 키스토어) |
 | POST | /agent/v2/key | v2 OpenAI 키 저장 (공유 키스토어) |
@@ -111,8 +111,10 @@ proxy/python/
 │   ├── tools_proxy.py     ← 프록시(서버) 측 DB 툴 카탈로그·실행 (fetch_db_schema·run_sql, location="proxy")
 │   ├── nodes/             ← gate · answer · fetch_tools(클라 툴 카탈로그) · plan · approve(계획 승인) · exec_proxy(서버 DB 툴) · execute(클라 interrupt) · replan · respond
 │   ├── common/            ← state · schemas(Plan/Step) · prompts · llm · keys(OpenAI 키)
-│   └── v2/                ← v2 에이전트 서브패키지 (v1 격리 미러 — 독립 graph 인스턴스)
-│       └── graph.py       ← build_graph_v2() — 독립 compile + 독립 MemorySaver (thread_id: v2_*)
+│   └── v2/                ← v2 에이전트 서브패키지 (P0 골격 — analyze/plan 노드 독립 구현)
+│       ├── graph.py       ← build_graph_v2() — AgentStateV2, analyze→4분기→fetch_tools→plan→approve→…
+│       ├── common/        ← schemas(IntentSpec·Goal·StepV2·PlanV2·Verdict) · state(AgentStateV2) · prompts(ANALYZE_SYSTEM·PLAN_V2_SYSTEM)
+│       └── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅
 │   └── adapters/

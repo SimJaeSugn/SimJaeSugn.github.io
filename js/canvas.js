@@ -1731,8 +1731,9 @@ function syncMarkdownOverlays() {
 // renderNow(): 즉시 동기 실행 (타임라인 미리보기 등 즉각 반영 필요 시)
 function _viewportBounds() {
   const _qlOff = _qbLeftOff();
+  const _botOff = (typeof _bottomOff === 'function') ? _bottomOff() : 0;
   const cw = window.innerWidth - _qlOff - (panelOpen ? PANEL_W : 0);
-  const ch = window.innerHeight;
+  const ch = window.innerHeight - _botOff;
   return {
     x1: (0  - vx) / scale,
     y1: (0  - vy) / scale,
@@ -1749,9 +1750,10 @@ function render() {
 
 function renderNow() {
   const _qlOff = _qbLeftOff();
+  if (typeof _layoutBottomPanel === 'function') _layoutBottomPanel();
   canvas.style.marginLeft = _qlOff > 0 ? _qlOff + 'px' : '';
   canvas.width  = window.innerWidth - _qlOff - (panelOpen ? PANEL_W : 0);
-  canvas.height = window.innerHeight;
+  canvas.height = window.innerHeight - ((typeof _bottomOff === 'function') ? _bottomOff() : 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
@@ -1841,11 +1843,15 @@ function renderNow() {
   if (typeof updateStatusBar === 'function') updateStatusBar();
 }
 
-// ── 퀵바 좌측 도킹 시 캔버스 left 오프셋 ─────────────────────
+// ── 캔버스 left 오프셋 (좌측 도킹 퀵바 + Explorer 패널) ──────────
 function _qbLeftOff() {
-  if (typeof _quickbarOpen === 'undefined' || !_quickbarOpen) return 0;
-  if (typeof _qbDock === 'undefined' || _qbDock !== 'left')  return 0;
-  return typeof _qbBarW === 'function' ? _qbBarW() : 42;
+  let off = 0;
+  if (typeof _quickbarOpen !== 'undefined' && _quickbarOpen &&
+      typeof _qbDock !== 'undefined' && _qbDock === 'left')
+    off += (typeof _qbBarW === 'function' ? _qbBarW() : 42);
+  if (typeof explorerOpen !== 'undefined' && explorerOpen)
+    off += (typeof EXPLORER_W !== 'undefined' ? EXPLORER_W : 240);
+  return off;
 }
 
 // ── 좌표 변환 / 거리 계산 ──────────────────────────────────────
