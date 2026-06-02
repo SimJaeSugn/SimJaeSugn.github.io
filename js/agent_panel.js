@@ -344,7 +344,7 @@ async function agentSend() {
     if (e.name === 'AbortError') {
       bubble.innerHTML = acc ? _agentRender(acc) + '<br><span style="opacity:.6">(중단됨)</span>' : '(중단됨)';
     } else if (e instanceof TypeError) {
-      bubble.innerHTML = '⚠ 프록시(127.0.0.1:3737)에 연결할 수 없습니다.<br>UXERManager 데스크탑 앱 또는 프록시를 실행하세요.';
+      bubble.innerHTML = '⚠ 프록시(127.0.0.1:3737)에 연결할 수 없습니다.<br>AgenticERM 데스크탑 앱 또는 프록시를 실행하세요.';
     } else {
       bubble.innerHTML = '⚠ ' + _agentEsc(e.message);
       if (/키|key/i.test(e.message)) agentShowKeyPrompt();

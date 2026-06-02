@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// DB 연결 공통 — UXERManager 미들웨어 연동
+// DB 연결 공통 — AgenticERM 미들웨어 연동
 // profile_manager.js, reverse_engineer.js 등에서 의존
 // ══════════════════════════════════════════════════════════════════
 
@@ -35,8 +35,8 @@ function _showMwNotRunning() {
         <h3>미들웨어 미실행</h3>
         <p style="color:var(--tx-sub);font-size:13px;line-height:1.6;margin-bottom:16px">
           DB 연결 기능을 사용하려면 미들웨어가 실행 중이어야 합니다.<br><br>
-          데스크탑 앱: <strong>UXERManager.exe</strong> 를 실행하면 자동으로 시작됩니다.<br>
-          브라우저: <strong>uxermanager.exe</strong> 를 먼저 실행하세요.
+          데스크탑 앱: <strong>AgenticERM.exe</strong> 를 실행하면 자동으로 시작됩니다.<br>
+          브라우저: <strong>AgenticERM.exe</strong> 를 먼저 실행하세요.
         </p>
         <div class="modal-actions">
           <button class="btn-cancel-m" onclick="document.getElementById('mwNotRunningOverlay').classList.remove('active')">닫기</button>

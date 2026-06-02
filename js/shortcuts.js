@@ -15,8 +15,10 @@ const SC_DEFAULTS = {
   selAll:  { ctrl: true,  shift: false, alt: false, key: 'a',      label: '전체 선택' },
   del:     { ctrl: false, shift: false, alt: false, key: 'Delete', label: '삭제' },
   toggleAgent: { ctrl: true, shift: true, alt: false, key: 'a',    label: 'Agent 패널 토글' },
-  toggleExplorer: { ctrl: true, shift: false, alt: false, key: 'b', label: '탐색기 패널 토글' },
+  toggleExplorer: { ctrl: true, shift: false, alt: false, key: 'b', label: '좌측 탐색기 패널 토글' },
   toggleBottom: { ctrl: true, shift: false, alt: false, key: 'j', label: '하단 패널 토글' },
+  toggleRight: { ctrl: true, shift: false, alt: true, key: 'b', label: '우측 패널 토글' },
+  toggleAllPanels: { ctrl: true, shift: false, alt: true, key: 'a', label: '모든 패널 토글' },
 };
 
 let _scMap = {};

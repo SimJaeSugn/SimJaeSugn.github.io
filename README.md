@@ -61,7 +61,7 @@ https://<계정>.github.io/<저장소명>/
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  UXERD  파일  편집  보기  도구  공유  Help      ● 변경됨   －100%＋  │  ← 메뉴바
+│  AgenticERM  파일  편집  보기  도구  공유  Help ● 변경됨   －100%＋  │  ← 메뉴바
 ├─────────────────────────────────────────────────────────────────────┤
 │  ↩↪  ＋↔  💾  ⊟↺  논리 물리  ⊞▭  ⌘🔍📷  [커스텀 영역]  ⊕       │  ← 퀵바
 ├─────────────────────────────────────────────────────────────────────┤
@@ -750,7 +750,7 @@ URL이 클립보드에 자동 복사됩니다.
 
 ## 24. 데스크탑 앱 빌드 (Electron + Python 사이드카)
 
-UXERManager를 Windows 데스크탑 앱(.exe 설치파일)으로 빌드할 수 있습니다.
+AgenticERM을 Windows 데스크탑 앱(.exe 설치파일)으로 빌드할 수 있습니다.
 
 ### 구조
 
@@ -790,14 +790,14 @@ pip install -r requirements.txt
 cd electron
 npm install
 npm run build:win
-# 결과: electron\dist\win-unpacked\UXERManager.exe
+# 결과: electron\dist\win-unpacked\AgenticERM.exe
 ```
 
 **3단계 — InnoSetup 설치파일 생성**
 
 ```powershell
 iscc electron\installer.iss
-# 결과: electron\dist\UXERManager_Desktop_Setup_1.0.0.exe
+# 결과: electron\dist\AgenticERM_Desktop_Setup_1.0.0.exe
 ```
 
 ### 포트
@@ -821,7 +821,7 @@ iscc electron\installer.iss
 
 ## 25. 프로젝트 아키텍처
 
-UXERManager는 세 가지 실행 환경을 지원하는 레이어 구조입니다.
+AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -929,8 +929,13 @@ SimJaeSugn.github.io/
 │   ├── panel.css
 │   └── toolbar.css
 │
-├── vendor/                        ← 로컬 번들 서드파티
-│   └── lucide.min.js              ← Lucide 아이콘 (ISC, UI 아이콘 SVG)
+├── vendor/                        ← 로컬 번들 서드파티 (오프라인 동작용, CDN 미사용)
+│   ├── lucide.min.js              ← Lucide 아이콘 (ISC)
+│   ├── marked.min.js              ← Markdown 파서
+│   ├── lz-string.min.js           ← 공유 URL 압축
+│   ├── sql-wasm.js                ← sql.js (SQLite WASM 로더)
+│   ├── sql-wasm.wasm              ← sql.js WASM 바이너리
+│   └── peerjs.min.js              ← PeerJS (WebRTC P2P)
 │
 ├── proxy/
 │   ├── nodejs/                    ← Node.js 독립 실행형 미들웨어 (포트 3737)
@@ -1042,7 +1047,7 @@ npm start           # 개발 모드 실행
 
 ### 2. Electron 설치파일 (Windows)
 
-> **프록시 포함 단독 실행** — Python 프록시 서버(포트 3737)가 앱에 내장되어 있어 별도 미들웨어 설치 없이 UXERManager.exe 하나만 실행하면 DB 연결까지 모두 동작합니다.
+> **프록시 포함 단독 실행** — Python 프록시 서버(포트 3737)가 앱에 내장되어 있어 별도 미들웨어 설치 없이 AgenticERM.exe 하나만 실행하면 DB 연결까지 모두 동작합니다.
 
 > **개발·테스트** — 변경사항 확인 시 빌드·재설치 없이 바로 실행 가능합니다.
 > ```powershell
@@ -1053,7 +1058,7 @@ npm start           # 개발 모드 실행
 > **한 번에 빌드** — 프로젝트 루트에서 아래 스크립트를 실행하면 3단계가 순서대로 자동 실행됩니다.
 > ```powershell
 > .\build-desktop.ps1
-> # → electron\dist\UXERManager_Desktop_Setup_1.0.0.exe
+> # → electron\dist\AgenticERM_Desktop_Setup_1.0.0.exe
 > ```
 
 **1단계 — Python 사이드카 빌드** (실행 위치: `proxy/python/`)
@@ -1079,7 +1084,7 @@ npm run build:win
 # electron/ 폴더로 이동했다면 루트로 돌아온 후 실행
 cd ..
 iscc electron\installer.iss
-# → electron\dist\UXERManager_Desktop_Setup_1.0.0.exe
+# → electron\dist\AgenticERM_Desktop_Setup_1.0.0.exe
 ```
 
 > **`iscc`를 찾지 못할 경우** — Inno Setup 설치 후 PATH에 등록되지 않았을 수 있다.
@@ -1101,13 +1106,13 @@ iscc electron\installer.iss
 |--------|------|
 | `proxy/python/dist/uxer-sidecar.exe` | Python 사이드카 (단일 exe, 55MB) |
 | `electron/dist/win-unpacked/` | 압축 해제형 앱 (테스트용) |
-| `electron/dist/UXERManager_Desktop_Setup_1.0.0.exe` | 최종 설치파일 (126MB) |
+| `electron/dist/AgenticERM_Desktop_Setup_1.0.0.exe` | 최종 설치파일 (126MB) |
 
-> 설치 시 UAC 관리자 권한 요청이 표시됩니다. 승인하면 `C:\Program Files\UXERManager`에 설치되고 바탕화면 바로가기가 생성됩니다.
+> 설치 시 UAC 관리자 권한 요청이 표시됩니다. 승인하면 `C:\Program Files\AgenticERM`에 설치되고 바탕화면 바로가기가 생성됩니다.
 
 ### 3. Node.js 미들웨어 단독 배포
 
-> **웹 서비스용 프록시** — 브라우저에서 UXERManager 웹 앱(`https://simjaesugn.github.io`)을 사용할 때 운영 DB에 연결하려면 이 미들웨어를 설치해야 합니다. DB에 접근 가능한 로컬 PC 또는 내부 서버에 설치하면 웹 앱과 운영 DB를 중계합니다. Electron 데스크탑 앱 사용자는 Python 사이드카가 자동으로 실행되므로 별도 설치 불필요합니다.
+> **웹 서비스용 프록시** — 브라우저에서 AgenticERM 웹 앱(`https://simjaesugn.github.io`)을 사용할 때 운영 DB에 연결하려면 이 미들웨어를 설치해야 합니다. DB에 접근 가능한 로컬 PC 또는 내부 서버에 설치하면 웹 앱과 운영 DB를 중계합니다. Electron 데스크탑 앱 사용자는 Python 사이드카가 자동으로 실행되므로 별도 설치 불필요합니다.
 
 운영 DB에 접근 가능한 서버에 백그라운드 트레이 앱으로 설치됩니다.
 

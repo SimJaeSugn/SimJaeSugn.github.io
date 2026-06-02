@@ -63,10 +63,25 @@ document.addEventListener('keydown', e => {
     if (typeof toggleAgentPanel === 'function') toggleAgentPanel();
     return;
   }
-  // 하단 패널 토글 (기본 Ctrl+J) — SQL 입력 등 입력 필드 포커스 중에도 동작
+  // 패널 토글 (좌측 Ctrl+B · 하단 Ctrl+J · 우측 Ctrl+Alt+B) — 입력 필드 포커스 중에도 동작
+  if (typeof matchSC === 'function' && matchSC(e, 'toggleExplorer')) {
+    e.preventDefault();
+    if (typeof toggleExplorerPanel === 'function') toggleExplorerPanel();
+    return;
+  }
   if (typeof matchSC === 'function' && matchSC(e, 'toggleBottom')) {
     e.preventDefault();
     if (typeof toggleBottomPanel === 'function') toggleBottomPanel();
+    return;
+  }
+  if (typeof matchSC === 'function' && matchSC(e, 'toggleRight')) {
+    e.preventDefault();
+    if (typeof toggleDiagramPanel === 'function') toggleDiagramPanel();
+    return;
+  }
+  if (typeof matchSC === 'function' && matchSC(e, 'toggleAllPanels')) {
+    e.preventDefault();
+    if (typeof toggleAllPanels === 'function') toggleAllPanels();
     return;
   }
   // 입력 필드 포커스 중에는 이하 단축키 무시
@@ -116,7 +131,6 @@ document.addEventListener('keydown', e => {
   if (matchSC(e, 'addEnt'))  { e.preventDefault(); openAddEntityModal(); }
   if (matchSC(e, 'addRel'))  { e.preventDefault(); openAddRelationModal(); }
   if (matchSC(e, 'fitAll'))  { e.preventDefault(); fitAll(); return; }
-  if (matchSC(e, 'toggleExplorer')) { e.preventDefault(); if (typeof toggleExplorerPanel === 'function') toggleExplorerPanel(); return; }
   if (matchSC(e, 'undo'))    { e.preventDefault(); undo(); return; }
   if (matchSC(e, 'redo') || (ctrl && e.shiftKey && e.key.toLowerCase() === 'z')) {
     e.preventDefault(); redo(); return;

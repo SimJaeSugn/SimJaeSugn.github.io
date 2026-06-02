@@ -1868,7 +1868,10 @@ function pointToSegDist(px, py, x1, y1, x2, y2) {
 
 // ── 뷰 제어 ────────────────────────────────────────────────────
 function updateZoomLabel() {
-  document.getElementById('zoomLabel').textContent = Math.round(scale * 100) + '%';
+  const el = document.getElementById('zoomLabel');
+  if (!el) return;
+  const txt = Math.round(scale * 100) + '%';
+  if ('value' in el) el.value = txt; else el.textContent = txt;
 }
 function zoom(factor) {
   const cx = canvas.width / 2, cy = canvas.height / 2;
@@ -1876,6 +1879,26 @@ function zoom(factor) {
   scale = Math.max(0.3, Math.min(3, scale * factor));
   vx = cx - wx * scale; vy = cy - wy * scale;
   updateZoomLabel(); render();
+}
+// 배율(%)을 직접 지정 — 화면 중앙 기준. 30~300%로 클램프.
+function zoomToPercent(pct) {
+  let p = parseInt(pct, 10);
+  if (isNaN(p)) { updateZoomLabel(); return; }
+  p = Math.max(30, Math.min(300, p));
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const wx = (cx - vx) / scale, wy = (cy - vy) / scale;
+  scale = p / 100;
+  vx = cx - wx * scale; vy = cy - wy * scale;
+  updateZoomLabel(); render();
+}
+// 상단바 배율 입력 핸들러
+function applyZoomLabel() {
+  const el = document.getElementById('zoomLabel');
+  if (el) zoomToPercent(el.value);
+}
+function zoomLabelKey(e) {
+  if (e.key === 'Enter')       { e.preventDefault(); e.stopPropagation(); applyZoomLabel(); e.target.blur(); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); updateZoomLabel(); e.target.blur(); }
 }
 function resetView() { scale = 1; vx = 40; vy = 40; updateZoomLabel(); render(); }
 window.addEventListener('resize', render);

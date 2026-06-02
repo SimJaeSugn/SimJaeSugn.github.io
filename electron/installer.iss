@@ -1,4 +1,4 @@
-#define AppName      "UXERManager"
+#define AppName      "AgenticERM"
 #define AppVersion   "1.0.0"
 #define AppPublisher "UXIS"
 #define ElectronDir  "dist\win-unpacked"
@@ -8,11 +8,11 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
-DefaultDirName={autopf}\UXERManager
-DefaultGroupName=UXERManager
+DefaultDirName={autopf}\AgenticERM
+DefaultGroupName=AgenticERM
 DisableProgramGroupPage=yes
 OutputDir=dist
-OutputBaseFilename=UXERManager_Desktop_Setup_{#AppVersion}
+OutputBaseFilename=AgenticERM_Desktop_Setup_{#AppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=admin
@@ -27,12 +27,12 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 Source: "{#ElectronDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\UXERManager";         Filename: "{app}\UXERManager.exe"
-Name: "{group}\UXERManager 제거";    Filename: "{uninstallexe}"
-Name: "{commondesktop}\UXERManager"; Filename: "{app}\UXERManager.exe"
+Name: "{group}\AgenticERM";         Filename: "{app}\AgenticERM.exe"
+Name: "{group}\AgenticERM 제거";    Filename: "{uninstallexe}"
+Name: "{commondesktop}\AgenticERM"; Filename: "{app}\AgenticERM.exe"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
 
 [Run]
-Filename: "{app}\UXERManager.exe"; Description: "UXERManager 지금 실행"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\AgenticERM.exe"; Description: "AgenticERM 지금 실행"; Flags: postinstall nowait skipifsilent

@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>UXERD</title>
+<title>AgenticERM</title>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/toolbar.css">
 <link rel="stylesheet" href="css/panel.css">
@@ -13,7 +13,7 @@
 
 <!-- ── Menu Bar ──────────────────────────────────────────── -->
 <div id="menubar">
-  <span class="mb-brand">UXERD</span>
+  <span class="mb-brand">AgenticERM</span>
   <span id="sessionBadge" title="저장되지 않은 변경사항" style="display:none;">● 변경됨</span>
 
   <div class="mb-menus">
@@ -65,6 +65,8 @@
       <div class="mb-drop" id="mb-drop-view">
         <div class="mb-item" id="mbi-explorer" onclick="mbClose();toggleExplorerPanel()"><span class="mb-ico"><i data-lucide="panel-left"></i></span><span class="mb-text">탐색기 패널</span><span class="mb-kbd">Ctrl+B</span><span class="mb-chk"></span></div>
         <div class="mb-item" id="mbi-bottom" onclick="mbClose();toggleBottomPanel()"><span class="mb-ico"><i data-lucide="panel-bottom"></i></span><span class="mb-text">하단 패널 (SQL)</span><span class="mb-kbd">Ctrl+J</span><span class="mb-chk"></span></div>
+        <div class="mb-item" id="mbi-right" onclick="mbClose();toggleDiagramPanel()"><span class="mb-ico"><i data-lucide="panel-right"></i></span><span class="mb-text">우측 패널 (속성·Agent)</span><span class="mb-kbd">Ctrl+Alt+B</span><span class="mb-chk"></span></div>
+        <div class="mb-item" id="mbi-allpanels" onclick="mbClose();toggleAllPanels()"><span class="mb-ico"><i data-lucide="layout-dashboard"></i></span><span class="mb-text">모든 패널 열기/닫기</span><span class="mb-kbd">Ctrl+Alt+A</span><span class="mb-chk"></span></div>
         <div class="mb-sep"></div>
         <div class="mb-item" onclick="mbClose();resetView()"><span class="mb-ico"><i data-lucide="rotate-ccw"></i></span><span class="mb-text">뷰 초기화</span></div>
         <div class="mb-item" onclick="mbClose();fitAll()"><span class="mb-ico"><i data-lucide="maximize"></i></span><span class="mb-text">전체 맞춤</span><span class="mb-kbd">Home</span></div>
@@ -159,13 +161,15 @@
     <button class="mb-zoom-btn" id="quickbarToggleBtn" onclick="toggleQuickbar()" title="빠른 실행 도구 모음 접기/펼치기">▼</button>
     <div class="mb-vsep"></div>
     <button class="mb-zoom-btn" onclick="zoom(0.87)" title="축소 (Ctrl+-)"><i data-lucide="zoom-out"></i></button>
-    <span id="zoomLabel">100%</span>
+    <input id="zoomLabel" type="text" value="100%" spellcheck="false" title="배율 직접 입력 (Enter 적용)"
+           onfocus="this.select()" onkeydown="zoomLabelKey(event)" onblur="applyZoomLabel()">
     <button class="mb-zoom-btn" onclick="zoom(1.15)" title="확대 (Ctrl++)"><i data-lucide="zoom-in"></i></button>
     <div class="mb-vsep"></div>
     <!-- 레이아웃 토글 (VSCode 스타일: 좌측 탐색기 · 하단 패널 · 우측 목록) -->
     <button class="mb-zoom-btn layout-btn" id="layoutBtnLeft" onclick="toggleExplorerPanel()" title="좌측 탐색기 패널 토글 (Ctrl+B)" aria-label="좌측 패널 토글"><i data-lucide="panel-left"></i></button>
     <button class="mb-zoom-btn layout-btn" id="layoutBtnBottom" onclick="toggleBottomPanel()" title="하단 패널 토글 (Ctrl+J)" aria-label="하단 패널 토글"><i data-lucide="panel-bottom"></i></button>
-    <button class="mb-zoom-btn layout-btn" id="layoutBtnRight" onclick="toggleDiagramPanel()" title="우측 목록 패널 토글" aria-label="우측 패널 토글"><i data-lucide="panel-right"></i></button>
+    <button class="mb-zoom-btn layout-btn" id="layoutBtnRight" onclick="toggleDiagramPanel()" title="우측 패널 토글 (Ctrl+Alt+B)" aria-label="우측 패널 토글"><i data-lucide="panel-right"></i></button>
+    <button class="mb-zoom-btn layout-btn" id="layoutBtnAll" onclick="toggleAllPanels()" title="모든 패널 토글 (Ctrl+Alt+A)" aria-label="모든 패널 토글"><i data-lucide="layout-dashboard"></i></button>
     <!-- Electron 전용 창 제어 (기본 숨김, 렌더러에서 감지 시 표시) -->
     <div class="mb-vsep mb-win-only" style="display:none"></div>
     <div id="mbWinControls" class="mb-win-controls" style="display:none">
@@ -240,7 +244,7 @@
   <div id="panelTabs">
     <button class="panel-tab active" data-ptab="list"  onclick="switchPanelTab('list')"><span>📋</span>속성</button>
     <button class="panel-tab"        data-ptab="agent" onclick="switchPanelTab('agent')"><span>🤖</span>Agent</button>
-    <button class="panel-collapse-btn" style="margin-left:auto" onclick="toggleDiagramPanel()" title="패널 닫기">▶</button>
+    <button class="panel-collapse-btn" style="margin-left:auto" onclick="toggleDiagramPanel()" title="패널 닫기 (Ctrl+Alt+B)">▶</button>
   </div>
 
   <!-- 속성 뷰 -->
@@ -278,7 +282,7 @@
     </div>
   </div>
 </div>
-<div id="panelReopenTab" class="visible" onclick="toggleDiagramPanel()" title="다이어그램 패널 열기">
+<div id="panelReopenTab" class="visible" onclick="toggleDiagramPanel()" title="우측 패널 열기 (Ctrl+Alt+B)">
   <span>◀</span>
   <span style="writing-mode:vertical-rl;font-size:9px;letter-spacing:1px;opacity:0.6">목록</span>
 </div>
@@ -954,6 +958,14 @@
                   <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">J</span></div>
                   <div class="sc-desc">하단 패널 토글<span class="sc-desc-note">SQL 실행 등 서브탭 패널</span></div>
                 </div>
+                <div class="sc-row" data-sc-id="toggleRight">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Alt</span><span class="sc-key-sep">+</span><span class="sc-key">B</span></div>
+                  <div class="sc-desc">우측 패널 토글<span class="sc-desc-note">속성·Agent 패널</span></div>
+                </div>
+                <div class="sc-row" data-sc-id="toggleAllPanels">
+                  <div class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key-sep">+</span><span class="sc-key">Alt</span><span class="sc-key-sep">+</span><span class="sc-key">A</span></div>
+                  <div class="sc-desc">모든 패널 토글<span class="sc-desc-note">좌·우·하단 한 번에 열기/닫기</span></div>
+                </div>
                 <div class="sc-row">
                   <div class="sc-keys"><span class="sc-key sc-key-mouse">휠</span></div>
                   <div class="sc-desc">확대 / 축소<span class="sc-desc-note">커서 위치 기준</span></div>
@@ -1129,7 +1141,7 @@
 
 <!-- ── Scripts (load order: config → state → diagrams → entities → relations → canvas → layout → export → import → ui → main) ── -->
 <!-- marked.js : markdown → HTML 파싱 라이브러리 -->
-<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="vendor/marked.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/diagrams.js"></script>
@@ -1146,15 +1158,15 @@
 <script src="vendor/lucide.min.js"></script>
 <script src="js/icons.js"></script>
 <!-- Feature scripts -->
-<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sql.js@1.12.0/dist/sql-wasm.js"></script>
+<script src="vendor/lz-string.min.js"></script>
+<script src="vendor/sql-wasm.js"></script>
 <script src="js/share.js"></script>
 <script src="js/join_explorer.js"></script>
 <script src="js/timeline.js"></script>
 <script src="js/normalize.js"></script>
 <script src="js/sql_runner.js"></script>
 <script src="js/broadcast.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="vendor/peerjs.min.js"></script>
 <script src="js/webrtc.js"></script>
 <script src="js/shortcuts.js"></script>
 <script src="js/db_connect.js"></script>

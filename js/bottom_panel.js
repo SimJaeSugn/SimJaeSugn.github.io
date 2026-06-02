@@ -47,12 +47,31 @@ function _applyBottomState() {
   _syncLayoutButtons();
 }
 
-// ── 메뉴바 레이아웃 토글 버튼 활성 상태 동기화 (좌·하·우 패널 공통) ──
+// ── 메뉴바 레이아웃 토글 버튼 활성 상태 동기화 (좌·하·우·전체 공통) ──
 function _syncLayoutButtons() {
-  const set = (id, on) => { const b = document.getElementById(id); if (b) b.classList.toggle('active', !!on); };
-  set('layoutBtnLeft',   typeof explorerOpen !== 'undefined' && explorerOpen);
-  set('layoutBtnBottom', typeof bottomOpen   !== 'undefined' && bottomOpen);
-  set('layoutBtnRight',  typeof panelOpen     !== 'undefined' && panelOpen);
+  const l = typeof explorerOpen !== 'undefined' && explorerOpen;
+  const b = typeof bottomOpen   !== 'undefined' && bottomOpen;
+  const r = typeof panelOpen    !== 'undefined' && panelOpen;
+  const set = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('active', !!on); };
+  set('layoutBtnLeft',   l);
+  set('layoutBtnBottom', b);
+  set('layoutBtnRight',  r);
+  set('layoutBtnAll',    l && b && r);
+  // "모든 패널" 메뉴 체크마크 동기화
+  const mbiAll = document.getElementById('mbi-allpanels');
+  if (mbiAll) { const chk = mbiAll.querySelector('.mb-chk'); if (chk) chk.textContent = (l && b && r) ? '✓' : ''; }
+}
+
+// ── 세 패널 일괄 토글 ──────────────────────────────────────────
+// 하나라도 닫혀 있으면 모두 열고, 모두 열려 있으면 모두 닫는다.
+function toggleAllPanels() {
+  const l = typeof explorerOpen !== 'undefined' && explorerOpen;
+  const b = typeof bottomOpen   !== 'undefined' && bottomOpen;
+  const r = typeof panelOpen    !== 'undefined' && panelOpen;
+  const open = !(l && b && r);   // 목표 상태: 하나라도 닫혀있으면 열기(true)
+  if (l !== open && typeof toggleExplorerPanel === 'function') toggleExplorerPanel();
+  if (b !== open && typeof toggleBottomPanel   === 'function') toggleBottomPanel();
+  if (r !== open && typeof toggleDiagramPanel  === 'function') toggleDiagramPanel();
 }
 
 // 좌·우 패널 오프셋에 맞춰 하단 패널의 가로 범위를 정렬한다. (renderNow에서 매 프레임 호출)
@@ -100,7 +119,7 @@ async function bpRunSql() {
     });
     res = await r.json();
   } catch (e) {
-    out.innerHTML = '<div class="bp-sql-err">미들웨어에 연결할 수 없습니다. UXERManager 미들웨어가 실행 중인지, DB 프로파일이 설정되어 있는지 확인하세요.</div>';
+    out.innerHTML = '<div class="bp-sql-err">미들웨어에 연결할 수 없습니다. AgenticERM 미들웨어가 실행 중인지, DB 프로파일이 설정되어 있는지 확인하세요.</div>';
     return;
   }
   if (!res || res.ok === false) {

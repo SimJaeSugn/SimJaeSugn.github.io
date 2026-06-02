@@ -129,7 +129,10 @@
       "Bash(rm -f _workspace/01_analyst_plan.html)",
       "Bash(rmdir _workspace)",
       "Bash(grep -q '\"__TRACKED_VAR__\"\\\\|,__TRACKED_VAR__=\\\\|__TRACKED_VAR__:' vendor/lucide.min.js)",
-      "Bash(grep -oE '<div class=\"mb-item[^>]*__TRACKED_VAR__\\\\\\(\\\\\\)[^>]*>.*?</div>' index.html)"
+      "Bash(grep -oE '<div class=\"mb-item[^>]*__TRACKED_VAR__\\\\\\(\\\\\\)[^>]*>.*?</div>' index.html)",
+      "Bash(ls -la electron/)",
+      "Bash(find . -maxdepth 2 -iname \"package.json\" -not -path \"*/node_modules/*\")",
+      "Bash(find . -maxdepth 2 \\\\\\( -iname \"electron-builder.*\" -o -iname \"forge.config.*\" -o -iname \"*.iss\" \\\\\\) -not -path \"*/node_modules/*\")"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

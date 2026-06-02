@@ -189,6 +189,8 @@ function toggleDiagramPanel() {
   const rOff = panelOpen ? PANEL_W + 12 : 12;
   const _zp = document.getElementById('zoomPanel');
   if (_zp) _zp.style.right = rOff + 'px';
+  const _mbiR = document.getElementById('mbi-right');
+  if (_mbiR) { const chk = _mbiR.querySelector('.mb-chk'); if (chk) chk.textContent = panelOpen ? '✓' : ''; }
   if (typeof _syncLayoutButtons === 'function') _syncLayoutButtons();
   render();
 }

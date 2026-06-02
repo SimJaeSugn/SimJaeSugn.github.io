@@ -119,8 +119,13 @@
 .mb-zoom-btn:hover { background: var(--bd2); }
 #zoomLabel {
   color: var(--tx-main); font-size: 12px;
-  min-width: 42px; text-align: center;
+  width: 46px; text-align: center;
+  background: transparent; border: none; outline: none;
+  border-radius: 4px; padding: 2px 0; cursor: text;
+  font-family: inherit; transition: background 0.12s, box-shadow 0.12s;
 }
+#zoomLabel:hover  { background: var(--bd2); }
+#zoomLabel:focus  { background: var(--bg-surface); box-shadow: 0 0 0 1px var(--ac); cursor: text; }
 
 /* ── Electron 창 제어 버튼 (프레임리스 창) ──────────────────── */
 .mb-win-controls {

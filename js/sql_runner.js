@@ -17,12 +17,12 @@ function _sqlSetInput(i) {
 async function _initSqlJs() {
   if (_sqlJs) return _sqlJs;
   if (typeof initSqlJs === 'undefined') {
-    showToast('❌ SQL.js 라이브러리를 불러오지 못했습니다. 네트워크 연결을 확인하세요.');
+    showToast('❌ SQL.js 라이브러리를 불러오지 못했습니다. (vendor/sql-wasm.js)');
     return null;
   }
   try {
     _sqlJs = await initSqlJs({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.12.0/dist/${f}`
+      locateFile: f => 'vendor/' + f   // 로컬 번들 (vendor/sql-wasm.wasm)
     });
     return _sqlJs;
   } catch(e) {
