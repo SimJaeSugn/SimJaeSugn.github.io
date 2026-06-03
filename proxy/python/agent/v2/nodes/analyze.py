@@ -8,11 +8,11 @@ import logging
 
 from agent.common.llm import get_fast_llm                      # v1 읽기 전용
 from agent.v2.common.schemas import IntentSpec
-from agent.v2.common.state import AgentStateV2, recent_messages
+from agent.v2.common.state import AgentState, recent_messages
 from agent.v2.common.prompts import ANALYZE_SYSTEM, context_brief
 
 
-def analyze_node(state: AgentStateV2) -> dict:
+def analyze_node(state: AgentState) -> dict:
     """v1 gate_node 대체 — IntentSpec으로 의도를 구조화한다."""
     llm = get_fast_llm()
     # nested Pydantic은 function_calling이 안전 (v1 plan_node와 동일 패턴)

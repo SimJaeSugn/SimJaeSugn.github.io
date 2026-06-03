@@ -9,7 +9,7 @@
 # CLI:  python -m agent.v2.eval.runner [--fixtures PATH] [--reps N] [--split all|golden|holdout] [--min-pass R]
 #   종료코드: 0 정상 · 1 임계(min-pass) 미달 또는 케이스 오류 · 2 OpenAI 키 없음
 #
-# v2 전용 — analyze_node/plan_node_v2(agent.v2.nodes)만 호출, v1 import 없음(§9.1).
+# v2 전용 — analyze_node/plan_node(agent.v2.nodes)만 호출, v1 import 없음(§9.1).
 
 import argparse
 import json
@@ -17,7 +17,7 @@ import os
 import sys
 
 from agent.v2.nodes.analyze import analyze_node
-from agent.v2.nodes.plan import plan_node_v2
+from agent.v2.nodes.plan import plan_node
 from agent.v2.eval.scorer import score_case, aggregate
 
 DEFAULT_FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures.jsonl")
@@ -88,7 +88,7 @@ def plan_only(query: str, intent: dict, context: dict | None, catalog: list | No
         "intent": intent,
         "tool_catalog": catalog if catalog else DEFAULT_CLIENT_CATALOG,
     }
-    return plan_node_v2(state).get("plan") or []
+    return plan_node(state).get("plan") or []
 
 
 def run_case(case: dict, reps: int = 5) -> dict:

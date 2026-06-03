@@ -1,6 +1,6 @@
 # proxy/python/agent/v2/common/state.py
 #
-# AgentStateV2: 독립 TypedDict — v1 AgentState를 상속하지 않고 필드 전체를 직접 선언.
+# AgentState: 독립 TypedDict — v1 AgentState를 상속하지 않고 필드 전체를 직접 선언.
 # TypedDict 상속 시 LangGraph가 Annotated 리듀서를 중복 등록해 "Channel already exists"
 # 오류가 발생하므로 독립 선언 방식을 채택한다 (계획서 T-1 대비).
 # v1 state.py 는 수정하지 않는다.
@@ -16,10 +16,10 @@ from agent.common.state import _add_or_reset                        # v1 읽기 
 # v1 헬퍼 함수 re-export — v2 내부 모듈은 이 파일에서 import
 from agent.common.state import recent_messages, last_user_text      # v1 읽기 전용 # noqa: F401
 
-__all__ = ["AgentStateV2", "recent_messages", "last_user_text"]
+__all__ = ["AgentState", "recent_messages", "last_user_text"]
 
 
-class AgentStateV2(TypedDict, total=False):
+class AgentState(TypedDict, total=False):
     """v2 전용 그래프 상태.
 
     v1 AgentState 필드를 전부 복제하고 route를 4종으로 확장,

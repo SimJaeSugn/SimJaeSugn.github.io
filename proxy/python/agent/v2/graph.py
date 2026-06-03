@@ -7,16 +7,16 @@
                                ─yes→ exec_proxy → execute → replan → respond → END
                                ─no─→ END (취소)
 
-V2-M2·M3 구조 페이즈: gate → analyze 교체, AgentStateV2 전환, 4분기 엣지 배선.
+V2-M2·M3 구조 페이즈: gate → analyze 교체, AgentState 전환, 4분기 엣지 배선.
 v1 노드들(answer/approve/exec_proxy/execute/replan/respond/fetch_tools)은
 읽기 전용 import 재사용 (§9.1 불변식 ②).
 """
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from agent.v2.common.state import AgentStateV2
+from agent.v2.common.state import AgentState
 from agent.v2.nodes.analyze import analyze_node
-from agent.v2.nodes.plan import plan_node_v2
+from agent.v2.nodes.plan import plan_node
 # v1 노드들 — 읽기 재사용 (수정 없음)
 from agent.nodes.answer import answer_node
 from agent.nodes.approve import approve_node, approved_route
@@ -27,7 +27,7 @@ from agent.nodes.respond import respond_node
 from agent.nodes.tools import fetch_tools_node
 
 
-def _analyze_route(state: AgentStateV2) -> str:
+def _analyze_route(state: AgentState) -> str:
     """analyze 노드의 4분기 라우팅 함수."""
     route = state.get("route") or "answer"
     if route in ("act", "mixed"):
@@ -37,11 +37,11 @@ def _analyze_route(state: AgentStateV2) -> str:
     return "answer"        # answer → END
 
 
-def build_graph_v2():
-    g = StateGraph(AgentStateV2)
+def build_graph():
+    g = StateGraph(AgentState)
 
     g.add_node("analyze", analyze_node)
-    g.add_node("plan", plan_node_v2)
+    g.add_node("plan", plan_node)
     g.add_node("answer", answer_node)
     g.add_node("fetch_tools", fetch_tools_node)
     g.add_node("approve", approve_node)
@@ -73,4 +73,4 @@ def build_graph_v2():
     return g.compile(checkpointer=MemorySaver())
 
 
-graph = build_graph_v2()   # 모듈 전역 — routers/v2/agent.py 가 import
+graph = build_graph()   # 모듈 전역 — routers/v2/agent.py 가 import

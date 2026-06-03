@@ -1,6 +1,6 @@
 # proxy/python/agent/v2/nodes/plan.py
 #
-# plan_node_v2 — v1 plan_node 대체.
+# plan_node — v1 plan_node 대체.
 # IntentSpec.goals를 소비해 StepV2[] 계획을 생성한다.
 # 카탈로그 필터링 로직은 v1 plan_node 패턴 그대로 복제.
 
@@ -10,7 +10,7 @@ import logging
 from agent.common.llm import get_main_llm                      # v1 읽기 전용
 from agent.tools_proxy import PROXY_TOOL_CATALOG               # v1 읽기 전용
 from agent.v2.common.schemas import PlanV2, StepV2
-from agent.v2.common.state import AgentStateV2, recent_messages
+from agent.v2.common.state import AgentState, recent_messages
 from agent.v2.common.prompts import PLAN_V2_SYSTEM, context_brief, tools_catalog_text
 
 # 카탈로그 조회 실패 시 허용할 기본 툴 이름(폴백) — v1 plan_node와 동일
@@ -23,7 +23,7 @@ _FALLBACK_TOOL_NAMES = {
 }
 
 
-def plan_node_v2(state: AgentStateV2) -> dict:
+def plan_node(state: AgentState) -> dict:
     """IntentSpec.goals를 소비해 StepV2[] 계획을 생성한다."""
     catalog = (state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG
     known = {t.get("name") for t in catalog if t.get("name")} or _FALLBACK_TOOL_NAMES
@@ -46,7 +46,7 @@ def plan_node_v2(state: AgentStateV2) -> dict:
         plan: PlanV2 = planner.invoke(prompt)
     except Exception:
         # 계획 수립 실패 시 빈 계획 폴백 — 그래프 전체 중단 방지(analyze_node와 동일 보수 전략)
-        logging.getLogger(__name__).warning("plan_node_v2 invoke 실패 — 빈 계획 폴백")
+        logging.getLogger(__name__).warning("plan_node invoke 실패 — 빈 계획 폴백")
         return {"plan": []}
 
     # 카탈로그 밖 툴 제거 — v1 plan_node와 동일 패턴
