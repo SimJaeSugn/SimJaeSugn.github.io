@@ -116,6 +116,7 @@ async function _agentV2ExecTools(calls, bubble) {
     if (!def) r = { id: c.id, ok: false, error: '알 수 없는 툴: ' + c.tool };
     else {
       if (def.kind === 'write' && !_agentV2Draft) _agentV2Draft = _agentCloneState();
+      if (typeof _agentStandardizeAttrs === 'function') await _agentStandardizeAttrs(c.tool, c.args || {});  // 속성명 표준용어사전 표준화
       try { r = { id: c.id, ...def.run(_agentV2Draft, c.args || {}, _agentV2IdRemap) }; }
       catch (e) { r = { id: c.id, ok: false, error: e.message }; }
     }

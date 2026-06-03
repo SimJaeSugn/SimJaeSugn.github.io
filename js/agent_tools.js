@@ -367,6 +367,31 @@ function _agentToolNormalizeCheck(draft) {
   return { ok: true, violationCount: findings.length, findings };
 }
 
+// 표준용어 사전 연동 — 속성(컬럼) 논리명을 표준 영문약어로 물리명 자동 표준화.
+// create_entity·add_attribute·update_attribute 실행 직전 execTools 에서 await 로 호출한다.
+// 표준용어사전(stdLookupTerm)에 일치 항목이 있으면 physicalName 을 표준 abbr 로 설정,
+// 사전 미가용(웹 등)·미일치 시 기존 명명을 그대로 둔다(graceful).
+async function _agentStandardizeAttrs(tool, args) {
+  if (typeof stdLookupTerm !== 'function' || !args) return;
+  let unavailable = false;
+  async function apply(attr) {
+    if (unavailable || !attr) return;
+    const logical = attr.logicalName || attr.name;
+    if (!logical) return;
+    try {
+      const term = await stdLookupTerm(logical);
+      if (term && term.abbr) attr.physicalName = term.abbr;   // 표준 물리명 적용
+    } catch (e) { unavailable = true; }                        // 사전 미가용 → 이후 조회 중단
+  }
+  if (tool === 'create_entity') {
+    for (const a of (args.attrs || [])) await apply(a);
+  } else if (tool === 'add_attribute') {
+    await apply(args.attr || args);
+  } else if (tool === 'update_attribute' && args.logicalName) {
+    await apply(args);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 단일 소스(SSOT): 툴의 모든 정보(실행·메타·상세)를 여기서만 정의한다.
 //   - AGENT_TOOLS(이름→실행), AGENT_TOOL_CATALOG(프록시 전달 메타),
