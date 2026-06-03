@@ -984,7 +984,7 @@ SimJaeSugn.github.io/
 │   ├── installer.iss              ← Inno Setup 스크립트 (설치 마법사 + 광고 이미지)
 │   └── resources/
 │       ├── icon.ico               ← 앱 아이콘
-│       ├── ad.bmp · ad_small.bmp  ← 설치창 광고 이미지(WizardImage 164x314 / Small 55x58)
+│       ├── ad.bmp(164x314) · ad_small.bmp(55x58) · ad_banner.bmp(600x120)  ← 설치창 광고(좌측대형/우상단/내부페이지 하단배너)
 │       └── make_ad.py             ← 광고 이미지 placeholder 생성기
 │
 ├── tools/                         ← 개발 전용 스크립트 (배포 제외)

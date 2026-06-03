@@ -49,5 +49,6 @@ def make(path, w, h, title, sub):
 
 
 if __name__ == "__main__":
-    make(os.path.join(HERE, "ad.bmp"), 164, 314, "광고", "여기에 광고")
-    make(os.path.join(HERE, "ad_small.bmp"), 55, 58, "AD", "")
+    make(os.path.join(HERE, "ad.bmp"), 164, 314, "광고", "여기에 광고")          # 환영/완료 좌측 대형
+    make(os.path.join(HERE, "ad_small.bmp"), 55, 58, "AD", "")                    # 내부 페이지 우상단
+    make(os.path.join(HERE, "ad_banner.bmp"), 600, 120, "광고 배너", "여기에 광고")  # 내부 페이지 하단 배너(준비완료·설치중)

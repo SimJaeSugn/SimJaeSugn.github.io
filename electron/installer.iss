@@ -33,6 +33,8 @@ Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
 
 [Files]
 Source: "{#ElectronDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; 내부 페이지(준비완료·설치중) 하단 배너 — 설치에 포함하지 않고 setup 임시폴더로만 추출
+Source: "resources\ad_banner.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\AgenticERM";         Filename: "{app}\AgenticERM.exe"
@@ -44,3 +46,39 @@ Type: filesandordirs; Name: "{app}"
 
 [Run]
 Filename: "{app}\AgenticERM.exe"; Description: "AgenticERM 지금 실행"; Flags: postinstall nowait skipifsilent
+
+[Code]
+// 설치 준비 완료(wpReady)·설치 중(wpInstalling) 페이지 하단 빈 공간에 광고 배너 표시.
+var
+  AdReady, AdInstalling: TBitmapImage;
+
+procedure InitializeWizard;
+var
+  bmp: string;
+  bh: Integer;
+begin
+  ExtractTemporaryFile('ad_banner.bmp');
+  bmp := ExpandConstant('{tmp}\ad_banner.bmp');
+  bh := ScaleY(90);
+
+  // ── 설치 준비 완료: 요약 메모 높이를 줄여 하단에 배너 공간 확보 ──
+  WizardForm.ReadyMemo.Height := WizardForm.ReadyMemo.Height - (bh + ScaleY(10));
+  AdReady := TBitmapImage.Create(WizardForm);
+  AdReady.Parent := WizardForm.ReadyPage;
+  AdReady.Bitmap.LoadFromFile(bmp);
+  AdReady.Stretch := True;
+  AdReady.Left := WizardForm.ReadyMemo.Left;
+  AdReady.Width := WizardForm.ReadyMemo.Width;
+  AdReady.Height := bh;
+  AdReady.Top := WizardForm.ReadyMemo.Top + WizardForm.ReadyMemo.Height + ScaleY(10);
+
+  // ── 설치 중: 진행바 아래 빈 공간에 배너 ──
+  AdInstalling := TBitmapImage.Create(WizardForm);
+  AdInstalling.Parent := WizardForm.InstallingPage;
+  AdInstalling.Bitmap.LoadFromFile(bmp);
+  AdInstalling.Stretch := True;
+  AdInstalling.Left := WizardForm.ProgressGauge.Left;
+  AdInstalling.Width := WizardForm.ProgressGauge.Width;
+  AdInstalling.Height := bh;
+  AdInstalling.Top := WizardForm.InstallingPage.ClientHeight - bh - ScaleY(8);
+end;
