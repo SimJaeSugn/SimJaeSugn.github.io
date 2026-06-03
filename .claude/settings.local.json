@@ -142,7 +142,19 @@
       "Bash(./node_modules/.bin/electron _verify_seed.js)",
       "Bash(./venv/Scripts/python.exe -c \"import routers.stddict; import main; print\\('import OK, routes:', len\\(main.app.routes\\)\\)\")",
       "Bash(grep -rn \"data-theme\\\\|theme-light\\\\|\\\\\\\\[data-theme\" css/*.css)",
-      "PowerShell(taskkill *)"
+      "PowerShell(taskkill *)",
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f,encoding='utf-8'\\).read\\(\\)\\) for f in ['agent/v2/eval/__init__.py','agent/v2/eval/scorer.py','agent/v2/eval/runner.py','routers/v2/agent.py']]; print\\('AST OK'\\)\")",
+      "Bash(python -c \"import json; n=sum\\(1 for _ in open\\('agent/v2/eval/fixtures.jsonl',encoding='utf-8'\\)\\); [json.loads\\(l\\) for l in open\\('agent/v2/eval/fixtures.jsonl',encoding='utf-8'\\)]; print\\('fixtures OK:', n, 'lines'\\)\")",
+      "Bash(python -c \"from agent.v2.eval.runner import run_fixtures, load_fixtures, DEFAULT_FIXTURES; from routers.v2 import agent; print\\('imports OK'\\); print\\('fixtures loaded:', len\\(load_fixtures\\(\\)\\)\\)\")",
+      "Bash(python -m agent.v2.eval.runner --reps 1 --split golden)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(set PYTHONUTF8=1)",
+      "Bash(python -X utf8 -m agent.v2.eval.runner --reps 1)",
+      "Bash(git grep *)",
+      "Bash(echo \"[끝 exit=$?]\")",
+      "Bash(python -X utf8 -m agent.v2.eval.runner --reps 1 --json)",
+      "Bash(python -X utf8 -c ' *)",
+      "Bash(grep -nE \"^#{1,4} \" README.md)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
