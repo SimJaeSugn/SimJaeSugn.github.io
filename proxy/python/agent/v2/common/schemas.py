@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from agent.common.schemas import Step  # v1 읽기 전용 import
 
+# === PROMOTED:BEGIN (v2→v1 승격 대상: 의도·계획·검증 스키마. Step 은 v1 공유라 블록 밖) ===
 # ── 의도 분석 (analyze 노드 출력) ──────────────────────────────────
 
 
@@ -58,3 +59,4 @@ class Verdict(BaseModel):
     score: float = Field(default=0.0)
     next: Literal["respond", "replan", "escalate"]
     note: str = Field(default="")
+# === PROMOTED:END ===

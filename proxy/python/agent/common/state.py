@@ -23,27 +23,42 @@ def _add_or_reset(left, right):
     return (left or []) + (right or [])
 
 
+# === PROMOTED:BEGIN (v2→v1 승격 대상: AgentState 필드 — route 4분기 + intent/verdict) ===
 class AgentState(TypedDict, total=False):
-    # 대화·툴 메시지 누적 (add_messages 리듀서가 BaseMessage 로 코어싱) — 멀티턴 히스토리
+    """v2 전용 그래프 상태.
+
+    v1 AgentState 필드를 전부 복제하고 route를 4종으로 확장,
+    intent / verdict 필드를 추가한다.
+    """
+    # ── v1 AgentState 필드 전체 복제 ────────────────────────────────
+    # 대화·툴 메시지 누적 (add_messages 리듀서)
     messages: Annotated[list, add_messages]
     # 클라이언트가 보낸 ERD 요약 {entities:[...], relations:[...], activeDiagram}
     erd_context: dict
-    # gate 판정 결과
-    route: Optional[Literal["act", "answer"]]
-    # 실행 계획 — 남은 스텝 목록 [{id, tool, args}]
+    # route — v2는 4종으로 확장 (v1 "act"|"answer" 에서 "mixed"|"clarify" 추가)
+    route: Optional[Literal["act", "answer", "mixed", "clarify"]]
+    # 실행 계획 — 남은 스텝 목록 [{id, tool, args, ...}]
     plan: list
     # 계획 승인 여부 (approve 노드 — 사용자 승인 후 execute)
     approved: Optional[bool]
-    # 클라이언트가 제공한 사용 가능한 툴 카탈로그 [{name, desc, params, danger}] (thread 1회 조회·캐시)
+    # 클라이언트가 제공한 사용 가능한 툴 카탈로그
     tool_catalog: list
-    # 실행 결과 [{step, result}] — 턴 단위(gate 가 None 으로 리셋, execute 가 누적)
+    # 실행 결과 [{step, result}] — 턴 단위 리셋(None)/누적
+    # v1의 _add_or_reset 함수 객체를 그대로 사용해 리듀서 동일성 확보
     past_steps: Annotated[list, _add_or_reset]
-    # 적응형 재계획 횟수(무한 루프 방지) · replan 분기 결과 · 사유
+    # 적응형 재계획 횟수·분기 결과·사유
     replan_count: int
     replan_route: Optional[str]
     replan_reason: Optional[str]
     # 최종 응답 텍스트 (스트리밍과 별개로 보관)
     response: Optional[str]
+
+    # ── v2 전용 추가 필드 ──────────────────────────────────────────
+    # analyze 노드 산출 — IntentSpec.model_dump() 저장 (검증 기준)
+    intent: Optional[dict]
+    # verify 노드 산출 — P0에서는 항상 None, M4에서 실제 사용
+    verdict: Optional[dict]
+# === PROMOTED:END ===
 
 
 def recent_messages(state: AgentState, k: int = HISTORY_WINDOW) -> list:

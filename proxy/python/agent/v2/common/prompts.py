@@ -23,6 +23,7 @@ __all__ = [
 
 # ── P0 거친 초안 (P3 루프에서 정교화) ──────────────────────────────
 
+# === PROMOTED:BEGIN (v2→v1 승격 대상: ANALYZE_SYSTEM·PLAN_V2_SYSTEM) ===
 ANALYZE_SYSTEM = (
     "당신은 ERD 에이전트의 의도 구조화기입니다. 사용자 질의를 IntentSpec 스키마로 분석하세요.\n"
     "kind 규칙:\n"
@@ -62,3 +63,4 @@ PLAN_V2_SYSTEM = (
     "- 의존 순서: 엔티티 생성→관계→정렬.\n"
     "- 목록에 없는 툴은 넣지 말 것.\n"
 )
+# === PROMOTED:END ===

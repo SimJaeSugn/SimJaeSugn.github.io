@@ -19,6 +19,7 @@ from agent.common.state import recent_messages, last_user_text      # v1 읽기 
 __all__ = ["AgentState", "recent_messages", "last_user_text"]
 
 
+# === PROMOTED:BEGIN (v2→v1 승격 대상: AgentState 필드 — route 4분기 + intent/verdict) ===
 class AgentState(TypedDict, total=False):
     """v2 전용 그래프 상태.
 
@@ -53,3 +54,4 @@ class AgentState(TypedDict, total=False):
     intent: Optional[dict]
     # verify 노드 산출 — P0에서는 항상 None, M4에서 실제 사용
     verdict: Optional[dict]
+# === PROMOTED:END ===
