@@ -981,11 +981,15 @@ SimJaeSugn.github.io/
 │   ├── main.js                    ← BrowserWindow·사이드카 프로세스 관리
 │   ├── preload.js                 ← 컨텍스트 브릿지 (IPC)
 │   ├── package.json               ← electron-builder 설정
-│   ├── installer.iss              ← Inno Setup 스크립트
-│   └── resources/icon.ico
+│   ├── installer.iss              ← Inno Setup 스크립트 (설치 마법사 + 광고 이미지)
+│   └── resources/
+│       ├── icon.ico               ← 앱 아이콘
+│       ├── ad.bmp · ad_small.bmp  ← 설치창 광고 이미지(WizardImage 164x314 / Small 55x58)
+│       └── make_ad.py             ← 광고 이미지 placeholder 생성기
 │
-├── tools/                         ← 개발 전용 빌드 스크립트 (배포 제외)
-│   └── build_std_sqlite.py        ← xlsx → vendor/std.sqlite 변환 (openpyxl 필요)
+├── tools/                         ← 개발 전용 스크립트 (배포 제외)
+│   ├── build_std_sqlite.py        ← xlsx → vendor/std.sqlite 변환 (openpyxl 필요)
+│   └── promote_v2_to_v1.py        ← Agent v2→v1 승격 자동화 (REPLACE 복사+MERGE 블록치환)
 │
 └── .github/workflows/pages.yml   ← GitHub Pages 자동 배포
 ```
