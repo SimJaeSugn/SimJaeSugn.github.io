@@ -337,6 +337,36 @@ function _agentToolDescribeTool(draft, args) {
   return { ok: true, tools: AGENT_TOOL_CATALOG };
 }
 
+// 기존 관계의 카디널리티만 변경(관계를 지우고 다시 만들지 않음) — from↔to 양방향 매칭
+function _agentToolSetCardinality(draft, args, remap) {
+  const from = _agentResolveEntityId(draft, args.from, remap) || args.from;
+  const to = _agentResolveEntityId(draft, args.to, remap) || args.to;
+  if (!from || !to) throw new Error('관계의 from/to 가 비어 있습니다');
+  const card = ['1:1', '1:N', 'N:M'].includes(args.card) ? args.card : null;
+  if (!card) throw new Error('card 는 1:1|1:N|N:M 중 하나여야 합니다');
+  let rel = draft.relations.find(r => r.from === from && r.to === to);
+  if (!rel) rel = draft.relations.find(r => r.from === to && r.to === from);
+  if (!rel) throw new Error('해당 관계를 찾을 수 없습니다: ' + from + ' ↔ ' + to);
+  const prev = rel.card;
+  rel.card = card;
+  return { ok: true, from: rel.from, to: rel.to, prevCard: prev, card };
+}
+
+// ERD 정규화 위반 진단(읽기 전용) — PK 부재·N:M 관계 등 후보 보고
+function _agentToolNormalizeCheck(draft) {
+  const ents = (draft && draft.entities) || [];
+  const rels = (draft && draft.relations) || [];
+  const findings = [];
+  ents.forEach(e => {
+    const hasPk = (e.attrs || []).some(a => a.kind === 'pk');
+    if (!hasPk) findings.push({ type: 'no_pk', entity: e.logicalName || e.physicalName || e.id, note: 'PK가 없어 식별 불가(1NF 점검)' });
+  });
+  rels.forEach(r => {
+    if (r.card === 'N:M') findings.push({ type: 'nm_relation', from: r.from, to: r.to, note: 'N:M은 연결(junction) 테이블로 분해 권장' });
+  });
+  return { ok: true, violationCount: findings.length, findings };
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 단일 소스(SSOT): 툴의 모든 정보(실행·메타·상세)를 여기서만 정의한다.
 //   - AGENT_TOOLS(이름→실행), AGENT_TOOL_CATALOG(프록시 전달 메타),
@@ -389,6 +419,12 @@ const AGENT_TOOL_DEFS = [
   { name: 'describe_tool',   kind: 'read',  danger: false, run: _agentToolDescribeTool,
     desc: '툴 상세정보 제공', params: 'name?(특정 툴) — 생략 시 전체',
     detail: '특정 툴(name) 또는 전체 툴의 이름·종류·설명·파라미터·위험여부·상세를 반환한다. 상태를 바꾸지 않는 읽기 전용 툴.' },
+  { name: 'set_cardinality', kind: 'write', danger: false, run: _agentToolSetCardinality,
+    desc: '기존 관계의 카디널리티 변경', params: 'from, to, card(1:1|1:N|N:M)',
+    detail: '이미 있는 from↔to 관계를 찾아 card 만 바꾼다(관계를 지우고 다시 만들지 않음). 방향이 반대로 와도 매칭한다. FK 컬럼은 유지. "관계를 …로 바꿔/변경"에 사용.' },
+  { name: 'normalize_check', kind: 'read', danger: false, run: _agentToolNormalizeCheck,
+    desc: 'ERD 정규화 위반 진단(읽기 전용)', params: '(없음)',
+    detail: 'PK 없는 테이블·N:M 관계 등 정규화 위반 후보를 찾아 {violationCount, findings} 로 반환한다. 상태 변경 없음. "정규화 위반 찾아/검사"에 사용.' },
 ];
 
 // ── 파생(중복 정의 없음) ──────────────────────────────────────────

@@ -110,3 +110,4 @@
 | 2026-05-30 | README.md 메뉴별 기능 업데이트 (섹션 25~28로 재번호, 새 기능 4개 추가) | README.md, CLAUDE.md | 구 툴박스→신 메뉴바 구조 반영 |
 | 2026-05-31 | Agent v1/v2 격리 하네스 추가 | CLAUDE.md | v2 작업이 v1(현행 운영)에 영향 주지 않도록 강제 (계획서 §9.1 근거) |
 | 2026-05-31 | v2 계획서·로드맵 동기화 하네스 추가 | CLAUDE.md | v2 구현 진행 시 계획서 동기화·로드맵 상태 갱신 누락 방지 |
+| 2026-06-03 | `set_cardinality`·`normalize_check` 툴을 공유 `agent_tools.js`로 승격(v1+v2 공용) | js/agent_tools.js, CLAUDE.md | 2차 최적화에서 추가한 가상 툴의 실구현. §9.1 격리의 **의도적 부분 해제**(오너 결정) — 두 툴은 v1·v2가 공유한다. (reverse_engineer는 fetch_db_schema+create_entity 조합으로 대체, 단일 툴 미구현) |
