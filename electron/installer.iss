@@ -19,6 +19,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName={#AppName}
+SetupIconFile=resources\icon.ico
 ; ── 설치 마법사 광고 이미지 ──────────────────────────────────────
 ; WizardImageFile: 환영/완료 페이지 좌측 대형(164x314), WizardSmallImageFile: 내부 페이지 우상단(55x58).
 ; 실제 광고로 교체하려면 동일 크기 24bit BMP 로 resources\ad.bmp / ad_small.bmp 덮어쓰기

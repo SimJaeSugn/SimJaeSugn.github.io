@@ -1,75 +1,87 @@
-from PIL import Image, ImageDraw
+"""AgenticERM 실행 아이콘 생성 — 네이비→퍼플 그라데이션 배지 + ERD 엔티티 카드 + AI 반짝임.
 
-def draw_icon(size):
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+고해상도(4x)로 렌더 후 LANCZOS 다운스케일하여 멀티사이즈 ICO 생성(안티앨리어싱).
+실행: python electron/resources/create_icon.py  → icon.ico
+"""
+import os
 
-    s = size
-    r = max(4, s // 8)
+from PIL import Image, ImageDraw, ImageFilter
 
-    # 배경 — 다크 네이비 (#1E2D45)
-    draw.rounded_rectangle([0, 0, s - 1, s - 1], radius=r, fill=(30, 45, 69, 255))
+HERE = os.path.dirname(os.path.abspath(__file__))
 
-    # 테이블 카드
-    mx = max(2, s // 7)
-    tx1, tx2 = mx, s - mx
-    ty1, ty2 = mx + s // 10, s - mx - s // 10
-    tw, th = tx2 - tx1, ty2 - ty1
+NAVY = (18, 21, 43)
+PURPLE = (48, 34, 96)
+ACCENT = (91, 157, 255)
+ACCENT2 = (124, 92, 255)
+WHITE = (245, 248, 255)
+ROW = (150, 165, 200)
 
-    hh = max(4, th // 5)  # 헤더 높이
-    cr = max(2, s // 32)  # 카드 모서리
 
-    # 카드 본체 — 흰색
-    draw.rounded_rectangle([tx1, ty1, tx2, ty2], radius=cr, fill=(240, 246, 255, 255))
+def _star4(d, cx, cy, R, fill):
+    r = R * 0.30
+    d.polygon([(cx, cy - R), (cx + r, cy - r), (cx + R, cy), (cx + r, cy + r),
+               (cx, cy + R), (cx - r, cy + r), (cx - R, cy), (cx - r, cy - r)], fill=fill)
 
-    # 헤더 — 파란색 (#2563EB)
-    draw.rounded_rectangle([tx1, ty1, tx2, ty1 + hh + cr], radius=cr, fill=(37, 99, 235, 255))
-    draw.rectangle([tx1, ty1 + hh, tx2, ty1 + hh + cr], fill=(37, 99, 235, 255))
 
-    # 헤더 내 작은 점 3개 (레이아웃 힌트)
-    if s >= 32:
-        dot_r = max(1, s // 48)
-        dot_y = ty1 + hh // 2
-        for i, cx in enumerate([tx1 + hh // 2, tx1 + hh, tx1 + hh * 3 // 2]):
-            draw.ellipse([cx - dot_r, dot_y - dot_r, cx + dot_r, dot_y + dot_r],
-                         fill=(255, 255, 255, 200))
+def render(S):
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
 
-    # 본문 행 라인 3개
-    row_area_h = th - hh
-    for i in range(1, 4):
-        y = ty1 + hh + int(row_area_h * i / 4)
-        lw = max(1, s // 64)
-        draw.rectangle([tx1 + lw, y, tx2 - lw, y + lw], fill=(200, 215, 235, 220))
+    # ── 그라데이션 배지(둥근 사각) ──
+    grad = Image.new("RGB", (S, S))
+    gp = grad.load()
+    for y in range(S):
+        t = y / (S - 1)
+        row = (int(NAVY[0] + (PURPLE[0] - NAVY[0]) * t),
+               int(NAVY[1] + (PURPLE[1] - NAVY[1]) * t),
+               int(NAVY[2] + (PURPLE[2] - NAVY[2]) * t))
+        for x in range(S):
+            gp[x, y] = row
+    mask = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, S - 1, S - 1], radius=int(S * 0.22), fill=255)
+    img.paste(grad, (0, 0), mask)
+    # 상단 하이라이트 테두리(은은)
+    ImageDraw.Draw(img).rounded_rectangle(
+        [int(S * 0.02), int(S * 0.02), int(S * 0.98), int(S * 0.98)],
+        radius=int(S * 0.20), outline=(255, 255, 255, 45), width=max(1, S // 200))
 
-    # 행마다 짧은 막대 (컬럼 힌트)
-    if s >= 48:
-        bar_w = [int(tw * 0.45), int(tw * 0.3), int(tw * 0.55)]
-        bar_h = max(2, s // 40)
-        for i in range(3):
-            by = ty1 + hh + int(row_area_h * (i + 0.5) / 4) - bar_h // 2
-            bx1 = tx1 + max(3, s // 32)
-            bx2 = bx1 + bar_w[i % len(bar_w)]
-            draw.rounded_rectangle([bx1, by, bx2, by + bar_h], radius=1,
-                                    fill=(150, 175, 210, 200))
+    # ── ERD 엔티티 카드 ──
+    cx1, cy1, cx2, cy2 = int(S * 0.25), int(S * 0.28), int(S * 0.75), int(S * 0.80)
+    cr = int(S * 0.045)
+    # 그림자
+    sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(sh).rounded_rectangle([cx1 + S // 60, cy1 + S // 50, cx2 + S // 60, cy2 + S // 50],
+                                         radius=cr, fill=(0, 0, 0, 90))
+    img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(S // 90)))
+    d = ImageDraw.Draw(img)
+    # 카드 본체
+    d.rounded_rectangle([cx1, cy1, cx2, cy2], radius=cr, fill=WHITE + (255,))
+    # 헤더(accent)
+    hh = int((cy2 - cy1) * 0.26)
+    d.rounded_rectangle([cx1, cy1, cx2, cy1 + hh + cr], radius=cr, fill=ACCENT + (255,))
+    d.rectangle([cx1, cy1 + hh, cx2, cy1 + hh + cr], fill=ACCENT + (255,))
+    # 행(컬럼) — 첫 행 PK 강조 + 라인
+    pad = int((cx2 - cx1) * 0.12)
+    ry = cy1 + hh + cr + int((cy2 - cy1) * 0.10)
+    gap = int((cy2 - cy1) * 0.20)
+    dot = max(2, S // 90)
+    lh = max(2, S // 110)
+    for i in range(3):
+        y = ry + i * gap
+        col = ACCENT2 if i == 0 else ROW
+        d.ellipse([cx1 + pad, y, cx1 + pad + dot * 2, y + dot * 2], fill=col + (255,))
+        d.rounded_rectangle([cx1 + pad + dot * 3, y, cx2 - pad, y + lh * 2], radius=lh, fill=ROW + (255,))
 
-    # FK 연결선 힌트 (큰 사이즈에서만)
-    if s >= 128:
-        lx = tx2 + 2
-        ly = ty1 + hh + int(row_area_h * 0.5 / 4)
-        draw.line([lx, ly, lx + s // 20, ly], fill=(37, 99, 235, 180),
-                  width=max(1, s // 80))
-
+    # ── AI 반짝임(우상단) — 글로우 + 4점 별 ──
+    sx, sy, R = int(S * 0.77), int(S * 0.23), int(S * 0.075)
+    glow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse([sx - R, sy - R, sx + R, sy + R], fill=ACCENT + (130,))
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(S // 55)))
+    _star4(ImageDraw.Draw(img), sx, sy, R, WHITE + (255,))
     return img
 
 
-sizes = [256, 128, 64, 48, 32, 16]
-out_path = "icon.ico"
-
-# 256x256 소스를 기준으로 멀티사이즈 ICO 생성
-src = draw_icon(256).convert("RGBA")
-src.save(
-    out_path,
-    format="ICO",
-    sizes=[(s, s) for s in sizes],
-)
-print(f"Created: {out_path}  ({len(sizes)} sizes: {sizes})")
+if __name__ == "__main__":
+    master = render(1024).resize((256, 256), Image.LANCZOS)
+    sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+    master.save(os.path.join(HERE, "icon.ico"), format="ICO", sizes=sizes)
+    print(f"생성: icon.ico (사이즈 {len(sizes)}종)")
