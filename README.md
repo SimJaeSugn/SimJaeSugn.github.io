@@ -883,6 +883,19 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/pc_store.js` | PC앱(Electron) 워크스페이스 영속화 — Ctrl+S로 모든 다이어그램+스냅샷을 사이드카 단일 파일에 저장/복원 (웹은 미사용) |
 | `js/main.js` | 앱 진입점 초기화 (상태 복원·렌더 부트스트랩) |
 
+### Agent v2 품질 검증·자동 최적화 (eval)
+
+`proxy/python/agent/v2/eval/` — 자연어 ERD 에이전트(v2)의 **의도 분석·계획 품질을 측정하고 자동으로 개선**하는 도구입니다.
+
+- **목적**: "v2가 질의를 올바르게 이해·계획하는가"를 사람 눈대중이 아니라 **재현 가능한 점수**로 정의합니다. 픽스처(질의→기대값)를 `analyze→plan`까지만 **dry-run**(실제 ERD/DB 무변경)으로 돌려 채점하고, 이 점수를 잣대로 프롬프트를 자동 수렴시킵니다.
+- **기본 사용** (스코어카드 확인):
+  ```bash
+  cd proxy/python
+  python -m agent.v2.eval.runner --reps 5
+  ```
+- **자동 최적화**: 하드 게이트(`gate.py` — v1 무손상·테스트자산 동결 강제)와 loop-until-pass Workflow로, 새 테스트 케이스를 추가하면 v2 프롬프트를 목표 통과율까지 자동 개선합니다.
+- 픽스처 작성 규칙·CLI 옵션·채점 지표·**자동 최적화 단계별 런북**(새 케이스로 재최적화하는 8단계)은 → **[`proxy/python/agent/v2/eval/README.md`](proxy/python/agent/v2/eval/README.md)** 참조.
+
 ---
 
 ## 26. 전체 파일 구조
