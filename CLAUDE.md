@@ -97,6 +97,32 @@
 
 **규칙:** V2 마일스톤 작업 완료 시 §10 로드맵 상태 갱신 없이 완료를 보고하지 않는다.
 
+## 하네스: v2→v1 승격 스크립트 동기화
+
+**목표:** v2(실험 레인)의 **승격 레이어**가 바뀔 때, 승격 도구 `tools/promote_v2_to_v1.py`(파일 매핑·PROMOTED 마커·import/심볼 규칙)와 v1↔v2 구조 정합이 깨지지 않도록 강제한다. (설계 근거: `docs/plan/v2_to_v1_promotion.md`)
+
+> 배경: v2에서 검증된 개선을 v1(운영)으로 **반복 승격**한다. 승격이 거의 기계적 복사가 되려면 양 레인의 승격 레이어 구조·심볼이 정렬돼 있어야 한다.
+
+**트리거:** 다음 **승격 레이어** 파일을 추가·수정·삭제할 때.
+- `proxy/python/agent/v2/nodes/analyze.py`·`plan.py` (REPLACE 대상)
+- `proxy/python/agent/v2/graph.py` (REPLACE 대상)
+- `proxy/python/agent/v2/common/schemas.py`·`prompts.py`·`state.py` (MERGE 대상 — `# === PROMOTED:BEGIN…END ===` 블록)
+- 또는 **새 승격 대상 파일·심볼**(노드/스키마/프롬프트 상수)을 추가할 때
+
+**검토 항목:**
+1. **매핑** — 새 승격 대상 파일이면 `promote_v2_to_v1.py` 의 `REPLACE`/`MERGE` 목록에 추가했는가.
+2. **마커** — MERGE 파일의 새 promoted 심볼(클래스/상수/필드)이 `PROMOTED:BEGIN…END` **블록 안**에 있는가. 블록 밖이면 승격되지 않는다.
+3. **심볼 정규화** — 승격 레이어 심볼명이 v1↔v2 **동일**한가(`AgentState`·`plan_node`·`analyze_node`·`build_graph`·`IntentSpec`·`StepV2`·`ANALYZE_SYSTEM`·`PLAN_V2_SYSTEM` 등). 한쪽만 개명하면 순수 복사가 깨진다.
+4. **import** — 새 import가 `agent.v2.*` 형태라 치환(`agent.v2.`→`agent.`)으로 v1에서 해소되는가. v1 베이스에 없는 외부 심볼을 새로 쓰면 v1 import 추가가 필요한지 확인.
+5. **마커 균형** — 각 MERGE 파일의 BEGIN/END 개수가 1쌍으로 일치하는가.
+
+**검증 절차 (승격 레이어 변경 작업 완료 전 필수):**
+1. `python tools/promote_v2_to_v1.py` (dry-run) 실행 → 6파일 모두 **구문 OK**·PROMOTED 블록 **발견**됨을 확인.
+2. 새 승격 대상이 매핑/마커에 반영됐는지 대조한다.
+3. 미반영이면 `promote_v2_to_v1.py`(매핑) 또는 마커를 즉시 갱신한다.
+
+**규칙:** v2 승격 레이어를 변경한 작업에서, `promote_v2_to_v1.py` dry-run이 실패하거나 새 승격 대상이 매핑·마커에서 누락된 채로 완료를 보고하지 않는다. (이 하네스는 §9.1 격리의 진화형 — "v2 실험이 v1을 깨지 않게 + 승격은 sanctioned 복사"를 보조한다.)
+
 ---
 
 ## 변경 이력
@@ -111,3 +137,4 @@
 | 2026-05-31 | Agent v1/v2 격리 하네스 추가 | CLAUDE.md | v2 작업이 v1(현행 운영)에 영향 주지 않도록 강제 (계획서 §9.1 근거) |
 | 2026-05-31 | v2 계획서·로드맵 동기화 하네스 추가 | CLAUDE.md | v2 구현 진행 시 계획서 동기화·로드맵 상태 갱신 누락 방지 |
 | 2026-06-03 | `set_cardinality`·`normalize_check` 툴을 공유 `agent_tools.js`로 승격(v1+v2 공용) | js/agent_tools.js, CLAUDE.md | 2차 최적화에서 추가한 가상 툴의 실구현. §9.1 격리의 **의도적 부분 해제**(오너 결정) — 두 툴은 v1·v2가 공유한다. (reverse_engineer는 fetch_db_schema+create_entity 조합으로 대체, 단일 툴 미구현) |
+| 2026-06-03 | v2→v1 승격 파이프라인(정규화·마커·스크립트) + 동기화 하네스 추가 | tools/promote_v2_to_v1.py, agent/(v1·v2), CLAUDE.md, docs/plan | v2 검증분을 v1으로 반복 승격하기 위한 구조 정렬·기계적 복사 도구화. 첫 승격으로 v1이 analyze(4분기)+plan_v2+최적화 프롬프트 채택 |
