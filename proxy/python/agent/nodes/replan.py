@@ -27,20 +27,46 @@ def _known_names(state: AgentState) -> set:
     return names | PROXY_TOOL_NAMES
 
 
-def _step_key(tool, args) -> tuple:
-    """스텝 동일성 키 = (tool, 정규화된 args)."""
-    return (tool, json.dumps(args or {}, sort_keys=True, ensure_ascii=False))
+def _step_identity(tool, args) -> tuple:
+    """스텝의 '정체성' 키 — 같은 대상에 대한 같은 작업이면 동일(인자 세부·생성 id 변동 무시).
+
+    create_entity 는 테이블 이름(논리/물리/id)으로, create_relation 은 from/to 로 식별한다.
+    그 외는 (tool, 정규화 args). 이로써 LLM 이 id 만 바꿔 같은 테이블을 재생성하는 것을 잡는다.
+    """
+    a = args or {}
+
+    def _n(*vals):
+        for v in vals:
+            if v:
+                return str(v).strip().lower()
+        return ""
+
+    if tool == "create_entity":
+        return ("create_entity", _n(a.get("logicalName"), a.get("physicalName"), a.get("name"), a.get("id")))
+    if tool == "create_relation":
+        return ("create_relation", _n(a.get("from")), _n(a.get("to")))
+    if tool == "delete_entity":
+        return ("delete_entity", _n(a.get("entityId"), a.get("id"), a.get("name")))
+    return (tool, json.dumps(a, sort_keys=True, ensure_ascii=False))
 
 
-def _executed_keys(past_steps) -> set:
-    """이미 성공 실행된 (tool, args) 집합. 실패한 스텝은 재시도 허용을 위해 제외."""
+def _done_identities(state: AgentState) -> set:
+    """이미 충족된 작업 정체성 집합 — 재발행 시 제거 대상.
+
+    ① 현재 ERD 에 이미 존재하는 엔티티(→ create_entity 중복 생성 방지)
+    ② 이번 턴 성공 실행된 스텝(실패는 재시도 허용 위해 제외)
+    """
     keys = set()
-    for e in (past_steps or []):
-        st = e.get("step") or {}
-        res = e.get("result") or {}
+    for e in ((state.get("erd_context") or {}).get("entities") or []):
+        for n in (e.get("name"), e.get("logicalName"), e.get("physicalName"), e.get("id")):
+            if n:
+                keys.add(("create_entity", str(n).strip().lower()))
+    for entry in (state.get("past_steps") or []):
+        st = entry.get("step") or {}
+        res = entry.get("result") or {}
         if res.get("error") or not st.get("tool"):
             continue
-        keys.add(_step_key(st.get("tool"), st.get("args")))
+        keys.add(_step_identity(st.get("tool"), st.get("args")))
     return keys
 
 
@@ -69,10 +95,10 @@ def replan_node(state: AgentState) -> dict:
 
     if d.status == "continue" and d.steps:
         known = _known_names(state)
-        done_keys = _executed_keys(state.get("past_steps"))
+        done = _done_identities(state)
         steps = [
             s.model_dump() for s in d.steps
-            if s.tool in known and _step_key(s.tool, s.args) not in done_keys  # 이미 실행된 동일 작업 제외
+            if s.tool in known and _step_identity(s.tool, s.args) not in done  # 이미 충족된 작업(동일 대상) 제외
         ]
         if steps:
             return {"plan": steps, "replan_count": rounds + 1, "replan_route": "continue"}
