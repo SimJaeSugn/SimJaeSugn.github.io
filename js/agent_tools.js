@@ -392,6 +392,37 @@ async function _agentStandardizeAttrs(tool, args) {
   }
 }
 
+// 표준용어사전 조회(read) — name 정확 일치 용어 + 유사 후보 반환(데스크탑 사이드카 전용).
+async function _agentToolLookupStdTerm(draft, args) {
+  if (typeof stdLookupTerm !== 'function') throw new Error('표준용어사전을 사용할 수 없습니다(데스크탑 전용).');
+  const name = String(args.name || args.keyword || args.term || '').trim();
+  if (!name) throw new Error('조회할 용어명(name)이 필요합니다.');
+  const exact = await stdLookupTerm(name);
+  let suggestions = [];
+  if (typeof stdSuggestTerms === 'function') {
+    try { suggestions = (await stdSuggestTerms(name, 8)).map(t => ({ name: t.name, abbr: t.abbr })); } catch (e) {}
+  }
+  return { ok: true, term: exact ? { name: exact.name, abbr: exact.abbr, descr: exact.descr } : null, suggestions };
+}
+
+// 표준용어사전 등록(write) — name·abbr 필수, 이미 있으면 중복 등록 안 함.
+async function _agentToolRegisterStdTerm(draft, args) {
+  if (typeof stdInsert !== 'function') throw new Error('표준용어사전을 사용할 수 없습니다(데스크탑 전용).');
+  const name = String(args.name || '').trim();
+  const abbr = String(args.abbr || '').trim();
+  if (!name || !abbr) throw new Error('표준용어명(name)과 영문약어(abbr)가 필요합니다.');
+  if (typeof stdLookupTerm === 'function') {
+    const ex = await stdLookupTerm(name);
+    if (ex) return { ok: true, note: '이미 등록된 용어', term: { name: ex.name, abbr: ex.abbr } };
+  }
+  const row = { name, abbr };
+  if (args.descr) row.descr = args.descr;
+  if (args.domain_name) row.domain_name = args.domain_name;
+  const id = await stdInsert('term', row);
+  if (id == null) return { ok: false, error: '표준용어 등록 실패' };
+  return { ok: true, registered: { name, abbr }, id };
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 단일 소스(SSOT): 툴의 모든 정보(실행·메타·상세)를 여기서만 정의한다.
 //   - AGENT_TOOLS(이름→실행), AGENT_TOOL_CATALOG(프록시 전달 메타),
@@ -450,6 +481,12 @@ const AGENT_TOOL_DEFS = [
   { name: 'normalize_check', kind: 'read', danger: false, run: _agentToolNormalizeCheck,
     desc: 'ERD 정규화 위반 진단(읽기 전용)', params: '(없음)',
     detail: 'PK 없는 테이블·N:M 관계 등 정규화 위반 후보를 찾아 {violationCount, findings} 로 반환한다. 상태 변경 없음. "정규화 위반 찾아/검사"에 사용.' },
+  { name: 'lookup_std_term', kind: 'read', danger: false, run: _agentToolLookupStdTerm,
+    desc: '표준용어사전 조회', params: 'name(표준용어명/키워드)',
+    detail: '표준용어사전(term)에서 name 과 정확 일치하는 표준용어({name, abbr, descr})와 유사 후보를 반환한다(읽기 전용). 속성/테이블 명명 전 표준 영문약어 확인용. 데스크탑(사이드카) 전용.' },
+  { name: 'register_std_term', kind: 'write', danger: false, run: _agentToolRegisterStdTerm,
+    desc: '표준용어사전 등록', params: 'name(표준용어명), abbr(영문약어), descr?, domain_name?',
+    detail: '표준용어사전(term)에 새 용어를 등록한다(name·abbr 필수). 이미 있으면 중복 등록하지 않는다. 데스크탑(사이드카) 전용.' },
 ];
 
 // ── 파생(중복 정의 없음) ──────────────────────────────────────────

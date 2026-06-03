@@ -861,7 +861,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/bottom_panel.js` | 하단 패널 (VSCode 스타일 서브탭 · 연결 DB SQL 실행/결과) |
 | `js/icons.js` | Lucide 아이콘 초기화 (`vendor/lucide.min.js` 로컬 번들 · `data-lucide` → SVG) |
 | `js/agent_panel.js` | 우측 패널 `속성`/`Agent` 탭 전환 · 채팅 UI · 스트림/interrupt 루프 |
-| `js/agent_tools.js` | Agent 클라이언트 툴(create_entity·create_relation·auto_layout·set_cardinality·normalize_check) · 드래프트 커밋·원자적 undo · 속성명 표준용어사전 연동(물리명 자동 표준화) |
+| `js/agent_tools.js` | Agent 클라이언트 툴(create_entity·create_relation·auto_layout·set_cardinality·normalize_check·lookup_std_term·register_std_term) · 드래프트 커밋·원자적 undo · 속성명 표준용어사전 연동(물리명 자동 표준화) · async 툴 지원 |
 | `js/layout.js` | 계층형·격자형·원형 자동 배치 알고리즘 |
 | `js/export.js` | PNG·SVG·Markdown·HTML·DDL 내보내기 |
 | `js/import.js` | JSON·DDL 가져오기 및 파싱 |

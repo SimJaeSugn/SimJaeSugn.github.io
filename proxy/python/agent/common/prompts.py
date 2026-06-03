@@ -104,7 +104,7 @@ REPLAN_SYSTEM = (
     "원래 사용자 목표와 [지금까지 실행 결과]를 비교해 다음 중 하나를 고르세요.\n"
     "- done: 목표가 달성됨(또는 더 할 일이 없음).\n"
     "    · 특히 조회/설명/진단이 목표였고 읽기 종류 툴(get_selection·describe_table·find_tables·list_relations·"
-    "fetch_db_schema·describe_tool·generate_ddl·normalize_check 등 상태를 바꾸지 않는 read 툴)이 "
+    "fetch_db_schema·describe_tool·generate_ddl·normalize_check·lookup_std_term 등 상태를 바꾸지 않는 read 툴)이 "
     "이미 실행되어 [지금까지 실행 결과]에 정보가 있으면 반드시 done. (결과 정리·보고는 respond 가 한다)\n"
     "    · 최종 답변(정보 정리)은 respond 단계가 그 결과로 생성하므로, '정보를 전달하기 위한' 추가 스텝은 필요 없다.\n"
     "- continue: 추가/대체 '작업'이 필요함 → [사용 가능한 툴]로 다음 steps 를 제시.\n"

@@ -117,7 +117,7 @@ async function _agentV2ExecTools(calls, bubble) {
     else {
       if (def.kind === 'write' && !_agentV2Draft) _agentV2Draft = _agentCloneState();
       if (typeof _agentStandardizeAttrs === 'function') await _agentStandardizeAttrs(c.tool, c.args || {});  // 속성명 표준용어사전 표준화
-      try { r = { id: c.id, ...def.run(_agentV2Draft, c.args || {}, _agentV2IdRemap) }; }
+      try { r = { id: c.id, ...(await def.run(_agentV2Draft, c.args || {}, _agentV2IdRemap)) }; }  // async 툴(표준사전 등) 지원
       catch (e) { r = { id: c.id, ok: false, error: e.message }; }
     }
     _agentV2SetStepIcon(bubble, c.id, r.ok === false ? '❌' : '✅');
