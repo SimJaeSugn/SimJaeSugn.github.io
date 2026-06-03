@@ -83,6 +83,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/v2/key | v2 OpenAI 키 저장 (공유 키스토어) |
 | GET | /agent/v2/config | v2 Agent 설정 조회 (공유 키스토어) |
 | POST | /agent/v2/config | v2 Agent 설정 저장 (공유 키스토어) |
+| POST | /agent/v2/eval | v2 검증 오라클 — 픽스처 일괄 채점(analyze→plan dry-run, 실행 없음) → 스코어카드. body: path·reps·split(all/golden/holdout) |
 | GET | /stddict/status | 표준사전 초기화 여부 + 테이블별 건수 |
 | GET | /stddict/list | 표준사전 검색 결과 행 + 총건수 (table·q·onlyApproved·limit·offset) |
 | GET | /stddict/index | 자동완성용 경량 인덱스 — 한 테이블의 (name, abbr) 전체 (프론트가 1회 로드해 클라이언트 필터) |
@@ -122,7 +123,7 @@ proxy/python/
 │   ├── stddict.py         ← /stddict 라우터 (표준사전 sqlite 직접 CRUD·엑셀 import)
 │   ├── workspace.py       ← /workspace 라우터 (PC앱 워크스페이스 단일 파일 저장/복원)
 │   └── v2/                ← v2 라우터 패키지 (agent v1 격리 미러)
-│       └── agent.py       ← /agent/v2/stream·/resume·/key·/config 라우터
+│       └── agent.py       ← /agent/v2/stream·/resume·/key·/config·/eval 라우터
 ├── agent/                 ← LangGraph 에이전트 패키지 (자연어 ERD 제어)
 │   ├── graph.py           ← StateGraph (gate → answer | fetch_tools → plan → approve → exec_proxy → execute → replan → respond)
 │   ├── db_docs.py         ← DB 유형별 SQL 문법·자료형 참고 문서 (정적, db_doc_* 툴이 반환)
@@ -132,7 +133,8 @@ proxy/python/
 │   └── v2/                ← v2 에이전트 서브패키지 (P0 골격 — analyze/plan 노드 독립 구현)
 │       ├── graph.py       ← build_graph_v2() — AgentStateV2, analyze→4분기→fetch_tools→plan→approve→…
 │       ├── common/        ← schemas(IntentSpec·Goal·StepV2·PlanV2·Verdict) · state(AgentStateV2) · prompts(ANALYZE_SYSTEM·PLAN_V2_SYSTEM)
-│       └── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
+│       ├── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
+│       └── eval/          ← 검증 오라클(P1) — fixtures.jsonl(골든11+홀드아웃6) · scorer(§7.1 지표) · runner(analyze→plan dry-run, python -m 가능) · README.md(구동법·픽스처 작성 규칙)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB)
 │   ├── system_db.py       ← 내부 시스템 DB(aerm_storage) 고정 접속·레거시 정리 — 프로파일 미노출

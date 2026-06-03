@@ -12,6 +12,7 @@ audit 로그는 AGENT_V2 / AGENT_V2_RESUME 로 식별 분리.
     POST /agent/v2/key     — OpenAI 키 저장(암호화)
     GET  /agent/v2/config  — Agent 설정 조회
     POST /agent/v2/config  — Agent 설정 저장
+    POST /agent/v2/eval    — 픽스처 일괄 채점(dry-run) → 스코어카드(§7)
 
 SSE 이벤트
     meta      {threadId}
@@ -27,12 +28,14 @@ import uuid
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
 
 from agent.common.keys import get_agent_config, has_openai_key, set_agent_config, set_openai_key
 from agent.common.llm import OpenAIKeyMissing
+from agent.v2.eval.runner import DEFAULT_FIXTURES, run_fixtures   # v2 검증 오라클(§7)
 from agent.v2.graph import graph          # v1과 달리 agent.v2.graph (§9.1 불변식 ①)
 from utils.audit_logger import write_audit_log
 
@@ -161,6 +164,36 @@ async def resume(body: ResumeBody):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+# ── POST /agent/v2/eval ───────────────────────────────────────────────────────
+# 픽스처 일괄 채점(dry-run) — analyze→plan 까지만 돌려 의도·계획 품질을 수치화한다.
+# 실제 ERD/DB 를 건드리지 않는다(execute 미경유, §7.2). 동기 LLM 호출은 threadpool 로 위임.
+
+class EvalBody(BaseModel):
+    path: Optional[str] = None                    # 미지정 시 기본 픽스처
+    reps: int = 5                                 # 케이스당 반복(비결정성 대비)
+    split: str = "all"                            # all|golden|holdout
+
+
+@router.post("/eval")
+async def eval_run(body: EvalBody):
+    if not has_openai_key():
+        raise HTTPException(
+            status_code=400,
+            detail="OpenAI 키가 설정되지 않았습니다. 설정 ▸ Agent설정에서 키를 입력하세요.",
+        )
+    if body.split not in ("all", "golden", "holdout"):
+        raise HTTPException(status_code=400, detail="split 은 all|golden|holdout 중 하나여야 합니다.")
+    reps = max(1, min(int(body.reps or 1), 20))   # 1~20 제한
+    write_audit_log("AGENT_V2_EVAL", body.path or DEFAULT_FIXTURES, {"reps": reps, "split": body.split})
+    try:
+        # 동기(blocking) 노드 호출 → 이벤트 루프 비차단 위해 threadpool 위임
+        return await run_in_threadpool(run_fixtures, body.path or DEFAULT_FIXTURES, reps, body.split)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="픽스처 파일을 찾을 수 없습니다.")
+    except OpenAIKeyMissing as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ── /agent/v2/key ─────────────────────────────────────────────────────────────
