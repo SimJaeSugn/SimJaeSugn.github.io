@@ -109,6 +109,8 @@ REPLAN_SYSTEM = (
     "    · 최종 답변(정보 정리)은 respond 단계가 그 결과로 생성하므로, '정보를 전달하기 위한' 추가 스텝은 필요 없다.\n"
     "- continue: 추가/대체 '작업'이 필요함 → [사용 가능한 툴]로 다음 steps 를 제시.\n"
     "  (예: DB 스키마를 받았으면 그 테이블들을 create_entity 로 만든다; 실패한 스텝은 다른 방식으로 대체)\n"
+    "  · ★이미 [지금까지 실행 결과]에 성공으로 나타난 동일 작업(같은 tool+대상/인자)을 continue 로 다시 제시하지 말 것. "
+    "요청한 작업이 모두 실행됐으면 done. (예: 'auto_layout(circular) 성공'이 있으면 정렬은 끝난 것 → done)\n"
     "- escalate: 진짜로 모호하거나 사람의 선택/추가 입력이 꼭 필요할 때만.\n"
     "    · 사용자 요청이 명확하면(삭제·생성·수정 등) escalate 하지 말고 그 작업을 수행할 steps 를 제시하라.\n"
     "    · 위험·비가역 작업(DROP/DELETE 등)도 escalate 가 아니라 steps 로 제시하라 — approve 게이트가 사용자 승인을 받는다.\n"
@@ -198,7 +200,10 @@ def results_detail(past_steps: list) -> str:
             else:
                 lines.append(f"- describe_tool: 툴 {len(res.get('tools') or [])}개")
         else:
-            lines.append(f"- {tool}: {res.get('entityId') or res.get('note') or '성공'}")
+            args = step.get("args") or {}
+            asum = ", ".join(f"{k}={v}" for k, v in args.items() if not isinstance(v, (dict, list)))
+            head = f"{tool}({asum})" if asum else tool
+            lines.append(f"- {head}: {res.get('entityId') or res.get('note') or '성공'}")
     return "\n".join(lines)
 
 

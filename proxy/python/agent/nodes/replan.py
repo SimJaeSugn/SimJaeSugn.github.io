@@ -4,7 +4,10 @@
 - plan 이 비었으면 LLM 으로 평가: 목표 달성(done) / 추가·대체 스텝(continue+steps) /
   사용자 확인(escalate) / 안전 종료(abort).
 - replan_count 상한으로 무한 루프 방지.
+- 이미 성공 실행된 동일 작업(tool+args)을 다시 제시하면 제거(중복 승인·왕복 방지).
 """
+import json
+
 from agent.common.llm import get_main_llm
 from agent.common.prompts import (
     REPLAN_SYSTEM,
@@ -22,6 +25,23 @@ MAX_REPLAN = 4
 def _known_names(state: AgentState) -> set:
     names = {t.get("name") for t in (state.get("tool_catalog") or []) if t.get("name")}
     return names | PROXY_TOOL_NAMES
+
+
+def _step_key(tool, args) -> tuple:
+    """스텝 동일성 키 = (tool, 정규화된 args)."""
+    return (tool, json.dumps(args or {}, sort_keys=True, ensure_ascii=False))
+
+
+def _executed_keys(past_steps) -> set:
+    """이미 성공 실행된 (tool, args) 집합. 실패한 스텝은 재시도 허용을 위해 제외."""
+    keys = set()
+    for e in (past_steps or []):
+        st = e.get("step") or {}
+        res = e.get("result") or {}
+        if res.get("error") or not st.get("tool"):
+            continue
+        keys.add(_step_key(st.get("tool"), st.get("args")))
+    return keys
 
 
 def replan_node(state: AgentState) -> dict:
@@ -49,9 +69,14 @@ def replan_node(state: AgentState) -> dict:
 
     if d.status == "continue" and d.steps:
         known = _known_names(state)
-        steps = [s.model_dump() for s in d.steps if s.tool in known]
+        done_keys = _executed_keys(state.get("past_steps"))
+        steps = [
+            s.model_dump() for s in d.steps
+            if s.tool in known and _step_key(s.tool, s.args) not in done_keys  # 이미 실행된 동일 작업 제외
+        ]
         if steps:
             return {"plan": steps, "replan_count": rounds + 1, "replan_route": "continue"}
+        # 새로 할 작업이 없음(전부 이미 실행됨) → 완료
         return {"replan_route": "done"}
     return {"replan_route": d.status, "replan_reason": d.reason}
 
