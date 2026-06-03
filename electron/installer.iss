@@ -48,37 +48,43 @@ Type: filesandordirs; Name: "{app}"
 Filename: "{app}\AgenticERM.exe"; Description: "AgenticERM 지금 실행"; Flags: postinstall nowait skipifsilent
 
 [Code]
-// 설치 준비 완료(wpReady)·설치 중(wpInstalling) 페이지 하단 빈 공간에 광고 배너 표시.
+// 내부 페이지(설치위치선택·준비완료·설치중) 하단 빈 공간에 AgenticERM 광고 배너 표시.
 var
-  AdReady, AdInstalling: TBitmapImage;
+  AdSel, AdReady, AdInst: TBitmapImage;
+
+function NewBanner(Page: TWinControl; bmp: string; ALeft, AWidth, AHeight, ATop: Integer): TBitmapImage;
+begin
+  Result := TBitmapImage.Create(WizardForm);
+  Result.Parent := Page;
+  Result.Bitmap.LoadFromFile(bmp);
+  Result.Stretch := True;
+  Result.Left := ALeft;
+  Result.Width := AWidth;
+  Result.Height := AHeight;
+  Result.Top := ATop;
+end;
 
 procedure InitializeWizard;
 var
   bmp: string;
-  bh: Integer;
+  bh, x, w: Integer;
 begin
   ExtractTemporaryFile('ad_banner.bmp');
   bmp := ExpandConstant('{tmp}\ad_banner.bmp');
   bh := ScaleY(90);
+  x := WizardForm.ReadyMemo.Left;     // 내부 페이지 공통 좌측 인셋
+  w := WizardForm.ReadyMemo.Width;
 
-  // ── 설치 준비 완료: 요약 메모 높이를 줄여 하단에 배너 공간 확보 ──
+  // 설치 위치 선택 — 하단 빈 공간
+  AdSel := NewBanner(WizardForm.SelectDirPage, bmp, x, w, bh,
+    WizardForm.SelectDirPage.ClientHeight - bh - ScaleY(8));
+
+  // 설치 준비 완료 — 요약 메모를 줄여 그 아래
   WizardForm.ReadyMemo.Height := WizardForm.ReadyMemo.Height - (bh + ScaleY(10));
-  AdReady := TBitmapImage.Create(WizardForm);
-  AdReady.Parent := WizardForm.ReadyPage;
-  AdReady.Bitmap.LoadFromFile(bmp);
-  AdReady.Stretch := True;
-  AdReady.Left := WizardForm.ReadyMemo.Left;
-  AdReady.Width := WizardForm.ReadyMemo.Width;
-  AdReady.Height := bh;
-  AdReady.Top := WizardForm.ReadyMemo.Top + WizardForm.ReadyMemo.Height + ScaleY(10);
+  AdReady := NewBanner(WizardForm.ReadyPage, bmp, x, w, bh,
+    WizardForm.ReadyMemo.Top + WizardForm.ReadyMemo.Height + ScaleY(10));
 
-  // ── 설치 중: 진행바 아래 빈 공간에 배너 ──
-  AdInstalling := TBitmapImage.Create(WizardForm);
-  AdInstalling.Parent := WizardForm.InstallingPage;
-  AdInstalling.Bitmap.LoadFromFile(bmp);
-  AdInstalling.Stretch := True;
-  AdInstalling.Left := WizardForm.ProgressGauge.Left;
-  AdInstalling.Width := WizardForm.ProgressGauge.Width;
-  AdInstalling.Height := bh;
-  AdInstalling.Top := WizardForm.InstallingPage.ClientHeight - bh - ScaleY(8);
+  // 설치 중 — 진행바 아래
+  AdInst := NewBanner(WizardForm.InstallingPage, bmp, x, w, bh,
+    WizardForm.InstallingPage.ClientHeight - bh - ScaleY(8));
 end;
