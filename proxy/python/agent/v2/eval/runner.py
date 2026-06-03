@@ -45,6 +45,9 @@ DEFAULT_CLIENT_CATALOG = [
     {"name": "get_selection", "params": "", "desc": "현재 선택 조회(읽기)"},
     {"name": "generate_ddl", "params": "dialect?", "desc": "ERD→DDL 생성(읽기)"},
     {"name": "describe_tool", "params": "name?", "desc": "툴 상세 설명(읽기)"},
+    {"name": "set_cardinality", "params": "from, to, card", "desc": "관계 카디널리티 변경(1:1|1:N|N:M)"},
+    {"name": "normalize_check", "params": "", "desc": "ERD 정규화 위반 진단(읽기 전용)"},
+    {"name": "reverse_engineer", "params": "tables?", "desc": "운영 DB 스키마를 읽어 ERD 엔티티로 가져오기(DB 읽기→ERD 쓰기)", "danger": True},
 ]
 
 
