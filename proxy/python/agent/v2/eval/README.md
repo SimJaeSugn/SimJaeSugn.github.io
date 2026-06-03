@@ -144,3 +144,132 @@ print(result["summary"]["overall"])
 - `plan` 노드에 클라이언트 ERD 툴 카탈로그가 필요하므로, 픽스처가 `tool_catalog` 를 주지 않으면
   `runner.DEFAULT_CLIENT_CATALOG` 를 공급한다(없으면 ERD 툴이 필터링돼 거짓 실패).
 - 어떤 경우에도 `approve`·`execute` 노드를 거치지 않아 실제 변경이 발생하지 않는다.
+
+---
+
+## 자동 최적화 루프 (P3) — 단계별 실행 런북
+
+eval 점수를 잣대 삼아 **v2 프롬프트/노드를 자동으로 개선**하는 자기수정 루프다(계획서 §12~15).
+`계획→구현→게이트→검증`을 정지 조건까지 반복하며, **오라클 점수가 오르는 변경만** 채택한다.
+사람이 매 수정을 지시하지 않아도 `agent/v2/` 코드가 목표 통과율까지 수렴한다.
+
+### 구성 요소
+
+| 파일/자산 | 역할 |
+|----------|------|
+| `runner.py` | VERIFY — 매 라운드 점수 측정(잣대) |
+| `gate.py` | GATE — v1 무손상·테스트자산(eval/) 동결을 매 라운드 강제(점수 위조·격리위반 차단) |
+| `docs/plan/agentv2_autoloop.workflow.js` | 루프 오케스트레이션(driver B, loop-until-pass) |
+| `git tag autoloop-base` | 게이트 비교 기준점(루프 시작 시점) |
+| 브랜치 `feature/agentv2-autoloop` | 작업 격리(main 미오염) |
+
+### 안전장치 (자동 강제)
+
+- **하드 게이트**(`gate.py`): 매 라운드 v1 파일·`eval/`(픽스처·scorer·runner·gate) 변경 0 검사 → 위반 시 그 변경 롤백.
+- **홀드아웃 게이트**: 골든만 오르고 홀드아웃이 떨어지면(과적합) 채택 거부.
+- **정지 조건**: `골든≥목표 AND 홀드아웃≥목표`(성공) · 무진전 K회 · `max_rounds` · 토큰 예산 → 에스컬레이트.
+- **성공 판정은 오직 `runner` 점수**로(LLM 자기판단 배제).
+- 루프는 `agent/v2/`(단 `eval/` 제외)만 수정. `eval/`·v1·`fixtures`는 절대 못 건드린다.
+
+---
+
+### 🔁 시나리오: **새 테스트 케이스로 다시 최적화하기** (가장 흔한 경로)
+
+향후 새 결함·질의 유형을 발견하면, 픽스처에 케이스를 추가하고 루프를 다시 돌려
+v2를 그 케이스까지 통과하도록 재수렴시킨다. 아래 순서를 그대로 따른다.
+
+> ⚠️ **핵심 함정**: 게이트는 `eval/`(픽스처 포함)의 변경을 "점수 위조"로 보고 차단한다.
+> 따라서 **새 픽스처를 먼저 커밋하고, 그 커밋 시점으로 기준점 태그(`autoloop-base`)를 옮긴 뒤** 루프를 돌려야 한다.
+> 안 그러면 새로 추가한 픽스처가 게이트에 "변조"로 걸려 매 라운드 롤백된다.
+
+#### 1단계 — 새 케이스 추가
+
+`fixtures.jsonl` 에 줄을 추가한다(위 "픽스처 작성 규칙" 준수: 참조형엔 `context`, 실재 툴명만, answer/clarify는 `kind`만).
+골든/홀드아웃을 짝지어 넣으면 과적합 탐지가 된다.
+
+#### 2단계 — 베이스라인 점수 측정 (현재 v2가 새 케이스를 얼마나 푸나)
+
+```powershell
+cd proxy/python
+python -X utf8 -m agent.v2.eval.runner --reps 5
+```
+새 케이스가 실패로 잡히는지 확인한다. (전부 통과면 최적화할 게 없다.)
+
+#### 3단계 — 작업 브랜치 + 픽스처 커밋
+
+```powershell
+# 저장소 루트에서
+git checkout -b feature/agentv2-autoloop   # 이미 있으면 git checkout feature/agentv2-autoloop
+git add proxy/python/agent/v2/eval/fixtures.jsonl
+git commit -m "autoloop: 새 테스트 케이스 추가"
+```
+
+#### 4단계 — 기준점 태그를 "픽스처 커밋 시점"으로 이동 (함정 회피)
+
+```powershell
+git tag -f autoloop-base        # 새 픽스처를 포함한 현재 HEAD를 기준점으로
+```
+
+#### 5단계 — 게이트가 깨끗한지 확인 (반드시 PASS)
+
+```powershell
+cd proxy/python
+python -m agent.v2.eval.gate --base autoloop-base
+# → "GATE PASS" / exit 0 이어야 함. FAIL이면 4단계 태그 이동을 다시 확인.
+```
+
+#### 6단계 — 루프 실행
+
+**(B) 자동 — Claude Code Workflow** (권장):
+Claude Code에서 `docs/plan/agentv2_autoloop.workflow.js` 를 Workflow로 실행한다.
+대량 토큰을 쓰므로 명시적 실행이 필요하다. 토큰 예산을 주면(예 `+300k`) 한도 내에서 자동 중단한다.
+
+**(A) 반자동 — 사람이 라운드 확인**:
+매 라운드 `runner`로 실패 케이스 확인 → 프롬프트 1곳 수정 → `gate` → `runner` 재측정 →
+점수 오르면 커밋, 내리면 `git restore`. 점수 신뢰가 쌓이면 (B)로 승격.
+
+#### 7단계 — 결과 해석
+
+루프 반환값(`outcome`)으로 판단한다.
+
+| outcome | 의미 | 다음 행동 |
+|---------|------|----------|
+| `success` | 골든·홀드아웃 모두 목표 도달 | 8단계 머지 |
+| `noprogress` | K회 연속 점수 정체 | 가설 한계 — 픽스처/프롬프트 수동 점검 |
+| `max_rounds` | 라운드 상한 도달 | 진전 있었으면 라운드 늘려 재실행 |
+| `budget` | 토큰 예산 소진 | 예산 늘려 이어서 실행 |
+
+각 라운드의 `{가설, golden, holdout, 채택여부}` 이력이 함께 반환된다.
+
+#### 8단계 — 머지
+
+```powershell
+python -X utf8 -m agent.v2.eval.runner --reps 5   # 최종 점수 재확인(reps=5)
+git checkout main
+git merge feature/agentv2-autoloop
+```
+머지 전, 누적 변경이 `agent/v2/`(eval 제외)에만 있는지 확인:
+```powershell
+git diff main feature/agentv2-autoloop --name-only
+```
+
+---
+
+### 파라미터 조정
+
+`docs/plan/agentv2_autoloop.workflow.js` 상단 상수:
+
+| 상수 | 기본 | 의미 |
+|------|------|------|
+| `GOLDEN_TARGET` / `HOLDOUT_TARGET` | 0.90 / 0.90 | 성공(정지) 통과율 |
+| `HOLDOUT_FLOOR` | 0.85 | 이 밑으로 떨어지면 과적합으로 보고 채택 거부 |
+| `MAX_ROUNDS` | 12 | 라운드 상한 |
+| `K_NOPROGRESS` | 3 | 연속 무진전 정지 횟수 |
+| `REPS_ITER` / `REPS_FINAL` | 3 / 5 | 반복 중 / 확정 시 채점 반복 횟수 |
+
+### 트러블슈팅
+
+- **게이트가 계속 FAIL** — `git diff autoloop-base --name-only` 로 무엇이 걸렸는지 확인. v1 파일이면 그 변경을 되돌리고, 새 픽스처면 4단계(태그 이동)를 안 한 것.
+- **골든↑ 홀드아웃↓(과적합)** — 하드코딩/특수분기 의심. 해당 변경을 되돌리고 더 일반적인 가설로.
+- **점수가 라운드마다 출렁** — 비결정성. `REPS_ITER`를 5로 올려 안정화.
+- **OpenAI 키 없음(exit 2)** — `설정 ▸ Agent설정`에서 키 저장 후 재실행.

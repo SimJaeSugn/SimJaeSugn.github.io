@@ -134,7 +134,7 @@ proxy/python/
 │       ├── graph.py       ← build_graph_v2() — AgentStateV2, analyze→4분기→fetch_tools→plan→approve→…
 │       ├── common/        ← schemas(IntentSpec·Goal·StepV2·PlanV2·Verdict) · state(AgentStateV2) · prompts(ANALYZE_SYSTEM·PLAN_V2_SYSTEM)
 │       ├── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
-│       └── eval/          ← 검증 오라클(P1) — fixtures.jsonl(골든11+홀드아웃6) · scorer(§7.1 지표) · runner(analyze→plan dry-run, python -m 가능) · README.md(구동법·픽스처 작성 규칙)
+│       └── eval/          ← 검증 오라클(P1)+자동최적화 게이트(P3) — fixtures.jsonl(골든11+홀드아웃6) · scorer(§7.1 지표) · runner(analyze→plan dry-run) · gate(v1무손상·테스트자산 동결 검사) · README.md(구동법·픽스처 규칙·P3 자동최적화 런북)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB)
 │   ├── system_db.py       ← 내부 시스템 DB(aerm_storage) 고정 접속·레거시 정리 — 프로파일 미노출
