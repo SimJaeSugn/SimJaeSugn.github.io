@@ -12,7 +12,7 @@ Step 1 "Python 사이드카 빌드 중..."
 Set-Location "$root\proxy\python"
 pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) { Fail "pip install" }
-powershell -ExecutionPolicy Bypass -File ".\build.ps1"
+powershell -ExecutionPolicy Bypass -File ".\build.ps1" -Clean
 if ($LASTEXITCODE -ne 0) { Fail "Python 빌드" }
 
 Step 2 "Electron 앱 빌드 중..."
