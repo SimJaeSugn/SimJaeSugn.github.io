@@ -891,6 +891,86 @@ function _agentToolImportJson(draft, args) {
   return { ok: true, imported: data.entities.length, mode: (args.mode === 'replace') ? 'replace' : 'add' };
 }
 
+// ── 산출물: 테이블 정의서 ──────────────────────────────────────────
+// 대상 테이블 선택(ids/keyword/전체) 공통 해소
+function _agentSpecTargets(args) {
+  const v = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []) || [], relations: (typeof RELATIONS !== 'undefined' ? RELATIONS : []) || [] };
+  const ids = _agentLiveIds(v, args || {});
+  return ids.length ? v.entities.filter(e => ids.includes(e.id)) : v.entities;
+}
+
+// 테이블 정의서 → 인쇄용 HTML 을 새 창으로 (채팅이 아닌 정식 문서). 클라 전용.
+function _agentToolGenerateTableSpec(draft, args) {
+  const ents = _agentSpecTargets(args || {});
+  if (!ents.length) return { ok: false, error: '대상 테이블이 없습니다.' };
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const diagName = (typeof getActiveDiagram === 'function' && getActiveDiagram() && getActiveDiagram().name) || 'ERD';
+  const title = (args && args.title) || (diagName + ' 테이블 정의서');
+  let body = '';
+  ents.forEach((e, ti) => {
+    const nm = (typeof entDisplayName === 'function') ? entDisplayName(e) : (e.logicalName || e.physicalName || e.id);
+    const rows = (e.attrs || []).map((a, i) =>
+      '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(a.logicalName) + '</td><td>' + esc(a.physicalName) + '</td><td>' + esc(a.type) +
+      '</td><td class="c">' + (a.kind === 'pk' ? '●' : '') + '</td><td class="c">' + (a.kind === 'fk' ? '●' : '') +
+      '</td><td class="c">' + (a.notNull ? '●' : '') + '</td><td>' + esc(a.defaultValue || '') + '</td><td>' + esc(a.description || '') + '</td></tr>'
+    ).join('');
+    body += '<section><h2>' + (ti + 1) + '. ' + esc(nm) + ' <span class="phys">' + esc(e.physicalName || '') + '</span></h2>' +
+      (e.description ? '<p class="desc">' + esc(e.description) + '</p>' : '') +
+      '<table><thead><tr><th>순번</th><th>논리명</th><th>물리명</th><th>데이터타입</th><th>PK</th><th>FK</th><th>NN</th><th>기본값</th><th>설명</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
+  });
+  const css = 'body{font-family:"Malgun Gothic","Segoe UI",sans-serif;margin:28px;color:#222;font-size:13px}'
+    + 'h1{font-size:22px;margin:0 0 4px}.meta{color:#666;font-size:12px;margin-bottom:18px}'
+    + 'section{margin:0 0 22px;page-break-inside:avoid}h2{font-size:15px;background:#d9e1f2;padding:6px 10px;border-radius:4px;margin:18px 0 6px}'
+    + '.phys{color:#555;font-weight:400;font-size:12px}.desc{color:#555;margin:2px 0 6px}'
+    + 'table{border-collapse:collapse;width:100%}td{border:1px solid #bbb;padding:5px 7px;text-align:left;vertical-align:top}'
+    + 'th{border:1px solid #bbb;padding:5px 7px;background:#4472c4;color:#fff;font-weight:600;font-size:12px;text-align:center}'
+    + 'td.c{text-align:center}.noprint{margin:14px 0}button{padding:8px 16px;font-size:13px;cursor:pointer}'
+    + '@media print{.noprint{display:none}body{margin:0}}';
+  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body>'
+    + '<div class="noprint"><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>'
+    + '<h1>' + esc(title) + '</h1><div class="meta">' + ents.length + '개 테이블</div>' + body + '</body></html>';
+  const w = window.open('', '_blank');
+  if (!w) return { ok: false, error: '팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도하세요.' };
+  w.document.open(); w.document.write(html); w.document.close();
+  return { ok: true, count: ents.length, note: '테이블 정의서를 새 창에 열었습니다(인쇄→PDF 저장 가능).' };
+}
+
+// 테이블 정의서 → 엑셀(.xlsx). 사이드카 /export/table-spec(openpyxl) 호출 후 다운로드. 데스크탑 전용.
+async function _agentToolExportTableSpecXlsx(draft, args) {
+  const ents = _agentSpecTargets(args || {});
+  if (!ents.length) return { ok: false, error: '대상 테이블이 없습니다.' };
+  const payload = {
+    title: (args && args.title) || '테이블 정의서',
+    tables: ents.map(e => ({
+      logicalName: (typeof entDisplayName === 'function') ? entDisplayName(e) : (e.logicalName || e.id),
+      physicalName: e.physicalName || '',
+      description: e.description || '',
+      columns: (e.attrs || []).map(a => ({
+        logicalName: a.logicalName || '', physicalName: a.physicalName || '', type: a.type || '',
+        kind: a.kind || 'normal', notNull: !!a.notNull, defaultValue: a.defaultValue || '', description: a.description || '',
+      })),
+    })),
+  };
+  const base = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
+  let res;
+  try {
+    res = await fetch(base + '/export/table-spec', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  } catch (e) {
+    return { ok: false, error: '사이드카에 연결할 수 없습니다(엑셀 내보내기는 데스크탑 전용). ' + e.message };
+  }
+  if (!res.ok) {
+    let detail = ''; try { detail = (await res.json()).detail || ''; } catch (e2) {}
+    return { ok: false, error: '엑셀 생성 실패: HTTP ' + res.status + (detail ? ' — ' + detail : '') };
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (args && args.fileName) || ((payload.title || '테이블정의서') + '.xlsx');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return { ok: true, count: ents.length, note: '엑셀 테이블 정의서를 다운로드했습니다.' };
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 단일 소스(SSOT): 툴의 모든 정보(실행·메타·상세)를 여기서만 정의한다.
 //   - AGENT_TOOLS(이름→실행), AGENT_TOOL_CATALOG(프록시 전달 메타),
@@ -1047,6 +1127,12 @@ const AGENT_TOOL_DEFS = [
   { name: 'import_json', kind: 'write', danger: true, run: _agentToolImportJson,
     desc: 'JSON 스키마 가져오기', params: 'data{entities[],relations[]}, mode?(add|replace)',
     detail: '되돌리기 주의(replace) — JSON 엔티티/관계를 현재 다이어그램에 추가(add)하거나 교체(replace)한다.' },
+  { name: 'generate_table_spec', kind: 'read', danger: false, run: _agentToolGenerateTableSpec,
+    desc: '테이블 정의서 생성(HTML 새 창, 인쇄/PDF)', params: 'ids?|keyword?, title?',
+    detail: '대상(또는 전체) 테이블의 정의서(논리/물리·컬럼·PK/FK·NN·기본값·설명)를 새 창에 인쇄용 HTML 문서로 연다(→ 인쇄/PDF 저장). 좁은 채팅이 아니라 정식 문서. 클라 전용.' },
+  { name: 'export_table_spec_xlsx', kind: 'read', danger: false, run: _agentToolExportTableSpecXlsx,
+    desc: '테이블 정의서 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
+    detail: '대상(또는 전체) 테이블의 정의서를 엑셀 파일로 생성·다운로드한다(목차+테이블정의서 시트). 사이드카 openpyxl 사용 — 데스크탑 전용.' },
 ];
 
 // ── 파생(중복 정의 없음) ──────────────────────────────────────────

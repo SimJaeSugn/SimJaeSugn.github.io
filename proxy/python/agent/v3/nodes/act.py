@@ -57,12 +57,18 @@ def _summarize_schema(result: dict) -> str:
 
 
 def _summarize_sql(result: dict) -> str:
-    """run_sql 결과를 행 수 + 상위 몇 행으로 컴팩트 렌더."""
+    """run_sql 결과를 행 수 + 상위 몇 행으로 컴팩트 렌더.
+
+    결과행이 없으면 SELECT(빈 결과)와 DML(INSERT/UPDATE/DELETE: 영향 행수)을 구분한다.
+    DML을 'N행 반환(행 없음)'으로 렌더하면 모델이 실패로 오해해 재시도 루프에 빠진다.
+    """
     rows = result.get("rows") or []
     rc = result.get("rowCount")
-    head = f"성공: {rc if rc is not None else len(rows)}행 반환"
     if not rows:
-        return head + " (행 없음)"
+        if rc:   # 결과행 없는데 rowCount>0 → DML(영향받은 행)
+            return f"성공: 실행 완료 — {rc}행 반영됨(INSERT/UPDATE/DELETE 등, DB에 적용)"
+        return "성공: 실행 완료 (조회 결과 행 없음)"
+    head = f"성공: {len(rows)}행 조회"
     shown = rows[:12]
     try:
         body = "\n".join("  " + json.dumps(r, ensure_ascii=False) for r in shown)

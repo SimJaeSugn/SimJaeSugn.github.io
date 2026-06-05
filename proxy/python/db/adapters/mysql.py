@@ -39,6 +39,10 @@ async def execute(config: dict, sql: str) -> dict:
             pass
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(sql)
+            # 결과셋이 없으면(INSERT/UPDATE/DELETE/DDL) 커밋한다.
+            # aiomysql 기본 autocommit=False — 커밋하지 않으면 변경이 롤백된다.
+            if cur.description is None:
+                await conn.commit()
             rows = await cur.fetchall()
             if rows is None:
                 rows = []

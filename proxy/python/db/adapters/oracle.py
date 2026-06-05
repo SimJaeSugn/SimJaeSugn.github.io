@@ -61,6 +61,8 @@ def _execute_sync(config: dict, sql: str) -> dict:
             fields = [col[0].lower() for col in cursor.description]
             rows = [dict(zip(fields, row)) for row in cursor.fetchall()]
             return {"rows": rows, "rowCount": len(rows), "fields": fields}
+        # 결과셋 없음(INSERT/UPDATE/DELETE/DDL) → 커밋. oracledb 기본 autocommit=False.
+        conn.commit()
         return {"rows": [], "rowCount": cursor.rowcount or 0, "fields": []}
     finally:
         pool.release(conn)
