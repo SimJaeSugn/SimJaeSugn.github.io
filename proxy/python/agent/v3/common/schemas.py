@@ -1,0 +1,46 @@
+# proxy/python/agent/v3/common/schemas.py
+#
+# v3 ReAct 하이브리드 스키마. v1 읽기 전용 import 만 사용(agent.v2 참조 금지).
+
+from pydantic import BaseModel, Field
+
+
+# ── react 노드 출력 — 한 스텝의 결정 (Thought + 단일 Action) ──────────
+class ReActStep(BaseModel):
+    """ReAct 한 스텝: 추론(thought) → 단일 행동(tool, args).
+
+    한 번에 툴 1개만 고른다. 모든 목표가 충족되면 tool='finish'.
+    """
+    thought: str = Field(
+        description="지금까지의 [관찰 기록]을 바탕으로 한 추론. 무엇을 왜 할지 한국어로 간결히."
+    )
+    tool: str = Field(
+        description="다음 행동으로 호출할 툴 이름 1개. 모든 목표가 끝났으면 'finish'."
+    )
+    args: dict = Field(
+        default_factory=dict,
+        description="그 툴의 호출 인자(JSON 객체). finish면 비운다.",
+    )
+
+
+# ── 메타툴 카탈로그 (location='meta') — 부수효과 0, 승인 면제 ──────────
+# 모델에겐 다른 툴과 동급으로 노출되지만, 핸들러(meta_exec)는 LLM 추론 호출로 처리한다.
+META_TOOL_CATALOG = [
+    {
+        "name": "plan", "kind": "meta", "location": "meta", "danger": False,
+        "desc": "지금까지의 관찰을 바탕으로 남은 작업을 subgoal 목록으로 분해/재정비한다(복잡하거나 길을 잃었을 때).",
+        "params": "focus(선택: 집중할 부분 설명)",
+    },
+    {
+        "name": "reflect", "kind": "meta", "location": "meta", "danger": False,
+        "desc": "진행 상황을 자가점검한다 — 목표 충족·누락·다음 행동을 판단(막혔거나 마무리 직전 점검).",
+        "params": "(없음)",
+    },
+]
+META_TOOL_NAMES = {t["name"] for t in META_TOOL_CATALOG}
+
+# 루프 종료 신호 토큰
+FINISH = "finish"
+
+# 무한루프 가드 — 한 턴의 ReAct 반복 상한
+MAX_LOOP = 16

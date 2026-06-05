@@ -353,6 +353,42 @@
   </div>
 </div>
 
+<!-- ── Agent v3 토글 버튼 (V3-M1) ──────────────────────────────── -->
+<!-- v1·v2 진입과 완전 독립. v3(ReAct 하이브리드) 자체 진입 트리거. v2 버튼 위에 배치. -->
+<button id="agentV3ToggleBtn" onclick="toggleAgentV3Panel()" title="Agent v3 패널 열기/닫기"
+  style="position:fixed;bottom:104px;right:16px;z-index:199;width:42px;height:42px;border-radius:50%;background:var(--mauve,#cba6f7);color:#1e1e2e;border:none;cursor:pointer;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;line-height:1"
+  aria-label="Agent v3">🧠</button>
+
+<!-- ── Agent v3 독립 패널 (V3-M1) ──────────────────────────────── -->
+<!-- v1·v2 패널과 완전 분리된 독립 컨테이너. CSS 클래스는 v1 것 읽기 재사용. v2 패널 좌측에 배치(A/B/C 공존). -->
+<div id="agentV3Panel" style="display:none;position:fixed;bottom:0;right:376px;width:360px;max-width:96vw;height:520px;max-height:80vh;background:var(--bg-panel,#1e1e2e);border:1px solid var(--border,#313244);border-radius:12px 12px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.4);flex-direction:column;z-index:200;overflow:hidden">
+  <!-- 헤더 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border,#313244);flex-shrink:0">
+    <span style="font-size:13px;font-weight:600;color:var(--tx,#cdd6f4)">🧠 Agent v3 <span style="font-size:10px;opacity:.5;font-weight:400">V3-M1 · ReAct</span></span>
+    <button class="btn" style="font-size:16px;padding:2px 8px;line-height:1;background:transparent;border:none;cursor:pointer;color:var(--tx-sub,#a6adc8)" onclick="closeAgentV3Panel()" title="닫기">×</button>
+  </div>
+  <!-- 메시지 영역 -->
+  <div id="agentV3Messages" class="agent-messages" style="flex:1;overflow-y:auto;padding:12px 12px 4px">
+    <div class="agent-empty" id="agentV3Empty">
+      <div class="agent-empty-ico">🧠</div>
+      <div class="agent-empty-title">Agent v3 (ReAct 하이브리드)</div>
+      <div class="agent-empty-sub">자연어로 ERD를 만들거나 질문하세요.</div>
+      <div class="agent-suggests">
+        <button class="agent-chip" onclick="agentV3FillInput(this.textContent)">회원·주문 테이블 만들어줘</button>
+        <button class="agent-chip" onclick="agentV3FillInput(this.textContent)">PK 없는 테이블 찾아줘</button>
+        <button class="agent-chip" onclick="agentV3FillInput(this.textContent)">전체 자동 정렬해줘</button>
+      </div>
+    </div>
+  </div>
+  <!-- 입력 영역 -->
+  <div class="agent-input-area" style="flex-shrink:0;padding:8px 10px;border-top:1px solid var(--border,#313244)">
+    <textarea id="agentV3Input" class="agent-input" rows="1"
+              placeholder="메시지를 입력하세요…  (Enter 전송 · Shift+Enter 줄바꿈)"
+              oninput="agentV3AutoGrow(this)" onkeydown="agentV3InputKey(event)"></textarea>
+    <button id="agentV3SendBtn" class="agent-send" onclick="agentV3Send()" title="전송">➤</button>
+  </div>
+</div>
+
 <!-- ── Bottom-Left: Legend + Minimap ────────── -->
 <div id="bottomLeftPanel">
   <div id="legend" class="leg-collapsed">
@@ -1190,6 +1226,9 @@
 <script src="js/agent_v2/panel_v2.js"></script>
 <script src="js/agent_v2/client_v2.js"></script>
 <script src="js/agent_v2/observe_v2.js"></script>
+<script src="js/agent_v3/panel_v3.js"></script>
+<script src="js/agent_v3/client_v3.js"></script>
+<script src="js/agent_v3/observe_v3.js"></script>
 <script src="js/pc_store.js"></script>
 <script src="js/main.js"></script>
 

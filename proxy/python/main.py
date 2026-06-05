@@ -55,6 +55,14 @@ try:
 except Exception as e:  # import 실패·반쪽 삭제 등
     logging.warning("v2 agent router disabled: %s", e)
 
+# ── Agent v3 (병렬·격리, ReAct 하이브리드 실험 레인) — try/except 가드.
+#    v3가 깨져도 앱·v1·v2 정상 기동(§9.1 불변식 ② 진화형) ──
+try:
+    from routers.v3 import agent as agent_v3
+    app.include_router(agent_v3.router, prefix="/agent/v3")
+except Exception as e:  # import 실패·반쪽 삭제 등
+    logging.warning("v3 agent router disabled: %s", e)
+
 @app.get("/ping")
 def ping():
     return {"ok": True, "version": "1.0.0", "port": PORT}

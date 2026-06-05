@@ -904,7 +904,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 SimJaeSugn.github.io/
 │
 ├── index.html                     ← 앱 진입점
-├── js/                            ← 프론트엔드 JS 모듈 (30개 + v2 3개)
+├── js/                            ← 프론트엔드 JS 모듈 (30개 + v2·v3 각 3개)
 │   ├── state.js                   ← 전역 상태
 │   ├── canvas.js                  ← 렌더링 엔진
 │   ├── entities.js
@@ -917,6 +917,7 @@ SimJaeSugn.github.io/
 │   ├── agent_tools.js             ← Agent 클라이언트 툴(엔티티·관계·레이아웃) + 드래프트 커밋
 │   ├── agent_settings.js          ← Agent 설정 모달
 │   ├── agent_v2/                  ← v2 격리 채널 (panel_v2 · client_v2 · observe_v2)
+│   ├── agent_v3/                  ← v3 격리 채널 (ReAct 하이브리드 — panel_v3 · client_v3 · observe_v3)
 │   ├── layout.js
 │   ├── export.js
 │   ├── import.js
@@ -972,8 +973,8 @@ SimJaeSugn.github.io/
 │       ├── main.py                ← FastAPI 진입점
 │       ├── requirements.txt
 │       ├── build.ps1              ← PyInstaller 빌드
-│       ├── routers/               ← config / execute / health / schema / agent · stddict (표준사전) · workspace (PC앱 저장) · v2/agent (v2 격리 미러)
-│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy · v2/) — 자연어 ERD 제어
+│       ├── routers/               ← config / execute / health / schema / agent · stddict (표준사전) · workspace (PC앱 저장) · v2/agent (v2 격리 미러) · v3/agent (v3 ReAct 격리 미러)
+│       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy · v2/ · v3/) — 자연어 ERD 제어
 │       ├── db/                    ← connector(외부 DB 라우팅) · system_db(내부 시스템 DB aerm_storage) · adapters/(postgres/mysql/mssql/oracle)
 │       └── utils/                 ← crypto / keystore / audit_logger
 │
