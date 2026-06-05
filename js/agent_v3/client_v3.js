@@ -65,6 +65,9 @@ function _agentV3StepLabel(s) {
   if (s.tool === 'fetch_db_schema') return 'DB 스키마 조회(서버)';
   if (s.tool && s.tool.indexOf('db_doc_') === 0) return 'SQL 문법 참고: ' + s.tool.slice(7);
   if (s.tool === 'run_sql') return '⚠ SQL 실행(서버): ' + (a.sql ? String(a.sql).slice(0, 40) : '');
+  // 신규 툴: 공유 친화 라벨(인자 반영) → 없으면 카탈로그 desc 폴백
+  const _lbl = (typeof _agentToolLabel === 'function') ? _agentToolLabel(s && s.tool, a) : null;
+  if (_lbl) return _lbl;
   const def = (typeof _agentToolDef === 'function') ? _agentToolDef(s && s.tool) : null;
   return (def && def.desc) || (s && s.tool) || '작업';
 }
@@ -251,6 +254,7 @@ async function agentV3Send() {
     if (sendBtn) sendBtn.disabled = false;
     const _plan = bubble ? bubble.querySelector('.agent-plan') : null;
     if (_plan) _plan.classList.add('collapsed');
+    if (typeof _agentV3CollapseTrace === 'function') _agentV3CollapseTrace(bubble);  // 처리 단계 접기
     _agentV3ScrollBottom();
   }
 }

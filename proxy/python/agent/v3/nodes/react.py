@@ -34,7 +34,8 @@ from agent.v3.common.state import AgentState
 
 
 def _finish(loop: int, thought: str) -> dict:
-    return {"loop_count": loop, "react_tool": FINISH, "react_args": {}, "react_thought": thought}
+    return {"loop_count": loop, "react_tool": FINISH, "react_args": {}, "react_thought": thought,
+            "react_needs_approval": False}
 
 
 def _tail_meta_streak(scratchpad: list) -> int:
@@ -92,21 +93,27 @@ def react_node(state: AgentState) -> dict:
     if tool in META_TOOL_NAMES and _tail_meta_streak(scratch) >= 1:
         return _finish(loop, thought + " (점검 완료 — 분석을 마치고 종료)")
 
+    # 승인 필요 판정: write/external/danger 툴은 실행 전 사용자 승인을 받는다(read/meta 면제)
+    tdef = next((t for t in catalog if t.get("name") == tool), None)
+    needs_approval = bool(tdef) and ((tdef.get("kind") in ("write", "external")) or bool(tdef.get("danger")))
     return {
         "loop_count": loop,
         "react_tool": tool,
         "react_args": args,
         "react_thought": thought,
+        "react_needs_approval": needs_approval,
     }
 
 
 def react_route(state: AgentState) -> str:
-    """react_tool 의 location 으로 분기."""
+    """react_tool 의 location 으로 분기. 쓰기/위험 툴은 approve 를 먼저 거친다."""
     tool = state.get("react_tool")
     if not tool or tool == FINISH:
         return "finish"
     if tool in META_TOOL_NAMES:
         return "meta"
+    if state.get("react_needs_approval"):
+        return "approve"   # 쓰기/위험 → 실행 전 승인
     if tool in PROXY_TOOL_NAMES:
         return "proxy"
     return "client"   # 그 외는 클라이언트 ERD 툴 (interrupt 위임)

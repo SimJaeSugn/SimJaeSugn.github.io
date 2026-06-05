@@ -103,8 +103,11 @@ REPLAN_SYSTEM = (
     "당신은 실행 결과를 평가하고 다음 행동을 정하는 재계획기입니다.\n"
     "원래 사용자 목표와 [지금까지 실행 결과]를 비교해 다음 중 하나를 고르세요.\n"
     "- done: 목표가 달성됨(또는 더 할 일이 없음).\n"
-    "    · 특히 조회/설명/진단이 목표였고 읽기 종류 툴(get_selection·describe_table·find_tables·list_relations·"
-    "fetch_db_schema·describe_tool·generate_ddl·normalize_check·lookup_std_term 등 상태를 바꾸지 않는 read 툴)이 "
+    "    · 특히 조회/설명/진단/문서생성이 목표였고 읽기 종류 툴(get_selection·describe_table·find_tables·list_relations·"
+    "fetch_db_schema·describe_tool·generate_ddl·normalize_check·lookup_std_term·get_statistics·get_connected_entities·"
+    "validate_schema·detect_orphans·detect_circular_refs·analyze_erd_metrics·suggest_normalization·generate_table_spec·"
+    "generate_data_dictionary·generate_erd_report·generate_term_compliance·describe_db_table·list_db_tables·profile_table·"
+    "find_db_column·get_db_constraints 등 상태를 바꾸지 않는 read 툴)이 "
     "이미 실행되어 [지금까지 실행 결과]에 정보가 있으면 반드시 done. (결과 정리·보고는 respond 가 한다)\n"
     "    · 최종 답변(정보 정리)은 respond 단계가 그 결과로 생성하므로, '정보를 전달하기 위한' 추가 스텝은 필요 없다.\n"
     "- continue: 추가/대체 '작업'이 필요함 → [사용 가능한 툴]로 다음 steps 를 제시.\n"
@@ -237,7 +240,10 @@ def context_brief(erd: dict) -> str:
         lines.append("현재 선택된 테이블: " + ", ".join(f"{name_by_id.get(i, i)}({i})" for i in sel_ids))
     for e in ents[:60]:
         pk = ", ".join(e.get("pk") or []) or "없음"
-        lines.append(f"- {e.get('name')}({e.get('id')}): PK={pk}, 컬럼 {e.get('cols', 0)}개")
+        phys = e.get("physical")
+        # 논리명 [물리명] — 운영 DB SQL 작성 시 물리 테이블명 매핑에 사용
+        label = f"{e.get('name')} [{phys}]" if (phys and phys != e.get("name")) else f"{e.get('name')}"
+        lines.append(f"- {label}({e.get('id')}): PK={pk}, 컬럼 {e.get('cols', 0)}개")
     if len(ents) > 60:
         lines.append(f"... 외 {len(ents) - 60}개")
     return "\n".join(lines)
@@ -277,7 +283,8 @@ PLAN_V2_SYSTEM = (
     "- 읽기 툴 선택(중요): 사용자가 'DDL/CREATE 문/스키마 SQL 을 뽑아/추출/생성/보여줘'라고 명시하면 describe_table 가 아니라 generate_ddl 을 쓴다. '정규화 위반을 찾아/검사'면 normalize_check 를 쓴다. 그 외 테이블 구조·컬럼 조회·설명은 describe_table.\n"
     "- 한 목표가 여러 읽기 동작을 함축하면 모두 스텝으로 풀어낸다: 예) '정규화 위반 찾아서 위반 테이블 구조 보여줘'→ normalize_check 로 위반을 찾는 스텝 + describe_table 로 그 구조를 보여주는 스텝(둘 다 필요). 사용자가 명시한 읽기 동작에 대응하는 툴을 빠짐없이 넣는다.\n"
     "- 관계 툴 선택(매우 중요): (a) 두 테이블을 '연결/연결해/잇다/이어/관계 만들어/추가'처럼 새로 이어 붙이는 요청(예: '회원과 주문 1:N로 연결', '주문과 상품을 1:N로 잇고')은 create_relation(from, to, card) 을 쓴다. (b) 반대로 '이미 있는 관계의 카디널리티를 바꿔/변경/수정'(예: '회원-주문 관계를 N:M으로 바꿔', '1:N으로 변경')은 단일 스텝 set_cardinality(from, to, card) 로 처리하고, delete_relation+create_relation 으로 분해하지 말 것. 즉 '연결/잇다/만들어'=create_relation, 기존 '관계를 …로 바꿔/변경'=set_cardinality. delete_relation 은 관계를 없앨 때만 쓴다.\n"
-    "- 운영 DB의 데이터/테이블을 변경(삭제·수정 등)할 때는 먼저 fetch_db_schema 로 대상을 확인한 뒤 run_sql 로 실행한다.\n"
+    "- 운영 DB의 데이터/테이블을 변경(삭제·수정 등)할 때는 먼저 fetch_db_schema 로 대상을 확인한 뒤 run_sql 로 실행한다. "
+    "운영 DB 식별자는 물리명만 존재한다 — 사용자가 한글 논리명('공통모델','모델명')으로 말해도 SQL에는 물리 테이블명·컬럼명(tb_cmm_mdl·MDL_NM 등)을 써야 한다(한글 식별자는 'table doesn't exist'/'unknown column' 오류). [현재 ERD]의 '논리명 [물리명]' 매핑 또는 describe_table/fetch_db_schema 결과의 물리명을 사용하라.\n"
     "- 운영 DB(db 목표)에는 ERD 편집 툴(create_entity/delete_entity 등)을 절대 쓰지 말 것.\n"
     "- 의존 순서: 엔티티 생성→관계→정렬.\n"
     "- 목록에 없는 툴은 넣지 말 것.\n"

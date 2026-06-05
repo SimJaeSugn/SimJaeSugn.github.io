@@ -3,8 +3,11 @@
 토폴로지:
   START → prep → analyze ─answer──→ answer → END
                         ─clarify──→ respond → END
-                        ─act/mixed→ fetch_tools → react ⇄ {meta_exec | proxy_exec | client_exec}
-                                                    ─finish→ respond → END
+                        ─act/mixed→ fetch_tools → react ⇄ {meta_exec | approve→(proxy_exec|client_exec) | proxy_exec | client_exec}
+                                                    ─finish→ verify ─pass→ respond → END
+                                                                      ─보완→ react (MAX_VERIFY 상한)
+  · 쓰기/위험(write·external·danger) 툴은 approve(승인 interrupt)를 먼저 거친다. 거부 시 respond(취소).
+  · finish 는 곧장 종료하지 않고 verify(준수 검증)를 거친다 — 목표 미충족이면 react 로 되돌려 보완.
 
 핵심:
 - react: [관찰 기록]을 보고 한 번에 툴 1개를 동적 선택(ReAct). loop_count 상한으로 발산 가드.
@@ -28,6 +31,8 @@ from agent.v3.nodes.prep import prep_node
 from agent.v3.nodes.react import react_node, react_route
 from agent.v3.nodes.meta import meta_exec_node
 from agent.v3.nodes.act import proxy_exec_node, client_exec_node
+from agent.v3.nodes.approve import approve_node, approve_route
+from agent.v3.nodes.verify import verify_node, verify_route
 
 
 def _analyze_route(state: AgentState) -> str:
@@ -48,9 +53,11 @@ def build_graph():
     g.add_node("answer", answer_node)
     g.add_node("fetch_tools", fetch_tools_node)
     g.add_node("react", react_node)
+    g.add_node("approve", approve_node)
     g.add_node("meta_exec", meta_exec_node)
     g.add_node("proxy_exec", proxy_exec_node)
     g.add_node("client_exec", client_exec_node)
+    g.add_node("verify", verify_node)
     g.add_node("respond", respond_node)
 
     g.add_edge(START, "prep")
@@ -62,10 +69,23 @@ def build_graph():
     g.add_edge("answer", END)
     g.add_edge("fetch_tools", "react")
 
-    # ReAct 루프 — react 가 다음 행동의 location 으로 분기, 각 행동 후 다시 react 로
+    # ReAct 루프 — react 가 다음 행동의 location 으로 분기, 각 행동 후 다시 react 로.
+    # 쓰기/위험(react_needs_approval)은 approve 를 먼저 거친다.
+    # finish → verify(준수 검증). verify 가 통과면 respond, 보완 필요면 react 로 되돌림.
     g.add_conditional_edges(
         "react", react_route,
-        {"finish": "respond", "meta": "meta_exec", "proxy": "proxy_exec", "client": "client_exec"},
+        {"finish": "verify", "meta": "meta_exec", "approve": "approve",
+         "proxy": "proxy_exec", "client": "client_exec"},
+    )
+    # approve: 승인 시 해당 location 실행, 거부 시 respond(취소)
+    g.add_conditional_edges(
+        "approve", approve_route,
+        {"proxy": "proxy_exec", "client": "client_exec", "cancel": "respond"},
+    )
+    # verify: 목표 충족이면 respond, 보완 가능한 미충족이면 react 로(상한 MAX_VERIFY)
+    g.add_conditional_edges(
+        "verify", verify_route,
+        {"respond": "respond", "continue": "react"},
     )
     g.add_edge("meta_exec", "react")
     g.add_edge("proxy_exec", "react")

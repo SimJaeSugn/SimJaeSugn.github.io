@@ -2,6 +2,8 @@
 #
 # v3 ReAct 하이브리드 스키마. v1 읽기 전용 import 만 사용(agent.v2 참조 금지).
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -44,3 +46,21 @@ FINISH = "finish"
 
 # 무한루프 가드 — 한 턴의 ReAct 반복 상한
 MAX_LOOP = 16
+
+
+# ── 준수 검증 (verify 노드 출력) — react 의 finish 가 진짜 충족인지 판정 ──
+class V3Verdict(BaseModel):
+    """[분석된 의도]의 goal 이 [관찰 기록] 결과로 충족됐는지 구조적 판정."""
+    adherence: Literal["pass", "partial", "fail"] = Field(
+        description="pass=모든 목표 충족, partial=일부 미충족(보완 가능), fail=충족 불가/이탈"
+    )
+    fulfilled: bool = Field(default=False, description="모든 goal 이 충족되면 true")
+    missing: list[str] = Field(default_factory=list, description="아직 충족 안 된 목표/누락 설명")
+    next: Literal["respond", "continue"] = Field(
+        description="respond=종료(보고), continue=보완할 행동이 명확히 남아 react 로 되돌림"
+    )
+    note: str = Field(default="")
+
+
+# verify 가 react 로 되돌리는 최대 횟수(무한 검증-보완 루프 방지)
+MAX_VERIFY = 2

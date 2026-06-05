@@ -63,6 +63,10 @@ PROXY_TOOL_CATALOG = [
     {"name": "suggest_indexes", "kind": "read", "location": "proxy", "danger": False,
      "desc": "인덱스 추천(인덱스 없는 FK 등)", "params": "(없음)",
      "detail": "PK/UNIQUE 가 아닌 FK 컬럼을 인덱스 후보로 추천한다(스키마 분석, DB 쿼리 없음)."},
+    {"name": "apply_erd_to_db", "kind": "external", "location": "proxy", "danger": True,
+     "desc": "ERD DDL을 운영 DB에 실행(포워드 엔지니어링)", "params": "ddl(CREATE/ALTER 문, 세미콜론 구분)",
+     "detail": "ddl 인자의 SQL(여러 문)을 운영 DB에 순차 실행한다. 되돌리기 어려움 — 사용자 승인(approve) 필수. "
+               "보통 generate_ddl 로 만든 DDL을 ddl 인자로 전달한다."},
 ] + DB_DOC_CATALOG
 PROXY_TOOL_NAMES = {t["name"] for t in PROXY_TOOL_CATALOG}
 
@@ -449,6 +453,24 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
                 if col and not col.get("isPk") and not col.get("isUnique"):
                     suggestions.append({"table": ft, "column": fc, "reason": "FK 컬럼 — 조인 성능을 위해 인덱스 권장"})
             return {"ok": True, "count": len(suggestions), "suggestions": suggestions[:50]}
+
+        if name == "apply_erd_to_db":
+            ddl = (args.get("ddl") or args.get("sql") or "").strip()
+            if not ddl:
+                return {"ok": False, "error": "ddl 이 비어 있습니다."}
+            stmts = [s.strip() for s in ddl.split(";") if s.strip()]
+            if not stmts:
+                return {"ok": False, "error": "실행할 DDL 문이 없습니다."}
+            results = []
+            ok_count = 0
+            for st in stmts:
+                try:
+                    await adapter.execute(config, st)
+                    results.append({"sql": st[:100], "ok": True})
+                    ok_count += 1
+                except Exception as e:  # noqa: BLE001
+                    results.append({"sql": st[:100], "ok": False, "error": str(e)})
+            return {"ok": True, "executed": ok_count, "total": len(stmts), "results": results}
 
         return {"ok": False, "error": "알 수 없는 프록시 툴: " + name}
     except Exception as e:  # noqa: BLE001

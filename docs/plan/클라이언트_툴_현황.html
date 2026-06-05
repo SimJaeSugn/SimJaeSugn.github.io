@@ -63,7 +63,7 @@
   <h2>목차</h2>
   <a href="#overview">1. 개요</a>
   <a href="#class">2. 구현 분류 체계</a>
-  <a href="#new">3. 신규 30툴 현황</a>
+  <a href="#new">3. 신규 38툴 현황</a>
   <a href="#existing">4. 기존 19툴</a>
   <a href="#arch">5. 아키텍처 노트</a>
   <a href="#verify">6. 검증 현황</a>
@@ -74,17 +74,17 @@
 
 <main>
   <h1>에이전트 클라이언트 툴 — 구현 현황</h1>
-  <div class="sub">계획서 <code>docs/클라이언트_툴_추가계획.html</code>의 제안 30툴 구현 결과 · 대상 <code>js/agent_tools.js</code></div>
+  <div class="sub">계획서 <code>docs/클라이언트_툴_추가계획.html</code> 제안 30툴 + 산출물·분석 심화 구현 결과 · 대상 <code>js/agent_tools.js</code> · <code>tools_proxy.py</code></div>
   <div class="meta">
     <span><b>작성일</b> 2026-06-06</span>
-    <span><b>총 툴</b> 57 (기존 19 + 신규 38) · 프록시 20</span>
+    <span><b>총 툴</b> 57 (기존 19 + 신규 38) · 프록시 21</span>
     <span><b>적용 범위</b> v1·v2·v3 공유 (§9.1 의도적 공유)</span>
     <span><b>상태</b> <span class="ok">구현 완료</span></span>
   </div>
 
   <div class="box ok">
     <div class="t">✅ 한 줄 요약</div>
-    계획서 제안 30개 + 산출물 정의서 2개 + <b>분석·산출물 심화 6개 = 38개를 구현</b>해 <code>AGENT_TOOL_DEFS</code>에 등록했다(총 57툴). 프록시 툴은 별도 14개(§7). 단일 소스(SSOT) 배열이라
+    계획서 제안 30개 + 산출물 정의서 2개 + <b>분석·산출물 심화 6개 = 38개를 구현</b>해 <code>AGENT_TOOL_DEFS</code>에 등록했다(총 57툴). 프록시 툴은 별도 15개(§7, apply_erd_to_db 포함). 단일 소스(SSOT) 배열이라
     <code>AGENT_TOOLS</code>(실행)·<code>AGENT_TOOL_CATALOG</code>(플래너 노출)·<code>describe_tool</code>이 모두 자동 파생되며,
     <b>v1·v2·v3 에이전트가 즉시 공유</b>한다. 구문·참조 매칭 검증 통과.
   </div>
@@ -97,7 +97,7 @@
     <tr><td>기존 툴</td><td>19</td><td>create/update/delete entity·relation·attribute, find/describe, ddl, normalize, std_term 등</td></tr>
     <tr><td><b>신규 툴</b></td><td><b>38</b></td><td>본 문서 §3 (제안 30 + 정의서 2 + 분석·산출물 심화 6)</td></tr>
     <tr><td>합계(클라)</td><td>57</td><td><code>AGENT_TOOL_DEFS.length === 57</code></td></tr>
-    <tr><td>프록시</td><td>20</td><td>fetch_db_schema·run_sql + 신규 14 + db_doc 4 (§7)</td></tr>
+    <tr><td>프록시</td><td>21</td><td>fetch_db_schema·run_sql + 신규 15 + db_doc 4 (§7)</td></tr>
   </table>
 
   <!-- 2 -->
@@ -116,70 +116,70 @@
 
   <h3>3.1 분석 · 검증 · 통계 <span class="tag read">read</span></h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>get_statistics</code></td><td><span class="tag read">read</span></td><td>엔티티/관계 수·평균컬럼·PK·FK·고아·카디널리티 분포</td><td class="ok">✅</td></tr>
-    <tr><td><code>get_connected_entities</code></td><td><span class="tag read">read</span></td><td>기준 테이블의 직접/전체 연결 탐색(BFS)</td><td class="ok">✅</td></tr>
-    <tr><td><code>detect_orphans</code></td><td><span class="tag read">read</span></td><td>관계 없는 고아 테이블 탐지</td><td class="ok">✅</td></tr>
-    <tr><td><code>detect_circular_refs</code></td><td><span class="tag read">read</span></td><td>순환 참조 DFS 탐지(경로 반환)</td><td class="ok">✅</td></tr>
-    <tr><td><code>validate_schema</code></td><td><span class="tag read">read</span></td><td>PK 부재·자료형 누락·네이밍 컨벤션 위반 점검</td><td class="ok">✅</td></tr>
-    <tr><td><code>generate_markdown</code></td><td><span class="tag read">read</span></td><td>테이블 정의를 마크다운 텍스트로 생성(파일 아님)</td><td class="ok">✅</td></tr>
-    <tr><td><code>list_notes</code></td><td><span class="tag read">read</span></td><td>메모(V1·V2) 목록</td><td class="ok">✅</td></tr>
-    <tr><td><code>list_snapshots</code></td><td><span class="tag read">read</span></td><td>스냅샷 목록</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>get_statistics</code></td><td><span class="tag read">read</span></td><td>엔티티/관계 수·평균컬럼·PK·FK·고아·카디널리티 분포</td><td class="ok">✅</td><td>"현재 ERD 통계 보여줘"</td></tr>
+    <tr><td><code>get_connected_entities</code></td><td><span class="tag read">read</span></td><td>기준 테이블의 직접/전체 연결 탐색(BFS)</td><td class="ok">✅</td><td>"회원 테이블과 연결된 테이블 다 찾아줘"</td></tr>
+    <tr><td><code>detect_orphans</code></td><td><span class="tag read">read</span></td><td>관계 없는 고아 테이블 탐지</td><td class="ok">✅</td><td>"고아 테이블 있는지 찾아줘"</td></tr>
+    <tr><td><code>detect_circular_refs</code></td><td><span class="tag read">read</span></td><td>순환 참조 DFS 탐지(경로 반환)</td><td class="ok">✅</td><td>"순환 참조 진단해줘"</td></tr>
+    <tr><td><code>validate_schema</code></td><td><span class="tag read">read</span></td><td>PK 부재·자료형 누락·네이밍 컨벤션 위반 점검</td><td class="ok">✅</td><td>"스키마 검증해줘 (snake_case)"</td></tr>
+    <tr><td><code>generate_markdown</code></td><td><span class="tag read">read</span></td><td>테이블 정의를 마크다운 텍스트로 생성(파일 아님)</td><td class="ok">✅</td><td>"테이블 정의를 마크다운으로 만들어줘"</td></tr>
+    <tr><td><code>list_notes</code></td><td><span class="tag read">read</span></td><td>메모(V1·V2) 목록</td><td class="ok">✅</td><td>"메모 목록 보여줘"</td></tr>
+    <tr><td><code>list_snapshots</code></td><td><span class="tag read">read</span></td><td>스냅샷 목록</td><td class="ok">✅</td><td>"스냅샷 목록 보여줘"</td></tr>
   </table>
 
   <h3>3.2 선택 · 하이라이트 · 뷰 <span class="tag read">read</span></h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>select_entities</code></td><td><span class="tag read">read</span></td><td>키워드/ids로 다중 선택(후속 작업 대상 지정)</td><td class="ok">✅</td></tr>
-    <tr><td><code>highlight_entities</code></td><td><span class="tag read">read</span></td><td>선택+포커스로 강조</td><td class="ok">✅</td></tr>
-    <tr><td><code>focus_entity</code></td><td><span class="tag read">read</span></td><td>특정 테이블 포커스 배지(<code>setFocusEntity</code>)</td><td class="ok">✅</td></tr>
-    <tr><td><code>fit_view</code></td><td><span class="tag read">read</span></td><td>전체 맞춤(<code>fitAll</code>)·뷰 초기화(<code>resetView</code>)</td><td class="ok">✅</td></tr>
-    <tr><td><code>set_view_mode</code></td><td><span class="tag read">read</span></td><td>논리/물리·크로우풋·그리드스냅 토글</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>select_entities</code></td><td><span class="tag read">read</span></td><td>키워드/ids로 다중 선택(후속 작업 대상 지정)</td><td class="ok">✅</td><td>"주문 관련 테이블 다 선택해줘"</td></tr>
+    <tr><td><code>highlight_entities</code></td><td><span class="tag read">read</span></td><td>선택+포커스로 강조</td><td class="ok">✅</td><td>"회원 테이블 강조해줘"</td></tr>
+    <tr><td><code>focus_entity</code></td><td><span class="tag read">read</span></td><td>특정 테이블 포커스 배지(<code>setFocusEntity</code>)</td><td class="ok">✅</td><td>"주문 테이블로 포커스해줘"</td></tr>
+    <tr><td><code>fit_view</code></td><td><span class="tag read">read</span></td><td>전체 맞춤(<code>fitAll</code>)·뷰 초기화(<code>resetView</code>)</td><td class="ok">✅</td><td>"전체 보이게 화면 맞춰줘"</td></tr>
+    <tr><td><code>set_view_mode</code></td><td><span class="tag read">read</span></td><td>논리/물리·크로우풋·그리드스냅 토글</td><td class="ok">✅</td><td>"물리명으로 보여줘"</td></tr>
   </table>
 
   <h3>3.3 일괄 · 관계 자동화 <span class="tag draft">write-draft</span></h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>batch_update_entities</code></td><td><span class="tag draft">draft</span></td><td>설명·색상(colorTag)·행수(rowCount) 일괄 수정</td><td class="ok">✅</td></tr>
-    <tr><td><code>batch_rename_attributes</code></td><td><span class="tag draft">draft</span></td><td>컬럼명 패턴 치환 또는 컨벤션 일괄 변환</td><td class="ok">✅</td></tr>
-    <tr><td><code>auto_detect_relationships</code></td><td><span class="tag draft">draft</span></td><td><code>*_ID</code> 패턴으로 FK 관계 자동 추가(기존 보존)</td><td class="ok">✅</td></tr>
-    <tr><td><code>duplicate_entity</code></td><td><span class="tag draft">draft</span></td><td>테이블 복제(컬럼 포함, 관계 제외)</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>batch_update_entities</code></td><td><span class="tag draft">draft</span></td><td>설명·색상(colorTag)·행수(rowCount) 일괄 수정</td><td class="ok">✅</td><td>"모든 테이블 색상 파랑으로 바꿔줘"</td></tr>
+    <tr><td><code>batch_rename_attributes</code></td><td><span class="tag draft">draft</span></td><td>컬럼명 패턴 치환 또는 컨벤션 일괄 변환</td><td class="ok">✅</td><td>"모든 컬럼명 snake_case로 통일해줘"</td></tr>
+    <tr><td><code>auto_detect_relationships</code></td><td><span class="tag draft">draft</span></td><td><code>*_ID</code> 패턴으로 FK 관계 자동 추가(기존 보존)</td><td class="ok">✅</td><td>"FK 패턴으로 관계 자동 연결해줘"</td></tr>
+    <tr><td><code>duplicate_entity</code></td><td><span class="tag draft">draft</span></td><td>테이블 복제(컬럼 포함, 관계 제외)</td><td class="ok">✅</td><td>"회원 테이블 복제해줘"</td></tr>
   </table>
 
   <h3>3.4 섹션 · 메모 · 정렬 <span class="tag live">live</span></h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>align_entities</code></td><td><span class="tag live">live</span></td><td>선택 테이블 8방향 정렬/균등배분(<code>alignEntities</code>)</td><td class="ok">✅</td></tr>
-    <tr><td><code>create_section</code></td><td><span class="tag live">live</span></td><td>섹션 생성(ids/keyword면 범위 자동 계산)</td><td class="ok">✅</td></tr>
-    <tr><td><code>manage_section</code></td><td><span class="tag live">live</span></td><td>섹션 이름변경/색상/삭제</td><td class="ok">✅</td></tr>
-    <tr><td><code>add_note</code></td><td><span class="tag live">live</span></td><td>메모(V2 우선) 추가</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>align_entities</code></td><td><span class="tag live">live</span></td><td>선택 테이블 8방향 정렬/균등배분(<code>alignEntities</code>)</td><td class="ok">✅</td><td>"선택한 테이블들 수평 중앙 정렬해줘"</td></tr>
+    <tr><td><code>create_section</code></td><td><span class="tag live">live</span></td><td>섹션 생성(ids/keyword면 범위 자동 계산)</td><td class="ok">✅</td><td>"회원·주문 테이블을 '주문관리' 섹션으로 묶어줘"</td></tr>
+    <tr><td><code>manage_section</code></td><td><span class="tag live">live</span></td><td>섹션 이름변경/색상/삭제</td><td class="ok">✅</td><td>"'주문관리' 섹션 이름 바꿔줘"</td></tr>
+    <tr><td><code>add_note</code></td><td><span class="tag live">live</span></td><td>메모(V2 우선) 추가</td><td class="ok">✅</td><td>"'핵심 테이블' 메모 추가해줘"</td></tr>
   </table>
 
   <h3>3.5 다이어그램 · 버전 <span class="tag live">live / replace</span></h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>create_diagram</code></td><td><span class="tag live">replace</span></td><td>새 다이어그램 생성+전환(초기 엔티티 옵션)</td><td class="ok">✅</td></tr>
-    <tr><td><code>switch_diagram</code></td><td><span class="tag live">replace</span></td><td>활성 다이어그램 전환</td><td class="ok">✅</td></tr>
-    <tr><td><code>rename_diagram</code></td><td><span class="tag live">live</span></td><td>다이어그램 이름 변경</td><td class="ok">✅</td></tr>
-    <tr><td><code>delete_diagram</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>다이어그램 삭제(마지막 1개 불가)</td><td class="ok">✅</td></tr>
-    <tr><td><code>save_snapshot</code></td><td><span class="tag live">live</span></td><td>현재 상태 스냅샷 저장(펜딩 편집 선반영)</td><td class="ok">✅</td></tr>
-    <tr><td><code>restore_snapshot</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>스냅샷으로 워크스페이스 복원</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>create_diagram</code></td><td><span class="tag live">replace</span></td><td>새 다이어그램 생성+전환(초기 엔티티 옵션)</td><td class="ok">✅</td><td>"'쇼핑몰' 다이어그램 만들어줘"</td></tr>
+    <tr><td><code>switch_diagram</code></td><td><span class="tag live">replace</span></td><td>활성 다이어그램 전환</td><td class="ok">✅</td><td>"'회원관리' 다이어그램으로 전환해줘"</td></tr>
+    <tr><td><code>rename_diagram</code></td><td><span class="tag live">live</span></td><td>다이어그램 이름 변경</td><td class="ok">✅</td><td>"현재 다이어그램 이름을 '주문시스템'으로 바꿔줘"</td></tr>
+    <tr><td><code>delete_diagram</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>다이어그램 삭제(마지막 1개 불가)</td><td class="ok">✅</td><td>"이 다이어그램 삭제해줘"</td></tr>
+    <tr><td><code>save_snapshot</code></td><td><span class="tag live">live</span></td><td>현재 상태 스냅샷 저장(펜딩 편집 선반영)</td><td class="ok">✅</td><td>"현재 상태를 'v1.0'으로 저장해줘"</td></tr>
+    <tr><td><code>restore_snapshot</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>스냅샷으로 워크스페이스 복원</td><td class="ok">✅</td><td>"v1.0 스냅샷으로 복원해줘"</td></tr>
   </table>
 
   <h3>3.6 테마 · 내보내기 · 가져오기</h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>set_theme</code></td><td><span class="tag live">live</span></td><td>테마 변경(<code>applyTheme</code>)</td><td class="ok">✅</td></tr>
-    <tr><td><code>export_diagram</code></td><td><span class="tag read">read</span></td><td>PNG/SVG/JSON/MD 내보내기 트리거(다운로드/다이얼로그)</td><td class="ok">✅</td></tr>
-    <tr><td><code>import_json</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>JSON 스키마 가져오기(add/replace, <code>applyAISchema</code>)</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>set_theme</code></td><td><span class="tag live">live</span></td><td>테마 변경(<code>applyTheme</code>)</td><td class="ok">✅</td><td>"라이트 테마로 바꿔줘"</td></tr>
+    <tr><td><code>export_diagram</code></td><td><span class="tag read">read</span></td><td>PNG/SVG/JSON/MD 내보내기 트리거(다운로드/다이얼로그)</td><td class="ok">✅</td><td>"ERD를 이미지로 저장해줘"</td></tr>
+    <tr><td><code>import_json</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>JSON 스키마 가져오기(add/replace, <code>applyAISchema</code>)</td><td class="ok">✅</td><td>"이 JSON 스키마 가져와줘"</td></tr>
   </table>
 
   <h3>3.7 산출물 작성 — 테이블 정의서</h3>
   <p class="small">"좁은 채팅 표"가 아니라 <b>실제 문서 산출물</b>로 생성한다. HTML은 클라(새 창·인쇄→PDF), Excel은 사이드카(openpyxl).</p>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>generate_table_spec</code></td><td><span class="tag read">read</span></td><td>테이블 정의서를 <b>인쇄용 HTML 새 창</b>으로 생성(논리/물리·컬럼·PK/FK·NN·기본값·설명 → 인쇄/PDF). 클라 전용.</td><td class="ok">✅</td></tr>
-    <tr><td><code>export_table_spec_xlsx</code></td><td><span class="tag live">사이드카</span></td><td><b>엑셀(.xlsx)</b> 정의서 생성·다운로드(목차+테이블정의서 2시트). 새 엔드포인트 <code>POST /export/table-spec</code>(openpyxl) 호출. <b>데스크탑 전용</b>.</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>generate_table_spec</code></td><td><span class="tag read">read</span></td><td>테이블 정의서를 <b>인쇄용 HTML 새 창</b>으로 생성(논리/물리·컬럼·PK/FK·NN·기본값·설명 → 인쇄/PDF). 클라 전용.</td><td class="ok">✅</td><td>"테이블 정의서 만들어줘"</td></tr>
+    <tr><td><code>export_table_spec_xlsx</code></td><td><span class="tag live">사이드카</span></td><td><b>엑셀(.xlsx)</b> 정의서 생성·다운로드(목차+테이블정의서 2시트). 새 엔드포인트 <code>POST /export/table-spec</code>(openpyxl) 호출. <b>데스크탑 전용</b>.</td><td class="ok">✅</td><td>"테이블 정의서 엑셀로 내보내줘"</td></tr>
   </table>
   <div class="box acc">
     <div class="t">설계 메모 — "클라만 = 채팅 표시" 가 아니다</div>
@@ -188,24 +188,39 @@
 
   <h3>3.8 분석·산출물 심화 (2026-06-06 추가)</h3>
   <table>
-    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
-    <tr><td><code>analyze_erd_metrics</code></td><td><span class="tag read">read</span></td><td>fan-in/out·degree·허브 테이블·평균 결합도·고립 엔티티 (get_statistics 심화)</td><td class="ok">✅</td></tr>
-    <tr><td><code>suggest_normalization</code></td><td><span class="tag read">read</span></td><td>PK없음·반복컬럼·N:M 에 <b>수정 권고안</b>까지 (normalize_check은 진단만)</td><td class="ok">✅</td></tr>
-    <tr><td><code>generate_data_dictionary</code></td><td><span class="tag read">read</span></td><td><b>데이터 사전</b>(전 컬럼 평면 목록) HTML 새 창</td><td class="ok">✅</td></tr>
-    <tr><td><code>generate_erd_report</code></td><td><span class="tag read">read</span></td><td><b>ERD 종합 명세서</b>(통계+엔티티+관계+이슈) HTML 새 창</td><td class="ok">✅</td></tr>
-    <tr><td><code>generate_term_compliance</code></td><td><span class="tag read">read</span></td><td><b>표준용어 준수 점검표</b> — 컬럼 논리명의 표준 abbr vs 실제 물리명 대조 ⭐ 표준사전 연동(데스크탑)</td><td class="ok">✅</td></tr>
-    <tr><td><code>export_data_dictionary_xlsx</code></td><td><span class="tag live">사이드카</span></td><td>데이터 사전 <b>엑셀(.xlsx)</b> 다운로드 (<code>POST /export/data-dictionary</code>, openpyxl). 데스크탑 전용</td><td class="ok">✅</td></tr>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th><th>검증 질의문</th></tr>
+    <tr><td><code>analyze_erd_metrics</code></td><td><span class="tag read">read</span></td><td>fan-in/out·degree·허브 테이블·평균 결합도·고립 엔티티 (get_statistics 심화)</td><td class="ok">✅</td><td>"허브 테이블이랑 결합도 분석해줘"</td></tr>
+    <tr><td><code>suggest_normalization</code></td><td><span class="tag read">read</span></td><td>PK없음·반복컬럼·N:M 에 <b>수정 권고안</b>까지 (normalize_check은 진단만)</td><td class="ok">✅</td><td>"정규화 위반 찾아서 고칠 방법도 알려줘"</td></tr>
+    <tr><td><code>generate_data_dictionary</code></td><td><span class="tag read">read</span></td><td><b>데이터 사전</b>(전 컬럼 평면 목록) HTML 새 창</td><td class="ok">✅</td><td>"데이터 사전 만들어줘"</td></tr>
+    <tr><td><code>generate_erd_report</code></td><td><span class="tag read">read</span></td><td><b>ERD 종합 명세서</b>(통계+엔티티+관계+이슈) HTML 새 창</td><td class="ok">✅</td><td>"ERD 종합 명세서 만들어줘"</td></tr>
+    <tr><td><code>generate_term_compliance</code></td><td><span class="tag read">read</span></td><td><b>표준용어 준수 점검표</b> — 컬럼 논리명의 표준 abbr vs 실제 물리명 대조 ⭐ 표준사전 연동(데스크탑)</td><td class="ok">✅</td><td>"표준 안 지킨 컬럼 점검표 만들어줘"</td></tr>
+    <tr><td><code>export_data_dictionary_xlsx</code></td><td><span class="tag live">사이드카</span></td><td>데이터 사전 <b>엑셀(.xlsx)</b> 다운로드 (<code>POST /export/data-dictionary</code>, openpyxl). 데스크탑 전용</td><td class="ok">✅</td><td>"데이터 사전 엑셀로 뽑아줘"</td></tr>
   </table>
 
   <!-- 4 -->
   <h2 id="existing"><span class="n">4.</span>기존 19툴 (참고)</h2>
   <p class="small">변경 없음. 신규 툴과 동일 배열에서 관리된다.</p>
   <table>
-    <tr><th>write</th><th>read</th></tr>
-    <tr>
-      <td><code>create_entity</code> · <code>create_relation</code> · <code>auto_layout</code> · <code>delete_entity</code>⚠ · <code>delete_relation</code>⚠ · <code>add_attribute</code> · <code>update_attribute</code> · <code>remove_attribute</code>⚠ · <code>update_entity</code> · <code>set_cardinality</code> · <code>register_std_term</code></td>
-      <td><code>find_tables</code> · <code>describe_table</code> · <code>list_relations</code> · <code>generate_ddl</code> · <code>get_selection</code> · <code>describe_tool</code> · <code>normalize_check</code> · <code>lookup_std_term</code></td>
-    </tr>
+    <tr><th>툴</th><th>종류</th><th>검증 질의문</th></tr>
+    <tr><td><code>create_entity</code></td><td><span class="tag write">write</span></td><td>"회원 테이블 만들어줘"</td></tr>
+    <tr><td><code>create_relation</code></td><td><span class="tag write">write</span></td><td>"회원과 주문을 1:N로 연결해줘"</td></tr>
+    <tr><td><code>auto_layout</code></td><td><span class="tag write">write</span></td><td>"전체 자동 정렬해줘"</td></tr>
+    <tr><td><code>delete_entity</code> <span class="tag danger">위험</span></td><td><span class="tag write">write</span></td><td>"주문 테이블 삭제해줘"</td></tr>
+    <tr><td><code>delete_relation</code> <span class="tag danger">위험</span></td><td><span class="tag write">write</span></td><td>"회원-주문 관계 삭제해줘"</td></tr>
+    <tr><td><code>add_attribute</code></td><td><span class="tag write">write</span></td><td>"회원에 이메일 컬럼 추가해줘"</td></tr>
+    <tr><td><code>update_attribute</code></td><td><span class="tag write">write</span></td><td>"회원 이름 컬럼 타입을 varchar(100)으로 바꿔줘"</td></tr>
+    <tr><td><code>remove_attribute</code> <span class="tag danger">위험</span></td><td><span class="tag write">write</span></td><td>"회원의 임시 컬럼 삭제해줘"</td></tr>
+    <tr><td><code>update_entity</code></td><td><span class="tag write">write</span></td><td>"회원 테이블 설명 추가해줘"</td></tr>
+    <tr><td><code>set_cardinality</code></td><td><span class="tag write">write</span></td><td>"회원-주문 관계를 N:M으로 바꿔줘"</td></tr>
+    <tr><td><code>register_std_term</code></td><td><span class="tag write">write</span></td><td>"'회원번호' 표준용어 등록해줘(abbr MBR_SN)"</td></tr>
+    <tr><td><code>find_tables</code></td><td><span class="tag read">read</span></td><td>"회원 들어간 테이블 찾아줘"</td></tr>
+    <tr><td><code>describe_table</code></td><td><span class="tag read">read</span></td><td>"회원 테이블 구조 보여줘"</td></tr>
+    <tr><td><code>list_relations</code></td><td><span class="tag read">read</span></td><td>"관계 목록 보여줘"</td></tr>
+    <tr><td><code>generate_ddl</code></td><td><span class="tag read">read</span></td><td>"테이블 생성 SQL 만들어줘"</td></tr>
+    <tr><td><code>get_selection</code></td><td><span class="tag read">read</span></td><td>"지금 선택한 테이블 뭐야?"</td></tr>
+    <tr><td><code>describe_tool</code></td><td><span class="tag read">read</span></td><td>"create_entity 툴 설명해줘"</td></tr>
+    <tr><td><code>normalize_check</code></td><td><span class="tag read">read</span></td><td>"정규화 위반 찾아줘"</td></tr>
+    <tr><td><code>lookup_std_term</code></td><td><span class="tag read">read</span></td><td>"'회원' 표준용어 찾아줘"</td></tr>
   </table>
 
   <!-- 5 -->
@@ -220,7 +235,7 @@
   </div>
   <div class="box warn">
     <div class="t">§9.1 공유 영향</div>
-    <code>agent_tools.js</code>는 v1·v2·v3 공유 frozen 모듈이다. 30툴은 <b>세 버전 모두에</b> 자동 적용된다. 플래너 노출은 프론트가 컨텍스트로 보내는 <code>AGENT_TOOL_CATALOG</code>를 통하므로 별도 버전 분기 없이 v1/v2/v3 계획·ReAct 프롬프트가 새 툴을 인지한다.
+    <code>agent_tools.js</code>(클라)·<code>tools_proxy.py</code>(프록시)는 v1·v2·v3 공유 frozen 모듈이다. 신규 툴(클라 38·프록시 14)은 <b>세 버전 모두에</b> 자동 적용된다. 플래너 노출은 프론트가 컨텍스트로 보내는 <code>AGENT_TOOL_CATALOG</code>를 통하므로 별도 버전 분기 없이 v1/v2/v3 계획·ReAct 프롬프트가 새 툴을 인지한다.
   </div>
 
   <!-- 6 -->
@@ -231,27 +246,27 @@
     <tr><td><code>run</code> 참조 매칭</td><td>49개 <code>run:</code> 참조 ↔ 함수 정의 대조</td><td class="ok">✅ 전부 매칭</td></tr>
     <tr><td>클라 카탈로그 수</td><td><code>AGENT_TOOL_DEFS.length</code></td><td class="ok">57</td></tr>
     <tr><td>프록시 툴 구문</td><td><code>python -m py_compile tools_proxy.py</code> · 엑셀 2종 생성</td><td class="ok">✅ 통과</td></tr>
-    <tr><td>프록시 카탈로그 수</td><td><code>PROXY_TOOL_CATALOG</code> (신규 14 등록)</td><td class="ok">20</td></tr>
+    <tr><td>프록시 카탈로그 수</td><td><code>PROXY_TOOL_CATALOG</code> (신규 15 등록)</td><td class="ok">21</td></tr>
     <tr><td>인앱 동작</td><td>실제 앱(사이드카+패널)에서 자연어 호출 테스트</td><td class="small">권장 — 사용자 검증 필요</td></tr>
   </table>
 
   <!-- 7 -->
-  <h2 id="proxy"><span class="n">7.</span>프록시 툴 <span class="small" style="font-weight:400">(2026-06-06: 14개 구현 · 1개 제안)</span></h2>
+  <h2 id="proxy"><span class="n">7.</span>프록시 툴 <span class="small" style="font-weight:400">(2026-06-06: 15개 전부 구현)</span></h2>
   <div class="box warn">
     <div class="t">⚠️ 클라이언트 툴과 다른 레인</div>
     프록시 툴은 <b>서버(Python 사이드카)에서 실행</b>되며 <b>운영 DB에 직접 접근</b>한다(<code>proxy/python/agent/tools_proxy.py</code>, <code>location:"proxy"</code>). 클라이언트 툴(<code>agent_tools.js</code>)과 별개 파일·실행 경로이며, <b>Electron 데스크탑(사이드카) 전용</b>이다(웹 미지원). 추가분은 v1·v2·v3 공유다(<code>tools_proxy.py</code> 공유 frozen — 의도적 공유 추가).
   </div>
   <div class="box ok">
     <div class="t">✅ 구현 완료 (2026-06-06)</div>
-    제안 중 <b>읽기 전용 14개를 구현</b>했다 — introspection 9개 + <b>데이터 기반 분석 5개</b>(profile_table·check_referential_integrity·measure_cardinality·find_data_anomalies·suggest_indexes). <code>PROXY_TOOL_CATALOG</code> 총 20 = 기존 2 + 신규 14 + <code>db_doc_*</code> 4. introspection 쿼리·<code>adapter.execute</code> 재사용, 식별자는 스키마 검증 후 인용(안전). 쓰기형 <code>apply_erd_to_db</code>는 위험·오너 결정으로 <b>제안 유지</b>.
+    제안 <b>15개 전부 구현</b>했다 — introspection 9 + <b>데이터 기반 분석 5</b>(profile_table·check_referential_integrity·measure_cardinality·find_data_anomalies·suggest_indexes) + <b>포워드엔지니어링 1</b>(<code>apply_erd_to_db</code>, external·danger·승인 필수). <code>PROXY_TOOL_CATALOG</code> 총 21 = 기존 2 + 신규 15 + <code>db_doc_*</code> 4. introspection 쿼리·<code>adapter.execute</code> 재사용, 식별자는 스키마 검증 후 인용(안전).
   </div>
 
   <h3>7.1 현재 프록시 툴</h3>
   <table>
-    <tr><th>툴</th><th>종류</th><th>설명</th></tr>
-    <tr><td><code>fetch_db_schema</code></td><td><span class="tag read">read</span></td><td>연결 DB의 전체 스키마(테이블·컬럼·FK) 조회 — 전부-아니면-전무</td></tr>
-    <tr><td><code>run_sql</code></td><td><span class="tag draft">external</span> <span class="tag danger">위험</span></td><td>임의 SQL 실행(상위 50행). DML/DDL 포함 → 승인 게이트</td></tr>
-    <tr><td><code>db_doc_*</code></td><td><span class="tag read">read</span></td><td>DB 유형별 SQL 문법·자료형 참고 문서(연결 불필요, 정적)</td></tr>
+    <tr><th>툴</th><th>종류</th><th>설명</th><th>검증 질의문</th></tr>
+    <tr><td><code>fetch_db_schema</code></td><td><span class="tag read">read</span></td><td>연결 DB의 전체 스키마(테이블·컬럼·FK) 조회 — 전부-아니면-전무</td><td>"운영 DB 스키마 가져와줘"</td></tr>
+    <tr><td><code>run_sql</code></td><td><span class="tag draft">external</span> <span class="tag danger">위험</span></td><td>임의 SQL 실행(상위 50행). DML/DDL 포함 → 승인 게이트</td><td>"SELECT * FROM TB_CMM_MDL 실행해줘"</td></tr>
+    <tr><td><code>db_doc_*</code></td><td><span class="tag read">read</span></td><td>DB 유형별 SQL 문법·자료형 참고 문서(연결 불필요, 정적)</td><td>"MySQL 자료형 문법 참고 보여줘"</td></tr>
   </table>
 
   <h3>7.2 프록시 툴 현황</h3>
@@ -272,7 +287,7 @@
     <tr><td><code>measure_cardinality</code></td><td class="ok">✅</td><td><span class="tag read">read</span></td><td>관계 실제 카디널리티(1:1/1:N) 데이터로 추론</td><td>"이 관계 실제로 1:N 맞아?"</td></tr>
     <tr><td><code>find_data_anomalies</code></td><td class="ok">✅</td><td><span class="tag read">read</span></td><td>빈 테이블·NOT NULL 위반·단일 PK 중복</td><td>"데이터 이상한 거 찾아줘"</td></tr>
     <tr><td><code>suggest_indexes</code></td><td class="ok">✅</td><td><span class="tag read">read</span></td><td>인덱스 없는 FK 컬럼 추천(스키마 분석, 쿼리 없음)</td><td>"인덱스 추천해줘"</td></tr>
-    <tr><td><code>apply_erd_to_db</code> <span class="tag danger">위험</span></td><td class="small">제안</td><td><span class="tag draft">external</span></td><td>현재 ERD의 DDL을 운영 DB에 실행(포워드 엔지니어링)</td><td>이미 UI에 forward_engineer 존재 — 에이전트 노출은 위험·오너 결정으로 보류</td></tr>
+    <tr><td><code>apply_erd_to_db</code> <span class="tag danger">위험</span></td><td class="ok">✅</td><td><span class="tag draft">external</span></td><td>ddl 인자의 DDL(여러 문)을 운영 DB에 순차 실행(포워드 엔지니어링). 승인 필수.</td><td>"이 ERD를 실제 DB에 반영해줘" (generate_ddl → apply_erd_to_db)</td></tr>
   </table>
   <div class="box acc">
     <div class="t">우선순위 제안</div>
@@ -341,16 +356,17 @@
   </table>
   <div class="box warn">
     <div class="t">주의</div>
-    8.5는 운영 DB에 실제 INSERT. v3(🧠)는 아직 승인 게이트가 없어(M3 예정) 확인 없이 반영된다. 쓰기 테스트(8.3·8.5)는 throwaway 다이어그램/테스트 DB에서.
+    8.5는 운영 DB에 실제 INSERT. <b>2026-06-06부터 v3(🧠)도 쓰기/위험 작업 전 승인 게이트가 추가</b>됨(write/external/danger → approve interrupt). 그래도 쓰기 테스트(8.3·8.5)는 throwaway 다이어그램/테스트 DB에서 권장.
   </div>
 
   <!-- 9 -->
   <h2 id="todo"><span class="n">9.</span>후속 과제 (선택)</h2>
   <ul>
-    <li><b>인앱 E2E 검증</b>: 위험 툴(<code>restore_snapshot</code>·<code>delete_diagram</code>·<code>import_json</code>)은 승인(approve) 게이트 + 드래프트 안전망으로 보호되나, 실제 다이어그램에서 회귀 확인 권장.</li>
-    <li><b>스텝 라벨</b>: 프론트 관측 라벨(<code>_agentV3StepLabel</code> 등)에 신규 툴별 친화 문구 추가 시 UI 가독성↑(미적용 시 <code>desc</code> 폴백).</li>
-    <li><b>REPLAN done-목록</b>: 백엔드 재계획 프롬프트의 읽기-툴 가이드에 신규 read 툴(통계·검증 등) 반영 검토.</li>
-    <li><b>README</b>: 에이전트 기능 설명에 신규 툴군 반영 검토(README 동기화 하네스).</li>
+    <li><b class="ok">✅ REPLAN done-목록</b> (적용): 재계획 프롬프트(<code>REPLAN_SYSTEM</code>)의 읽기-툴 가이드에 신규 read 툴(get_statistics·validate_schema·analyze_erd_metrics·generate_table_spec·describe_db_table·profile_table 등) 반영.</li>
+    <li><b class="ok">✅ README</b> (적용): <code>agent_tools.js</code> 설명을 57종(+프록시 21) 으로 갱신.</li>
+    <li><b class="ok">✅ apply_erd_to_db</b> (적용): 제안이던 포워드엔지니어링 프록시 툴 구현(external·danger·승인 필수).</li>
+    <li><b class="ok">✅ 스텝 라벨</b> (적용): 신규 53툴(클라 38·프록시 15)에 <b>인자 반영 친화 라벨</b>을 공유 <code>_agentToolLabel()</code>(agent_tools.js)로 추가하고, v1·v2·v3 <code>StepLabel</code> 폴백에서 호출. 예: "테이블 선택: 주문", "DB 테이블 구조(서버): TB_CMM_MDL".</li>
+    <li><b>인앱 E2E 검증</b>: 위험 툴(<code>restore_snapshot</code>·<code>delete_diagram</code>·<code>import_json</code>·<code>apply_erd_to_db</code>)은 승인 게이트+드래프트 안전망으로 보호. 실제 다이어그램/테스트 DB 회귀 확인은 <b>사용자 검증 필요</b>(자동화 불가).</li>
   </ul>
 
 </main>

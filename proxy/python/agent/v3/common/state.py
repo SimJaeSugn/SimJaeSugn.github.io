@@ -62,3 +62,8 @@ class AgentState(TypedDict, total=False):
     react_thought: Optional[str]   # 이번 스텝의 추론
     react_tool: Optional[str]      # 다음에 호출할 툴 이름 또는 "finish"
     react_args: Optional[dict]     # 그 툴의 인자
+    react_needs_approval: Optional[bool]  # 이 행동이 쓰기/위험이라 승인이 필요한가
+    react_approved: Optional[bool]        # approve 노드 결과(사용자 승인 여부)
+    # verify 노드 — react 의 finish 가 의도를 충족했는지 구조적 판정
+    verdict: Optional[dict]               # V3Verdict.model_dump()
+    verify_count: int                     # verify→react 보완 횟수(무한 검증 가드)

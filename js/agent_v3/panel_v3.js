@@ -97,6 +97,7 @@ function agentV3BuildContext() {
         return {
           id: e.id,
           name: (typeof entDisplayName === 'function') ? entDisplayName(e) : (e.logicalName || e.physicalName || e.id),
+          physical: e.physicalName || '',
           pk: attrs.filter(a => a.kind === 'pk').map(a => a.physicalName || a.logicalName),
           cols: attrs.length,
         };

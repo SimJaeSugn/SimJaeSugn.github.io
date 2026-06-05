@@ -33,7 +33,14 @@ function _agentCommitDraft(draft) {
 // 시그니처: (draft, args, remap) → output  (오류 시 throw)
 
 function _agentToolCreateEntity(draft, args, remap) {
-  const origId = (args.id || ('ent_' + Math.random().toString(36).slice(2, 7))).toString();
+  args = args || {};
+  const _ascii = s => /^[A-Za-z][A-Za-z0-9_]*$/.test(String(s || ''));
+  // id 는 영문 snake_case 식별자여야 한다(물리명·논리명과 혼동 방지).
+  // 한글/빈 id 면 물리명(영문) → 임의값 순으로 파생하고, 물리명이 비면 id 의 대문자형을 쓴다.
+  let _physical = (args.physicalName || '').toString().trim();
+  let origId = (args.id || '').toString().trim();
+  if (!_ascii(origId)) origId = _ascii(_physical) ? _physical.toLowerCase() : ('ent_' + Math.random().toString(36).slice(2, 7));
+  if (!_physical) _physical = origId.toUpperCase();
   const existing = new Set(draft.entities.map(e => e.id));
   let id = origId, n = 2;
   while (existing.has(id)) id = origId + '_' + (n++);
@@ -51,7 +58,7 @@ function _agentToolCreateEntity(draft, args, remap) {
   const ent = {
     id,
     logicalName: args.logicalName || args.name || origId,
-    physicalName: args.physicalName || origId.toUpperCase(),
+    physicalName: _physical,
     description: args.description || '',
     attrs,
     indexes: [],
@@ -1148,7 +1155,9 @@ async function _agentToolExportDataDictionaryXlsx(draft, args) {
 const AGENT_TOOL_DEFS = [
   { name: 'create_entity',   kind: 'write', danger: false, run: _agentToolCreateEntity,
     desc: '새 테이블 생성(각 엔티티 PK 1개 이상)', params: 'id, logicalName, physicalName, attrs[]',
-    detail: 'id는 snake_case 영문이며 이후 관계에서 이 id로 참조된다. attrs 각 항목: {logicalName, physicalName, type, kind(pk|fk|normal), notNull}.' },
+    detail: '세 필드를 혼동·교체하지 말 것: id=소문자 snake_case 영문 식별자(관계에서 이 id로 참조), logicalName=한글 논리명, '
+          + 'physicalName=UPPER_SNAKE_CASE 영문 물리명(DB 테이블명). 예: {id:"common_model", logicalName:"공통모델", physicalName:"TB_CMM_MDL"}. '
+          + 'attrs 각 항목도 동일 규칙: {logicalName:한글, physicalName:UPPER_SNAKE_CASE 영문, type, kind(pk|fk|normal), notNull}.' },
   { name: 'create_relation', kind: 'write', danger: false, run: _agentToolCreateRelation,
     desc: '관계 생성(+FK 자동)', params: 'from, to, card(1:1|1:N|N:M), addFk?',
     detail: '1:N이면 from이 부모(1)·to가 자식(N). addFk 생략 시 부모 PK 기반 FK 컬럼을 자식에 자동 추가(N:M 제외).' },
@@ -1162,7 +1171,7 @@ const AGENT_TOOL_DEFS = [
     desc: '관계 삭제', params: 'from, to', detail: 'from→to 관계 1개를 제거한다(FK 컬럼은 유지).' },
   { name: 'add_attribute',   kind: 'write', danger: false, run: _agentToolAddAttribute,
     desc: '컬럼 추가', params: 'entityId, attr{logicalName,physicalName,type,kind,notNull}',
-    detail: '대상 엔티티에 컬럼을 추가한다. 동일 physicalName이 이미 있으면 추가하지 않는다.' },
+    detail: '대상 엔티티에 컬럼을 추가한다. logicalName=한글 컬럼명, physicalName=UPPER_SNAKE_CASE 영문 컬럼명(혼동 금지). 동일 physicalName이 이미 있으면 추가하지 않는다.' },
   { name: 'update_attribute', kind: 'write', danger: false, run: _agentToolUpdateAttribute,
     desc: '기존 컬럼 수정', params: 'entityId, attrName, {logicalName?,physicalName?,type?,kind?,notNull?,unique?}',
     detail: 'attrName(현재 물리명 또는 논리명)으로 대상 컬럼을 찾아 전달된 필드만 수정한다. physicalName 전달 시 컬럼명 변경.' },
@@ -1328,3 +1337,75 @@ const AGENT_TOOL_CATALOG = AGENT_TOOL_DEFS.map(d => ({
   name: d.name, kind: d.kind, desc: d.desc, params: d.params, danger: d.danger, detail: d.detail,
 }));
 function _agentToolDef(name) { return AGENT_TOOL_DEFS.find(d => d.name === name) || null; }
+
+// 신규 툴의 친화 스텝 라벨(인자 반영) — v1·v2·v3 StepLabel 의 폴백에서 공유 호출.
+// 모르는 툴은 null 반환 → 호출 측이 catalog desc 로 폴백. (서버) 표시는 프록시 툴.
+function _agentToolLabel(tool, args) {
+  const a = args || {};
+  const ids = Array.isArray(a.ids || a.entityIds) ? (a.ids || a.entityIds).join(', ') : (a.ids || a.entityIds || '');
+  const sel = a.keyword || a.name || a.query || ids || '';
+  const tbl = a.table || a.tableName || '';
+  switch (tool) {
+    // 선택·뷰
+    case 'select_entities': return '테이블 선택' + (sel ? ': ' + sel : '');
+    case 'highlight_entities': return '테이블 강조' + (sel ? ': ' + sel : '');
+    case 'focus_entity': return '테이블 포커스: ' + (a.entityId || a.id || a.name || '');
+    case 'fit_view': return a.mode === 'reset' ? '뷰 초기화' : '전체 화면 맞춤';
+    case 'set_view_mode': return '표시 모드 전환' + (a.view ? ': ' + a.view : '');
+    case 'align_entities': return '정렬/배분' + (a.direction || a.dir ? ': ' + (a.direction || a.dir) : '');
+    // 일괄·관계
+    case 'batch_update_entities': return '테이블 일괄 수정' + (sel ? ': ' + sel : '');
+    case 'batch_rename_attributes': return '컬럼명 일괄 변경';
+    case 'auto_detect_relationships': return 'FK 패턴 관계 자동 감지';
+    case 'duplicate_entity': return '테이블 복제: ' + (a.entityId || a.id || a.name || '');
+    // 분석
+    case 'get_statistics': return 'ERD 통계 조회';
+    case 'get_connected_entities': return '연결 테이블 탐색: ' + (a.entityId || a.id || a.name || '');
+    case 'detect_orphans': return '고아 테이블 탐지';
+    case 'detect_circular_refs': return '순환 참조 탐지';
+    case 'validate_schema': return '스키마 검증';
+    case 'analyze_erd_metrics': return 'ERD 메트릭 분석';
+    case 'suggest_normalization': return '정규화 권고 진단';
+    case 'generate_markdown': return '마크다운 생성';
+    case 'list_notes': return '메모 목록 조회';
+    case 'list_snapshots': return '스냅샷 목록 조회';
+    // 섹션·메모
+    case 'create_section': return '섹션 생성' + (a.name ? ': ' + a.name : '');
+    case 'manage_section': return '섹션 ' + (a.action || '관리') + (a.newName || a.name ? ': ' + (a.newName || a.name) : '');
+    case 'add_note': return '메모 추가';
+    // 다이어그램·버전
+    case 'create_diagram': return '다이어그램 생성' + (a.name ? ': ' + a.name : '');
+    case 'switch_diagram': return '다이어그램 전환: ' + (a.diagram || a.diagramId || a.name || '');
+    case 'rename_diagram': return '다이어그램 이름변경: ' + (a.newName || '');
+    case 'delete_diagram': return '⚠ 다이어그램 삭제: ' + (a.diagram || a.diagramId || a.name || '');
+    case 'save_snapshot': return '스냅샷 저장' + (a.name ? ': ' + a.name : '');
+    case 'restore_snapshot': return '⚠ 스냅샷 복원: ' + (a.snapshot || a.snapshotId || a.name || '');
+    // 테마·입출력·산출물
+    case 'set_theme': return '테마 변경: ' + (a.theme || a.name || a.themeName || '');
+    case 'export_diagram': return '다이어그램 내보내기' + (a.format ? '(' + a.format + ')' : '');
+    case 'import_json': return '⚠ JSON 가져오기' + (a.mode ? '(' + a.mode + ')' : '');
+    case 'generate_table_spec': return '테이블 정의서 생성(문서)';
+    case 'export_table_spec_xlsx': return '테이블 정의서 엑셀 다운로드';
+    case 'generate_data_dictionary': return '데이터 사전 생성(문서)';
+    case 'export_data_dictionary_xlsx': return '데이터 사전 엑셀 다운로드';
+    case 'generate_erd_report': return 'ERD 종합 명세서 생성(문서)';
+    case 'generate_term_compliance': return '표준용어 준수 점검';
+    // 프록시 DB (서버)
+    case 'list_db_tables': return 'DB 테이블 목록(서버)';
+    case 'describe_db_table': return 'DB 테이블 구조(서버): ' + tbl;
+    case 'count_db_rows': return 'DB 행 수 조회(서버): ' + tbl;
+    case 'sample_db_rows': return 'DB 데이터 미리보기(서버): ' + tbl;
+    case 'get_db_constraints': return 'DB 제약 조회(서버)' + (tbl ? ': ' + tbl : '');
+    case 'find_db_column': return 'DB 컬럼 검색(서버): ' + (a.keyword || a.name || a.column || '');
+    case 'profile_table': return 'DB 컬럼 프로파일(서버): ' + tbl;
+    case 'check_referential_integrity': return 'FK 무결성 점검(서버)';
+    case 'measure_cardinality': return '카디널리티 실측(서버): ' + (a.from || '') + ' → ' + (a.to || '');
+    case 'find_data_anomalies': return '데이터 이상 탐지(서버)' + (tbl ? ': ' + tbl : '');
+    case 'suggest_indexes': return '인덱스 추천(서버)';
+    case 'run_select': return 'SELECT 조회(서버)';
+    case 'explain_query': return '쿼리 실행계획(서버)';
+    case 'compare_erd_to_db': return 'ERD↔운영DB 비교(서버)';
+    case 'apply_erd_to_db': return '⚠ ERD를 운영 DB에 반영(서버)';
+    default: return null;
+  }
+}

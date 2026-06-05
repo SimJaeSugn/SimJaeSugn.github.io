@@ -1,6 +1,6 @@
 # Agent v3 — Plan-and-Execute + ReAct 하이브리드 (도구형)
 
-> 상태: **V3-M1·M2 완료** (main 머지 b9f7523, 2026-06-05) — 다음 M3 · 작성일 2026-06-05
+> 상태: **V3-M1·M2 완료**(main 머지 b9f7523) · **M3 완료**(승인 게이트+verify, 2026-06-06) — 다음 M4(eval) · 작성일 2026-06-05
 > 격리 근거: `docs/AI_ERD_v2_의도분석_계획준수_구현계획서.html` §9.1 격리 계약의 **진화형**
 > (v3는 v1 베이스 위에 세운 독립 실험 레인이며, v2와도 분리한다.)
 
@@ -42,7 +42,7 @@ v3는 토폴로지가 v1과 다르므로 v2→v1식 기계적 승급(`promote_v2
 |----------|------|------|
 | **V3-M1** | 격리 골격(작동 미러) + 격리 계약 확립 + 하네스 | **✅ 완료** (2026-06-05) |
 | **V3-M2** | ReAct 루프 토폴로지(react⇄act⇄observe) + `plan`/`reflect` 메타툴 + 발산 가드(loop_count 상한) | **✅ 완료** (2026-06-05) |
-| V3-M3 | 준수 검증(verify) + ReAct 관찰 기반 종료조건 + **행동별 승인 모델** | 예정(다음) |
+| **V3-M3** | 준수 검증(verify) + ReAct 관찰 기반 종료조건 + **행동별 승인 모델** | **✅ 완료** (2026-06-06) — 승인 게이트 + verify 노드 |
 | V3-M4 | eval 오라클(ReAct는 실행레벨 → 샌드박스 필요) | 예정 |
 | V3-M5 | A/B/C 비교 + 진입점 컷오버 준비 | 예정 |
 | V3-M6 | 진입점 교체(v3→기본) — 별도 오너 결정 | 선택 |
@@ -67,7 +67,8 @@ v3는 토폴로지가 v1과 다르므로 v2→v1식 기계적 승급(`promote_v2
 - **SSE 추가**: `thought`(react 추론·다음 행동)·`observation`(행동 결과). 프론트 `observe_v3.js`가 버블 안 ReAct 추적(trace)으로 렌더(🎯 의도·🧠 생각·👁 관찰).
 - **재사용(v1 읽기 전용)**: `analyze`·`answer`·`fetch_tools`·`respond` 노드, `tools_proxy`·LLM·프롬프트 헬퍼.
 - 검증 통과: 그래프 빌드(노드 11, ReAct 노드 전부) · diff 화이트리스트 비어있음 · v1·v2↔v3 상호 참조 0건.
-- **알려진 갭(M3 이관)**: 행동별 승인 모델 없음 — 현재 write 는 프론트 드래프트에 누적 후 종료 시 커밋(드래프트 안전망). verify 노드·관찰 기반 종료조건도 M3.
+- **승인 게이트(2026-06-06)**: ReAct 루프에 `approve` 노드 — write/external/danger 툴은 실행 전 `plan_approval` interrupt 로 승인(read/meta 면제). 승인 시 proxy_exec/client_exec, 거부 시 respond(취소). 운영 DB 쓰기(run_sql·apply_erd_to_db)·ERD 파괴(delete_* 등)가 확인 없이 실행되던 갭을 닫음. 프론트는 기존 `_agentV3AwaitApproval` 재사용 — 백엔드만 변경.
+- **준수 검증 verify(2026-06-06)**: `react`의 `finish`가 곧장 종료하지 않고 `verify` 노드를 거친다 — `[분석된 의도]`의 goal 이 `[관찰 기록]`으로 충족됐는지 `V3Verdict`(adherence pass/partial/fail, missing, next)로 구조 판정. 충족(pass)/판정불가 → respond, 보완 가능(partial+continue) → 미충족 내용을 관찰에 남기고 `react`로 되돌림(무한 검증은 `MAX_VERIFY=2`로 차단). 모델의 성급한 finish·목표 누락을 잡는다. SSE `verdict` 이벤트로 관측 노출(observe_v3 렌더). **이로써 M3 완료** — verify·관찰 기반 종료조건·승인 모델 모두 구현.
 
 ## 5. 격리 불변식 (요약 — 강제 규칙은 CLAUDE.md "하네스: Agent v3 격리")
 

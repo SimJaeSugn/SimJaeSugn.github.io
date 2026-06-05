@@ -99,6 +99,7 @@ function agentBuildContext() {
         return {
           id: e.id,
           name: (typeof entDisplayName === 'function') ? entDisplayName(e) : (e.logicalName || e.physicalName || e.id),
+          physical: e.physicalName || '',
           pk: attrs.filter(a => a.kind === 'pk').map(a => a.physicalName || a.logicalName),
           cols: attrs.length,
         };
@@ -177,7 +178,9 @@ function _agentStepLabel(s) {
   if (s.tool === 'fetch_db_schema') return 'DB 스키마 조회(서버)';
   if (s.tool && s.tool.indexOf('db_doc_') === 0) return 'SQL 문법 참고: ' + s.tool.slice(7);
   if (s.tool === 'run_sql') return '⚠ SQL 실행(서버): ' + (a.sql ? String(a.sql).slice(0, 40) : '');
-  // 폴백: 단일 소스 카탈로그의 설명을 사용(라벨 중복 정의 방지)
+  // 신규 툴: 공유 친화 라벨(인자 반영) → 없으면 카탈로그 desc 폴백
+  const _lbl = (typeof _agentToolLabel === 'function') ? _agentToolLabel(s && s.tool, a) : null;
+  if (_lbl) return _lbl;
   const def = (typeof _agentToolDef === 'function') ? _agentToolDef(s && s.tool) : null;
   return (def && def.desc) || (s && s.tool) || '작업';
 }

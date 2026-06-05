@@ -16,4 +16,8 @@ def prep_node(state: AgentState) -> dict:
         "react_tool": None,
         "react_args": None,
         "react_thought": None,
+        "react_needs_approval": None,
+        "react_approved": None,
+        "verify_count": 0,
+        "verdict": None,
     }

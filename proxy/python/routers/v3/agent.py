@@ -98,6 +98,12 @@ async def _run(graph_input, cfg):
                             "thought": e.get("thought", ""),
                         })
 
+            # verify 노드 → verdict SSE 이벤트 (준수 검증 결과)
+            if "verify" in chunk:
+                vd = chunk["verify"].get("verdict")
+                if vd:
+                    yield _sse("verdict", vd)
+
             # interrupt 처리 — 독립 if (다른 분기와 한 청크에 공존해도 누락 방지)
             if "__interrupt__" in chunk:
                 intr = chunk["__interrupt__"]
