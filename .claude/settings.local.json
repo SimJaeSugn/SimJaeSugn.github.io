@@ -142,7 +142,11 @@
       "Bash(./node_modules/.bin/electron _verify_seed.js)",
       "Bash(./venv/Scripts/python.exe -c \"import routers.stddict; import main; print\\('import OK, routes:', len\\(main.app.routes\\)\\)\")",
       "Bash(grep -rn \"data-theme\\\\|theme-light\\\\|\\\\\\\\[data-theme\" css/*.css)",
-      "PowerShell(taskkill *)"
+      "PowerShell(taskkill *)",
+      "Bash(python -m py_compile agent/v3/__init__.py agent/v3/common/__init__.py agent/v3/common/state.py agent/v3/nodes/__init__.py agent/v3/graph.py routers/v3/__init__.py routers/v3/agent.py main.py)",
+      "Bash(python -c \"from agent.v3.graph import graph; print\\('OK: v3 graph compiled, nodes=', list\\(graph.get_graph\\(\\).nodes\\)[:12]\\)\")",
+      "Bash(python _smoke_v3.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python _smoke_v3.py)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
