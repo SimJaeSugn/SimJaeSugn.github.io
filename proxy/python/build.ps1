@@ -1,3 +1,9 @@
+param(
+    # -Clean: PyInstaller 캐시(build\)를 비우고 처음부터 풀빌드(증분 감지 우회).
+    #         릴리스 빌드나 "코드 바꿨는데 옛 동작" 같은 캐시 의심 시 사용. (느리지만 확실)
+    [switch]$Clean
+)
+
 $ErrorActionPreference = "Stop"
 # 주의: $ErrorActionPreference="Stop" 은 PowerShell cmdlet 에러만 멈춘다.
 # pyinstaller 같은 네이티브 exe 의 실패(0이 아닌 exit code)는 자동으로 안 멈추므로
@@ -7,7 +13,8 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $exe = Join-Path $PSScriptRoot "dist\uxer-sidecar.exe"
 
-Write-Host "=== Python 사이드카 빌드 ===" -ForegroundColor White
+$mode = if ($Clean) { "클린(풀빌드)" } else { "증분" }
+Write-Host "=== Python 사이드카 빌드 [$mode] ===" -ForegroundColor White
 
 # ── 사전 점검 ①: 실행 중인 사이드카가 dist\uxer-sidecar.exe 를 잠그면 PyInstaller 가
 #    덮어쓰지 못한다. 어차피 이 빌드가 교체할 exe 이므로 잔존 프로세스를 종료해 잠금을 푼다.
@@ -44,27 +51,35 @@ $before = if (Test-Path $exe) { (Get-Item $exe).LastWriteTimeUtc } else { [datet
 # langchain / langgraph 계열은 동적 임포트와 패키지 메타데이터(importlib.metadata)에
 # 의존하므로, PyInstaller 가 누락하지 않도록 collect-all + copy-metadata 를 명시한다.
 # (없으면 설치는 되어도 번들 exe 실행 시 ModuleNotFound / PackageNotFound 로 죽는다)
-pyinstaller `
-    --onefile `
-    --noconsole `
-    --name uxer-sidecar `
-    --distpath dist `
-    --workpath build `
-    --collect-all langgraph `
-    --collect-all langchain_core `
-    --collect-all langchain_openai `
-    --collect-all langsmith `
-    --collect-all openai `
-    --collect-all tiktoken `
-    --collect-all openpyxl `
-    --copy-metadata langgraph `
-    --copy-metadata langchain-core `
-    --copy-metadata langchain-openai `
-    --copy-metadata langsmith `
-    --copy-metadata openai `
-    --copy-metadata tiktoken `
-    --copy-metadata pydantic `
-    main.py
+$piArgs = @(
+    '--onefile'
+    '--noconsole'
+    '--name', 'uxer-sidecar'
+    '--distpath', 'dist'
+    '--workpath', 'build'
+    '--collect-all', 'langgraph'
+    '--collect-all', 'langchain_core'
+    '--collect-all', 'langchain_openai'
+    '--collect-all', 'langsmith'
+    '--collect-all', 'openai'
+    '--collect-all', 'tiktoken'
+    '--collect-all', 'openpyxl'
+    '--copy-metadata', 'langgraph'
+    '--copy-metadata', 'langchain-core'
+    '--copy-metadata', 'langchain-openai'
+    '--copy-metadata', 'langsmith'
+    '--copy-metadata', 'openai'
+    '--copy-metadata', 'tiktoken'
+    '--copy-metadata', 'pydantic'
+    'main.py'
+)
+if ($Clean) {
+    # 캐시·중간산출물 제거 후 처음부터 빌드 (증분 감지 우회). --noconfirm 으로 비대화식 보장.
+    Write-Host "[클린] PyInstaller 캐시(build\) 제거 후 풀빌드 — 시간이 더 걸립니다." -ForegroundColor Yellow
+    $piArgs = @('--clean', '--noconfirm') + $piArgs
+}
+
+pyinstaller @piArgs
 
 # ── 사후 점검 ①(핵심): PyInstaller(네이티브)의 실패 exit code 를 직접 확인 ──
 if ($LASTEXITCODE -ne 0) {
