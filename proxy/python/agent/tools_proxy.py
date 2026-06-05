@@ -47,6 +47,22 @@ PROXY_TOOL_CATALOG = [
     {"name": "compare_erd_to_db", "kind": "read", "location": "proxy", "danger": False,
      "desc": "현재 ERD ↔ 운영 DB 스키마 드리프트 비교", "params": "erd(엔티티 목록 [{physicalName, columns[]}])",
      "detail": "ERD 엔티티 목록과 운영 DB 스키마를 대조해 ERD-only/DB-only 테이블·컬럼 차이를 반환한다. 호출 측이 현재 ERD를 erd 인자로 전달."},
+    # ── 데이터 기반 분석 툴 (2026-06-06 추가, 읽기 전용) ──
+    {"name": "profile_table", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "테이블 컬럼 프로파일(NULL율·distinct)", "params": "table",
+     "detail": "지정 테이블의 각 컬럼(상위 20개)에 대해 총행수·NULL 수·NULL율·distinct 수를 한 번의 집계 쿼리로 반환한다. 데이터 품질·분포 파악용."},
+    {"name": "check_referential_integrity", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "FK 참조 무결성 실측(고아 참조)", "params": "table?(생략 시 전체 FK)",
+     "detail": "스키마 FK 별로 부모에 없는 자식 값(고아 참조) 수를 LEFT JOIN 으로 실측한다. '실제 데이터가 FK를 지키는가'."},
+    {"name": "measure_cardinality", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "관계 카디널리티 실측(1:1/1:N)", "params": "from, to",
+     "detail": "두 테이블 사이 FK 의 부모당 자식 최대수를 측정해 1:1/1:N 을 추론한다(데이터 기반)."},
+    {"name": "find_data_anomalies", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "데이터 이상 탐지(빈 테이블·NN위반·중복PK)", "params": "table?(생략 시 상위 10개)",
+     "detail": "빈 테이블, NOT NULL 컬럼의 NULL 값, 단일 PK 중복을 실측해 보고한다(테이블당 쿼리 다수 — 범위 제한)."},
+    {"name": "suggest_indexes", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "인덱스 추천(인덱스 없는 FK 등)", "params": "(없음)",
+     "detail": "PK/UNIQUE 가 아닌 FK 컬럼을 인덱스 후보로 추천한다(스키마 분석, DB 쿼리 없음)."},
 ] + DB_DOC_CATALOG
 PROXY_TOOL_NAMES = {t["name"] for t in PROXY_TOOL_CATALOG}
 
@@ -290,6 +306,149 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
                     col_diffs.append({"table": db_tables[k].get("tableName"),
                                       "inDbNotErd": in_db[:20], "inErdNotDb": in_erd[:20]})
             return {"ok": True, "tablesOnlyInErd": only_erd, "tablesOnlyInDb": only_db, "columnDiffs": col_diffs}
+
+        if name == "profile_table":
+            target = (args.get("table") or args.get("tableName") or "").strip()
+            if not target:
+                return {"ok": False, "error": "table 인자가 필요합니다."}
+            schema = await _load_full_schema(adapter, config)
+            t = _find_table(schema, target)
+            if not t:
+                return {"ok": False, "error": "테이블을 찾을 수 없습니다: " + target}
+            cols = (t.get("columns") or [])[:20]
+            if not cols:
+                return {"ok": False, "error": "컬럼이 없습니다."}
+            qt = _quote_ident(db_type, t.get("tableName"))
+            parts = ["COUNT(*) AS _total"]
+            for i, c in enumerate(cols):
+                qc = _quote_ident(db_type, c.get("columnName"))
+                parts.append(f"COUNT({qc}) AS c{i}_nn")
+                parts.append(f"COUNT(DISTINCT {qc}) AS c{i}_d")
+            res = await adapter.execute(config, "SELECT " + ", ".join(parts) + f" FROM {qt}")
+            row = (res.get("rows") or [{}])[0] if (res.get("rows")) else {}
+
+            def _g(k):
+                if isinstance(row, dict):
+                    for kk in (k, k.upper(), k.lower()):
+                        if kk in row:
+                            return row[kk]
+                return None
+            total = _g("_total") or 0
+            profile = []
+            for i, c in enumerate(cols):
+                nn = _g(f"c{i}_nn") or 0
+                d = _g(f"c{i}_d") or 0
+                nulls = (total or 0) - (nn or 0)
+                profile.append({"column": c.get("columnName"), "type": c.get("dataType") or "",
+                                "nullCount": nulls, "nullRate": round(nulls / total, 3) if total else 0,
+                                "distinct": d})
+            return {"ok": True, "table": t.get("tableName"), "rowCount": total, "columns": profile}
+
+        if name == "check_referential_integrity":
+            schema = await _load_full_schema(adapter, config)
+            target = (args.get("table") or "").strip().lower()
+            checked = []
+            for fk in (schema.get("fks") or [])[:40]:
+                ft, fc, tt, tc = fk.get("fromTable"), fk.get("fromCol"), fk.get("toTable"), fk.get("toCol")
+                if not (ft and fc and tt and tc):
+                    continue
+                if target and target not in (ft.lower(), tt.lower()):
+                    continue
+                qft, qtt = _quote_ident(db_type, ft), _quote_ident(db_type, tt)
+                qfc, qtc = _quote_ident(db_type, fc), _quote_ident(db_type, tc)
+                sql = (f"SELECT COUNT(*) AS cnt FROM {qft} f LEFT JOIN {qtt} t "
+                       f"ON f.{qfc} = t.{qtc} WHERE f.{qfc} IS NOT NULL AND t.{qtc} IS NULL")
+                try:
+                    res = await adapter.execute(config, sql)
+                    orphan = _first_scalar(res.get("rows") or [])
+                except Exception as e:  # noqa: BLE001
+                    orphan = None
+                checked.append({"fk": f"{ft}.{fc} -> {tt}.{tc}", "orphanCount": orphan})
+            bad = [c for c in checked if c["orphanCount"]]
+            return {"ok": True, "checkedFks": len(checked), "allOk": len(bad) == 0, "violations": bad, "detail": checked}
+
+        if name == "measure_cardinality":
+            fr = (args.get("from") or args.get("fromTable") or "").strip()
+            to = (args.get("to") or args.get("toTable") or "").strip()
+            if not fr or not to:
+                return {"ok": False, "error": "from·to 두 테이블이 필요합니다."}
+            schema = await _load_full_schema(adapter, config)
+            fk = None
+            for f in (schema.get("fks") or []):
+                if {(f.get("fromTable") or "").lower(), (f.get("toTable") or "").lower()} == {fr.lower(), to.lower()}:
+                    fk = f
+                    break
+            if not fk:
+                return {"ok": False, "error": "두 테이블 사이 FK를 스키마에서 찾지 못했습니다."}
+            child, cfc = fk.get("fromTable"), fk.get("fromCol")
+            qc, qcc = _quote_ident(db_type, child), _quote_ident(db_type, cfc)
+            sql = (f"SELECT MAX(cnt) AS mx FROM (SELECT {qcc} AS k, COUNT(*) AS cnt "
+                   f"FROM {qc} WHERE {qcc} IS NOT NULL GROUP BY {qcc}) x")
+            res = await adapter.execute(config, sql)
+            mx = _first_scalar(res.get("rows") or [])
+            card = "1:1" if (mx is not None and mx <= 1) else "1:N"
+            return {"ok": True, "fk": f"{fk.get('fromTable')}.{cfc} -> {fk.get('toTable')}.{fk.get('toCol')}",
+                    "maxChildrenPerParent": mx, "inferredCardinality": card}
+
+        if name == "find_data_anomalies":
+            schema = await _load_full_schema(adapter, config)
+            target = (args.get("table") or "").strip()
+            if target:
+                tt = _find_table(schema, target)
+                tables = [tt] if tt else []
+            else:
+                tables = list(schema.get("tables") or [])[:10]
+            anomalies = []
+            for t in tables:
+                tn = t.get("tableName")
+                qt = _quote_ident(db_type, tn)
+                try:
+                    res = await adapter.execute(config, f"SELECT COUNT(*) AS cnt FROM {qt}")
+                    total = _first_scalar(res.get("rows") or []) or 0
+                except Exception:  # noqa: BLE001
+                    continue
+                if not total:
+                    anomalies.append({"table": tn, "type": "empty", "note": "데이터 없음"})
+                    continue
+                nn_checked = 0
+                for c in (t.get("columns") or []):
+                    if c.get("isNullable") is False and nn_checked < 8:
+                        nn_checked += 1
+                        qc = _quote_ident(db_type, c.get("columnName"))
+                        try:
+                            res = await adapter.execute(config, f"SELECT COUNT(*) AS cnt FROM {qt} WHERE {qc} IS NULL")
+                            nulls = _first_scalar(res.get("rows") or []) or 0
+                            if nulls:
+                                anomalies.append({"table": tn, "column": c.get("columnName"), "type": "null_in_notnull", "count": nulls})
+                        except Exception:  # noqa: BLE001
+                            pass
+                pks = [c.get("columnName") for c in (t.get("columns") or []) if c.get("isPk")]
+                if len(pks) == 1:
+                    qp = _quote_ident(db_type, pks[0])
+                    try:
+                        res = await adapter.execute(config, f"SELECT COUNT(*) AS total, COUNT(DISTINCT {qp}) AS d FROM {qt}")
+                        r0 = (res.get("rows") or [{}])[0]
+                        tot = r0.get("total") if isinstance(r0, dict) else None
+                        dis = r0.get("d") if isinstance(r0, dict) else None
+                        if tot is not None and dis is not None and tot > dis:
+                            anomalies.append({"table": tn, "column": pks[0], "type": "duplicate_pk", "count": tot - dis})
+                    except Exception:  # noqa: BLE001
+                        pass
+            return {"ok": True, "anomalyCount": len(anomalies), "anomalies": anomalies[:50]}
+
+        if name == "suggest_indexes":
+            schema = await _load_full_schema(adapter, config)
+            tmap = {(t.get("tableName") or "").lower(): t for t in schema.get("tables", [])}
+            suggestions = []
+            for fk in (schema.get("fks") or []):
+                ft, fc = fk.get("fromTable"), fk.get("fromCol")
+                t = tmap.get((ft or "").lower())
+                col = None
+                if t:
+                    col = next((c for c in (t.get("columns") or []) if (c.get("columnName") or "").lower() == (fc or "").lower()), None)
+                if col and not col.get("isPk") and not col.get("isUnique"):
+                    suggestions.append({"table": ft, "column": fc, "reason": "FK 컬럼 — 조인 성능을 위해 인덱스 권장"})
+            return {"ok": True, "count": len(suggestions), "suggestions": suggestions[:50]}
 
         return {"ok": False, "error": "알 수 없는 프록시 툴: " + name}
     except Exception as e:  # noqa: BLE001

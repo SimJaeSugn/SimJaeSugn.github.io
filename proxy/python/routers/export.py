@@ -112,3 +112,65 @@ def table_spec_xlsx(body: TableSpecBody):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=table_spec.xlsx"},
     )
+
+
+class DictColumn(BaseModel):
+    table: Optional[str] = ""
+    tablePhysical: Optional[str] = ""
+    logicalName: Optional[str] = ""
+    physicalName: Optional[str] = ""
+    type: Optional[str] = ""
+    kind: Optional[str] = ""
+    notNull: Optional[bool] = False
+    description: Optional[str] = ""
+
+
+class DataDictBody(BaseModel):
+    title: Optional[str] = "데이터 사전"
+    columns: List[DictColumn] = []
+
+
+@router.post("/data-dictionary")
+def data_dictionary_xlsx(body: DataDictBody):
+    """전 컬럼 평면 목록 → 엑셀 데이터 사전(.xlsx)."""
+    if not body.columns:
+        raise HTTPException(status_code=400, detail="columns 가 비어 있습니다.")
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl 미설치 — 사이드카 재빌드 필요")
+
+    thin = Side(style="thin", color="BBBBBB")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    hdr_fill = PatternFill("solid", fgColor="4472C4")
+    hdr_font = Font(bold=True, color="FFFFFF", size=10)
+    center = Alignment(horizontal="center", vertical="center")
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "데이터사전"
+    headers = ["순번", "테이블", "테이블물리명", "컬럼 논리명", "컬럼 물리명", "데이터타입", "종류", "NN", "설명"]
+    for ci, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=ci, value=h)
+        cell.fill, cell.font, cell.alignment, cell.border = hdr_fill, hdr_font, center, border
+    for i, c in enumerate(body.columns, 1):
+        kind = "PK" if c.kind == "pk" else ("FK" if c.kind == "fk" else "")
+        vals = [i, c.table or "", c.tablePhysical or "", c.logicalName or "", c.physicalName or "",
+                c.type or "", kind, "●" if c.notNull else "", c.description or ""]
+        for ci, v in enumerate(vals, 1):
+            cell = ws.cell(row=i + 1, column=ci, value=v)
+            cell.border = border
+            cell.alignment = center if ci in (1, 7, 8) else left
+    for col, w in zip("ABCDEFGHI", [6, 22, 22, 22, 22, 16, 6, 5, 40]):
+        ws.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=data_dictionary.xlsx"},
+    )

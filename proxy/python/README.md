@@ -102,6 +102,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | GET | /workspace | PC앱 워크스페이스(모든 다이어그램+스냅샷) 조회 |
 | PUT | /workspace | PC앱 워크스페이스 저장 (단일 파일 `aerm_workspace.json`) |
 | POST | /export/table-spec | ERD 테이블 목록(JSON) → 엑셀 테이블 정의서(.xlsx) 생성·반환 (openpyxl, 목차+테이블정의서 2시트). 에이전트 export_table_spec_xlsx 툴이 호출 |
+| POST | /export/data-dictionary | ERD 전 컬럼(JSON) → 엑셀 데이터 사전(.xlsx) 생성·반환 (openpyxl, 평면 컬럼 목록). 에이전트 export_data_dictionary_xlsx 툴이 호출 |
 
 > `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
 > `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.

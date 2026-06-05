@@ -971,6 +971,174 @@ async function _agentToolExportTableSpecXlsx(draft, args) {
   return { ok: true, count: ents.length, note: '엑셀 테이블 정의서를 다운로드했습니다.' };
 }
 
+// ── 추가 분석·산출물 툴 ────────────────────────────────────────────
+function _agentEscHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// 표준 스타일의 인쇄용 문서를 새 창으로 연다 → true(열림)/false(팝업차단)
+function _agentOpenDoc(title, innerHtml) {
+  const esc = _agentEscHtml;
+  const css = 'body{font-family:"Malgun Gothic","Segoe UI",sans-serif;margin:28px;color:#222;font-size:13px}'
+    + 'h1{font-size:22px;margin:0 0 4px}.meta{color:#666;font-size:12px;margin-bottom:16px}'
+    + 'h2{font-size:15px;background:#d9e1f2;padding:6px 10px;border-radius:4px;margin:20px 0 6px}'
+    + 'table{border-collapse:collapse;width:100%;margin:6px 0 16px}'
+    + 'td{border:1px solid #bbb;padding:5px 7px;text-align:left;vertical-align:top}'
+    + 'th{border:1px solid #bbb;padding:5px 7px;background:#4472c4;color:#fff;font-weight:600;font-size:12px;text-align:center}'
+    + 'td.c{text-align:center}.bad{color:#c0392b;font-weight:600}.ok{color:#1e7d4f}'
+    + '.noprint{margin:14px 0}button{padding:8px 16px;font-size:13px;cursor:pointer}'
+    + '@media print{.noprint{display:none}body{margin:0}}';
+  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body>'
+    + '<div class="noprint"><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>'
+    + '<h1>' + esc(title) + '</h1>' + innerHtml + '</body></html>';
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  w.document.open(); w.document.write(html); w.document.close();
+  return true;
+}
+
+// ERD 구조 메트릭(허브·결합도·fan-in/out) — read
+function _agentToolAnalyzeErdMetrics(draft) {
+  const v = _agentReadView(draft);
+  const ents = v.entities, rels = v.relations;
+  const inn = {}, out = {};
+  ents.forEach(e => { inn[e.id] = 0; out[e.id] = 0; });
+  rels.forEach(r => { if (out[r.from] != null) out[r.from]++; if (inn[r.to] != null) inn[r.to]++; });
+  const metrics = ents.map(e => ({ name: _agentNameOf(e), fanOut: out[e.id] || 0, fanIn: inn[e.id] || 0, degree: (out[e.id] || 0) + (inn[e.id] || 0) }));
+  metrics.sort((a, b) => b.degree - a.degree);
+  return {
+    ok: true, entityCount: ents.length, relationCount: rels.length,
+    avgDegree: ents.length ? +(rels.length * 2 / ents.length).toFixed(2) : 0,
+    hubs: metrics.filter(m => m.degree >= 3).slice(0, 10),
+    topByDegree: metrics.slice(0, 10),
+    isolated: metrics.filter(m => m.degree === 0).map(m => m.name),
+  };
+}
+
+// 정규화 위반 + 수정안 제시 — read
+function _agentToolSuggestNormalization(draft) {
+  const v = _agentReadView(draft);
+  const findings = [];
+  v.entities.forEach(e => {
+    const nm = _agentNameOf(e);
+    if (!(e.attrs || []).some(a => a.kind === 'pk'))
+      findings.push({ target: nm, issue: 'PK 없음', suggestion: '대리키(예: ' + (e.physicalName || 'TBL') + '_SN) 또는 자연키를 PK로 지정 (1NF/식별성)' });
+    const grp = {};
+    (e.attrs || []).forEach(a => { const m = (a.physicalName || '').match(/^(.*?)(\d+)$/); if (m && m[1]) grp[m[1]] = (grp[m[1]] || 0) + 1; });
+    Object.keys(grp).forEach(k => { if (grp[k] >= 2) findings.push({ target: nm, issue: '반복 컬럼 의심: ' + k + '1..' + grp[k], suggestion: '반복 그룹을 별도 테이블로 분해(1NF)' }); });
+  });
+  v.relations.forEach(r => { if (r.card === 'N:M') findings.push({ target: r.from + ' ↔ ' + r.to, issue: 'N:M 관계', suggestion: '연결(junction) 테이블로 분해 (예: ' + r.from + '_' + r.to + ')' }); });
+  return { ok: true, count: findings.length, findings };
+}
+
+// 데이터 사전(컬럼 정의서) — HTML 새 창
+function _agentToolGenerateDataDictionary(draft, args) {
+  const ents = _agentSpecTargets(args || {});
+  if (!ents.length) return { ok: false, error: '대상 테이블이 없습니다.' };
+  const esc = _agentEscHtml;
+  let rows = '';
+  ents.forEach(e => {
+    const tn = _agentNameOf(e);
+    (e.attrs || []).forEach(a => {
+      rows += '<tr><td>' + esc(tn) + '</td><td>' + esc(e.physicalName || '') + '</td><td>' + esc(a.logicalName) + '</td><td>' + esc(a.physicalName)
+        + '</td><td>' + esc(a.type) + '</td><td class="c">' + (a.kind === 'pk' ? 'PK' : a.kind === 'fk' ? 'FK' : '') + '</td><td class="c">' + (a.notNull ? '●' : '')
+        + '</td><td>' + esc(a.description || '') + '</td></tr>';
+    });
+  });
+  const title = (args && args.title) || '데이터 사전';
+  const inner = '<div class="meta">' + ents.length + '개 테이블</div>'
+    + '<table><thead><tr><th>테이블</th><th>테이블물리명</th><th>컬럼 논리명</th><th>컬럼 물리명</th><th>데이터타입</th><th>종류</th><th>NN</th><th>설명</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  if (!_agentOpenDoc(title, inner)) return { ok: false, error: '팝업이 차단되었습니다. 허용 후 다시 시도하세요.' };
+  return { ok: true, count: ents.length, note: '데이터 사전을 새 창에 열었습니다.' };
+}
+
+// ERD 종합 명세서(통계+이슈+엔티티+관계) — HTML 새 창
+function _agentToolGenerateErdReport(draft, args) {
+  const v = _agentReadView(draft);
+  if (!v.entities.length) return { ok: false, error: 'ERD에 엔티티가 없습니다.' };
+  const stats = _agentToolGetStatistics(draft).stats;
+  const norm = _agentToolSuggestNormalization(draft).findings;
+  const esc = _agentEscHtml;
+  const diagName = (typeof getActiveDiagram === 'function' && getActiveDiagram() && getActiveDiagram().name) || 'ERD';
+  const title = (args && args.title) || (diagName + ' ERD 명세서');
+  let inner = '<h2>1. 요약 통계</h2><table><tbody>'
+    + '<tr><th>엔티티</th><td>' + stats.entityCount + '</td><th>관계</th><td>' + stats.relationCount + '</td></tr>'
+    + '<tr><th>총 컬럼</th><td>' + stats.columnsTotal + '</td><th>평균 컬럼</th><td>' + stats.avgColumns + '</td></tr>'
+    + '<tr><th>PK 있는 테이블</th><td>' + stats.tablesWithPk + '</td><th>PK 없는 테이블</th><td class="' + (stats.tablesWithoutPk ? 'bad' : 'ok') + '">' + stats.tablesWithoutPk + '</td></tr>'
+    + '<tr><th>고아 테이블</th><td>' + stats.orphanCount + '</td><th>카디널리티</th><td>1:1 ' + stats.cardinalities['1:1'] + ' / 1:N ' + stats.cardinalities['1:N'] + ' / N:M ' + stats.cardinalities['N:M'] + '</td></tr>'
+    + '</tbody></table>';
+  inner += '<h2>2. 엔티티 목록</h2><table><thead><tr><th>#</th><th>논리명</th><th>물리명</th><th>컬럼수</th><th>설명</th></tr></thead><tbody>'
+    + v.entities.map((e, i) => '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(_agentNameOf(e)) + '</td><td>' + esc(e.physicalName || '') + '</td><td class="c">' + (e.attrs || []).length + '</td><td>' + esc(e.description || '') + '</td></tr>').join('') + '</tbody></table>';
+  inner += '<h2>3. 관계 목록</h2><table><thead><tr><th>From</th><th>To</th><th>카디널리티</th></tr></thead><tbody>'
+    + (v.relations.length ? v.relations.map(r => '<tr><td>' + esc(r.from) + '</td><td>' + esc(r.to) + '</td><td class="c">' + esc(r.card) + '</td></tr>').join('') : '<tr><td colspan="3">관계 없음</td></tr>') + '</tbody></table>';
+  inner += '<h2>4. 정규화·이슈 진단</h2><table><thead><tr><th>대상</th><th>이슈</th><th>권고</th></tr></thead><tbody>'
+    + (norm.length ? norm.map(f => '<tr><td>' + esc(f.target) + '</td><td class="bad">' + esc(f.issue) + '</td><td>' + esc(f.suggestion) + '</td></tr>').join('') : '<tr><td colspan="3" class="ok">발견된 이슈 없음</td></tr>') + '</tbody></table>';
+  if (!_agentOpenDoc(title, inner)) return { ok: false, error: '팝업이 차단되었습니다. 허용 후 다시 시도하세요.' };
+  return { ok: true, entityCount: v.entities.length, issueCount: norm.length, note: 'ERD 명세서를 새 창에 열었습니다.' };
+}
+
+// 표준용어 준수 점검표 — 컬럼 논리명의 표준 abbr vs 실제 물리명 (async, 데스크탑 전용)
+async function _agentToolGenerateTermCompliance(draft, args) {
+  if (typeof stdLookupTerm !== 'function') return { ok: false, error: '표준용어사전을 사용할 수 없습니다(데스크탑 전용).' };
+  const ents = _agentSpecTargets(args || {});
+  if (!ents.length) return { ok: false, error: '대상 테이블이 없습니다.' };
+  const cap = Number(args && args.limit) || 150;
+  const violations = [], unregistered = [];
+  let checked = 0, compliant = 0;
+  for (const e of ents) {
+    const tn = _agentNameOf(e);
+    for (const a of (e.attrs || [])) {
+      if (checked >= cap) break;
+      const logical = a.logicalName; if (!logical) continue;
+      let term;
+      try { term = await stdLookupTerm(logical); } catch (err) { return { ok: false, error: '표준사전 조회 실패: ' + err.message }; }
+      checked++;
+      if (term && term.abbr) {
+        if (String(a.physicalName || '').toUpperCase() === String(term.abbr).toUpperCase()) compliant++;
+        else violations.push({ table: tn, column: logical, physical: a.physicalName || '', standard: term.abbr });
+      } else {
+        unregistered.push({ table: tn, column: logical, physical: a.physicalName || '' });
+      }
+    }
+    if (checked >= cap) break;
+  }
+  return {
+    ok: true, checked, compliant,
+    violationCount: violations.length, violations: violations.slice(0, 60),
+    unregisteredCount: unregistered.length, unregistered: unregistered.slice(0, 40),
+    note: checked >= cap ? ('상위 ' + cap + '개 컬럼만 점검(상한).') : undefined,
+  };
+}
+
+// 데이터 사전 → 엑셀(.xlsx). 사이드카 /export/data-dictionary 호출. 데스크탑 전용.
+async function _agentToolExportDataDictionaryXlsx(draft, args) {
+  const ents = _agentSpecTargets(args || {});
+  if (!ents.length) return { ok: false, error: '대상 테이블이 없습니다.' };
+  const cols = [];
+  ents.forEach(e => {
+    const tn = _agentNameOf(e);
+    (e.attrs || []).forEach(a => cols.push({
+      table: tn, tablePhysical: e.physicalName || '',
+      logicalName: a.logicalName || '', physicalName: a.physicalName || '', type: a.type || '',
+      kind: a.kind || 'normal', notNull: !!a.notNull, description: a.description || '',
+    }));
+  });
+  const payload = { title: (args && args.title) || '데이터 사전', columns: cols };
+  const base = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
+  let res;
+  try {
+    res = await fetch(base + '/export/data-dictionary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  } catch (e) { return { ok: false, error: '사이드카에 연결할 수 없습니다(엑셀 내보내기는 데스크탑 전용). ' + e.message }; }
+  if (!res.ok) { let d = ''; try { d = (await res.json()).detail || ''; } catch (e2) {} return { ok: false, error: '엑셀 생성 실패: HTTP ' + res.status + (d ? ' — ' + d : '') }; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (args && args.fileName) || ((payload.title || '데이터사전') + '.xlsx');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return { ok: true, columnCount: cols.length, note: '데이터 사전 엑셀을 다운로드했습니다.' };
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 단일 소스(SSOT): 툴의 모든 정보(실행·메타·상세)를 여기서만 정의한다.
 //   - AGENT_TOOLS(이름→실행), AGENT_TOOL_CATALOG(프록시 전달 메타),
@@ -1133,6 +1301,24 @@ const AGENT_TOOL_DEFS = [
   { name: 'export_table_spec_xlsx', kind: 'read', danger: false, run: _agentToolExportTableSpecXlsx,
     desc: '테이블 정의서 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
     detail: '대상(또는 전체) 테이블의 정의서를 엑셀 파일로 생성·다운로드한다(목차+테이블정의서 시트). 사이드카 openpyxl 사용 — 데스크탑 전용.' },
+  { name: 'analyze_erd_metrics', kind: 'read', danger: false, run: _agentToolAnalyzeErdMetrics,
+    desc: 'ERD 구조 메트릭(허브·결합도·fan-in/out)', params: '(없음)',
+    detail: '엔티티별 fan-in/fan-out·degree·허브 테이블·평균 결합도·고립 엔티티를 반환한다(읽기 전용, get_statistics 심화).' },
+  { name: 'suggest_normalization', kind: 'read', danger: false, run: _agentToolSuggestNormalization,
+    desc: '정규화 위반 + 수정안 제시', params: '(없음)',
+    detail: 'PK 없음·반복 컬럼 의심·N:M 관계를 찾아 각각 **수정 권고안**과 함께 반환한다(normalize_check는 진단만, 이건 권고까지).' },
+  { name: 'generate_data_dictionary', kind: 'read', danger: false, run: _agentToolGenerateDataDictionary,
+    desc: '데이터 사전(컬럼 정의서) HTML 새 창', params: 'ids?|keyword?, title?',
+    detail: '대상(또는 전체) 테이블의 전 컬럼을 한 표(테이블·논리/물리·타입·종류·설명)로 묶은 데이터 사전을 새 창에 인쇄용 HTML로 연다. 클라 전용.' },
+  { name: 'generate_erd_report', kind: 'read', danger: false, run: _agentToolGenerateErdReport,
+    desc: 'ERD 종합 명세서 HTML 새 창', params: 'title?',
+    detail: '요약 통계 + 엔티티 목록 + 관계 목록 + 정규화/이슈 진단을 묶은 종합 명세서를 새 창에 인쇄용 HTML로 연다. 클라 전용.' },
+  { name: 'generate_term_compliance', kind: 'read', danger: false, run: _agentToolGenerateTermCompliance,
+    desc: '표준용어 준수 점검표', params: 'ids?|keyword?, limit?',
+    detail: '각 컬럼 논리명의 표준용어 abbr 과 실제 물리명을 대조해 위반·미등록을 보고한다(표준사전 연동, 데스크탑 전용). "표준 안 지킨 컬럼 찾아줘".' },
+  { name: 'export_data_dictionary_xlsx', kind: 'read', danger: false, run: _agentToolExportDataDictionaryXlsx,
+    desc: '데이터 사전 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
+    detail: '대상(또는 전체) 테이블의 전 컬럼을 엑셀 데이터 사전으로 생성·다운로드한다(사이드카 openpyxl, /export/data-dictionary). 데스크탑 전용.' },
 ];
 
 // ── 파생(중복 정의 없음) ──────────────────────────────────────────
