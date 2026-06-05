@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에이전트 클라이언트 툴 구현 현황 · UXERManager</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d2129; --ink:#e6e9ef; --mut:#9aa3b2;
+    --line:#2a2f3a; --acc:#5b9dff; --acc2:#7c5cff; --ok:#3fcf8e; --warn:#f0b429;
+    --danger:#ff6b6b; --read:#3fcf8e; --write:#f0b429; --ext:#5b9dff; --ctrl:#7c5cff;
+    --code:#11141a; --mono:'Cascadia Code','Consolas','D2Coding',monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard','Segoe UI','Malgun Gothic',system-ui,sans-serif;line-height:1.7;font-size:15px}
+  .wrap{display:grid;grid-template-columns:260px 1fr;max-width:1380px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    border-right:1px solid var(--line);padding:24px 16px;background:var(--panel)}
+  nav.toc h2{font-size:12px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  nav.toc a{display:block;color:var(--mut);text-decoration:none;font-size:13px;padding:5px 9px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+  main{padding:44px 52px 120px;min-width:0}
+  h1{font-size:28px;line-height:1.3;margin:0 0 6px}
+  .sub{color:var(--mut);font-size:15px;margin-bottom:8px}
+  .meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:10px 0;margin:20px 0 36px;display:flex;gap:24px;flex-wrap:wrap}
+  .meta b{color:var(--ink);font-weight:600}
+  h2{font-size:22px;margin:50px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:24px}
+  h2 .n{color:var(--acc);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:16.5px;margin:28px 0 10px;color:#cdd5e3;scroll-margin-top:24px}
+  p{margin:10px 0}
+  code{font-family:var(--mono);background:var(--code);padding:2px 6px;border-radius:5px;font-size:13px;color:#e0c9ff;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdd5e3;font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  td code{font-size:12px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .tag.read{background:rgba(63,207,142,.14);color:var(--read);border:1px solid rgba(63,207,142,.3)}
+  .tag.write{background:rgba(240,180,41,.14);color:var(--write);border:1px solid rgba(240,180,41,.3)}
+  .tag.draft{background:rgba(91,157,255,.14);color:var(--ext);border:1px solid rgba(91,157,255,.3)}
+  .tag.live{background:rgba(124,92,255,.14);color:var(--ctrl);border:1px solid rgba(124,92,255,.3)}
+  .tag.danger{background:rgba(255,107,107,.14);color:var(--danger);border:1px solid rgba(255,107,107,.3)}
+  .ok{color:var(--ok);font-weight:700}
+  .box{border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0;background:var(--panel)}
+  .box.acc{border-left:4px solid var(--acc)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.ok{border-left:4px solid var(--ok)}
+  .box .t{font-weight:700;margin-bottom:6px}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  .small{font-size:12px;color:var(--mut)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:11px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;margin:14px 0;color:#d4dbe8}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:30px 20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <h2>목차</h2>
+  <a href="#overview">1. 개요</a>
+  <a href="#class">2. 구현 분류 체계</a>
+  <a href="#new">3. 신규 30툴 현황</a>
+  <a href="#existing">4. 기존 19툴</a>
+  <a href="#arch">5. 아키텍처 노트</a>
+  <a href="#verify">6. 검증 현황</a>
+  <a href="#todo">7. 후속 과제</a>
+</nav>
+
+<main>
+  <h1>에이전트 클라이언트 툴 — 구현 현황</h1>
+  <div class="sub">계획서 <code>docs/클라이언트_툴_추가계획.html</code>의 제안 30툴 구현 결과 · 대상 <code>js/agent_tools.js</code></div>
+  <div class="meta">
+    <span><b>작성일</b> 2026-06-06</span>
+    <span><b>총 툴</b> 49 (기존 19 + 신규 30)</span>
+    <span><b>적용 범위</b> v1·v2·v3 공유 (§9.1 의도적 공유)</span>
+    <span><b>상태</b> <span class="ok">구현 완료</span></span>
+  </div>
+
+  <div class="box ok">
+    <div class="t">✅ 한 줄 요약</div>
+    계획서의 제안 툴 <b>30개를 전부 구현</b>해 <code>AGENT_TOOL_DEFS</code>에 등록했다(총 49툴). 단일 소스(SSOT) 배열이라
+    <code>AGENT_TOOLS</code>(실행)·<code>AGENT_TOOL_CATALOG</code>(플래너 노출)·<code>describe_tool</code>이 모두 자동 파생되며,
+    <b>v1·v2·v3 에이전트가 즉시 공유</b>한다. 구문·참조 매칭 검증 통과.
+  </div>
+
+  <!-- 1 -->
+  <h2 id="overview"><span class="n">1.</span>개요</h2>
+  <p>현행 19툴은 단일 엔티티/관계 CRUD + 단순 조회에 집중돼 있었다. 이번 추가로 <b>선택·하이라이트·뷰 제어 · 일괄/관계 자동화 · 구조 분석/검증 · 내보내기 · 다이어그램·섹션·메모·버전 관리</b>까지 에이전트가 자연어로 운전할 수 있게 됐다.</p>
+  <table>
+    <tr><th>구분</th><th>수</th><th>비고</th></tr>
+    <tr><td>기존 툴</td><td>19</td><td>create/update/delete entity·relation·attribute, find/describe, ddl, normalize, std_term 등</td></tr>
+    <tr><td><b>신규 툴</b></td><td><b>30</b></td><td>본 문서 §3</td></tr>
+    <tr><td>합계</td><td>49</td><td><code>AGENT_TOOL_DEFS.length === 49</code></td></tr>
+  </table>
+
+  <!-- 2 -->
+  <h2 id="class"><span class="n">2.</span>구현 분류 체계</h2>
+  <p>프론트 <code>execTools</code>는 툴의 <code>kind</code>로 드래프트 처리를 결정한다. 이를 기준으로 신규 툴을 4가지 실행 방식으로 분류했다.</p>
+  <table>
+    <tr><th width="130">방식</th><th>의미</th><th>커밋·상태</th></tr>
+    <tr><td><span class="tag read">read</span></td><td>상태 변경 없음(분석·조회) 또는 순수 UI(선택·뷰)</td><td>드래프트 미생성. 라이브 읽기/렌더만.</td></tr>
+    <tr><td><span class="tag draft">write-draft</span></td><td>엔티티/관계/레이아웃 데이터 변경</td><td><code>_agentCloneState</code> 드래프트에 적용 → 턴 종료 시 <code>_agentCommitDraft</code> 원자 커밋(undo 1회).</td></tr>
+    <tr><td><span class="tag live">live</span></td><td>드래프트와 직교한 라이브 전역(섹션·메모·스냅샷·테마·정렬·선택)</td><td>라이브 직접 조작 + <code>saveState()</code>. 엔티티 드래프트 커밋과 충돌하지 않음(자원 분리).</td></tr>
+    <tr><td><span class="tag live">replace</span></td><td>워크스페이스 자체 교체(다이어그램 전환/생성/삭제, 스냅샷 복원, import)</td><td>펜딩 드래프트를 <b>먼저 커밋</b>해 유실 방지 → 교체 → 드래프트를 새 상태로 <b>재동기화</b>.</td></tr>
+  </table>
+
+  <!-- 3 -->
+  <h2 id="new"><span class="n">3.</span>신규 30툴 현황</h2>
+
+  <h3>3.1 분석 · 검증 · 통계 <span class="tag read">read</span></h3>
+  <table>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
+    <tr><td><code>get_statistics</code></td><td><span class="tag read">read</span></td><td>엔티티/관계 수·평균컬럼·PK·FK·고아·카디널리티 분포</td><td class="ok">✅</td></tr>
+    <tr><td><code>get_connected_entities</code></td><td><span class="tag read">read</span></td><td>기준 테이블의 직접/전체 연결 탐색(BFS)</td><td class="ok">✅</td></tr>
+    <tr><td><code>detect_orphans</code></td><td><span class="tag read">read</span></td><td>관계 없는 고아 테이블 탐지</td><td class="ok">✅</td></tr>
+    <tr><td><code>detect_circular_refs</code></td><td><span class="tag read">read</span></td><td>순환 참조 DFS 탐지(경로 반환)</td><td class="ok">✅</td></tr>
+    <tr><td><code>validate_schema</code></td><td><span class="tag read">read</span></td><td>PK 부재·자료형 누락·네이밍 컨벤션 위반 점검</td><td class="ok">✅</td></tr>
+    <tr><td><code>generate_markdown</code></td><td><span class="tag read">read</span></td><td>테이블 정의를 마크다운 텍스트로 생성(파일 아님)</td><td class="ok">✅</td></tr>
+    <tr><td><code>list_notes</code></td><td><span class="tag read">read</span></td><td>메모(V1·V2) 목록</td><td class="ok">✅</td></tr>
+    <tr><td><code>list_snapshots</code></td><td><span class="tag read">read</span></td><td>스냅샷 목록</td><td class="ok">✅</td></tr>
+  </table>
+
+  <h3>3.2 선택 · 하이라이트 · 뷰 <span class="tag read">read</span></h3>
+  <table>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
+    <tr><td><code>select_entities</code></td><td><span class="tag read">read</span></td><td>키워드/ids로 다중 선택(후속 작업 대상 지정)</td><td class="ok">✅</td></tr>
+    <tr><td><code>highlight_entities</code></td><td><span class="tag read">read</span></td><td>선택+포커스로 강조</td><td class="ok">✅</td></tr>
+    <tr><td><code>focus_entity</code></td><td><span class="tag read">read</span></td><td>특정 테이블 포커스 배지(<code>setFocusEntity</code>)</td><td class="ok">✅</td></tr>
+    <tr><td><code>fit_view</code></td><td><span class="tag read">read</span></td><td>전체 맞춤(<code>fitAll</code>)·뷰 초기화(<code>resetView</code>)</td><td class="ok">✅</td></tr>
+    <tr><td><code>set_view_mode</code></td><td><span class="tag read">read</span></td><td>논리/물리·크로우풋·그리드스냅 토글</td><td class="ok">✅</td></tr>
+  </table>
+
+  <h3>3.3 일괄 · 관계 자동화 <span class="tag draft">write-draft</span></h3>
+  <table>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
+    <tr><td><code>batch_update_entities</code></td><td><span class="tag draft">draft</span></td><td>설명·색상(colorTag)·행수(rowCount) 일괄 수정</td><td class="ok">✅</td></tr>
+    <tr><td><code>batch_rename_attributes</code></td><td><span class="tag draft">draft</span></td><td>컬럼명 패턴 치환 또는 컨벤션 일괄 변환</td><td class="ok">✅</td></tr>
+    <tr><td><code>auto_detect_relationships</code></td><td><span class="tag draft">draft</span></td><td><code>*_ID</code> 패턴으로 FK 관계 자동 추가(기존 보존)</td><td class="ok">✅</td></tr>
+    <tr><td><code>duplicate_entity</code></td><td><span class="tag draft">draft</span></td><td>테이블 복제(컬럼 포함, 관계 제외)</td><td class="ok">✅</td></tr>
+  </table>
+
+  <h3>3.4 섹션 · 메모 · 정렬 <span class="tag live">live</span></h3>
+  <table>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
+    <tr><td><code>align_entities</code></td><td><span class="tag live">live</span></td><td>선택 테이블 8방향 정렬/균등배분(<code>alignEntities</code>)</td><td class="ok">✅</td></tr>
+    <tr><td><code>create_section</code></td><td><span class="tag live">live</span></td><td>섹션 생성(ids/keyword면 범위 자동 계산)</td><td class="ok">✅</td></tr>
+    <tr><td><code>manage_section</code></td><td><span class="tag live">live</span></td><td>섹션 이름변경/색상/삭제</td><td class="ok">✅</td></tr>
+    <tr><td><code>add_note</code></td><td><span class="tag live">live</span></td><td>메모(V2 우선) 추가</td><td class="ok">✅</td></tr>
+  </table>
+
+  <h3>3.5 다이어그램 · 버전 <span class="tag live">live / replace</span></h3>
+  <table>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
+    <tr><td><code>create_diagram</code></td><td><span class="tag live">replace</span></td><td>새 다이어그램 생성+전환(초기 엔티티 옵션)</td><td class="ok">✅</td></tr>
+    <tr><td><code>switch_diagram</code></td><td><span class="tag live">replace</span></td><td>활성 다이어그램 전환</td><td class="ok">✅</td></tr>
+    <tr><td><code>rename_diagram</code></td><td><span class="tag live">live</span></td><td>다이어그램 이름 변경</td><td class="ok">✅</td></tr>
+    <tr><td><code>delete_diagram</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>다이어그램 삭제(마지막 1개 불가)</td><td class="ok">✅</td></tr>
+    <tr><td><code>save_snapshot</code></td><td><span class="tag live">live</span></td><td>현재 상태 스냅샷 저장(펜딩 편집 선반영)</td><td class="ok">✅</td></tr>
+    <tr><td><code>restore_snapshot</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>스냅샷으로 워크스페이스 복원</td><td class="ok">✅</td></tr>
+  </table>
+
+  <h3>3.6 테마 · 내보내기 · 가져오기</h3>
+  <table>
+    <tr><th>툴</th><th>방식</th><th>설명</th><th>상태</th></tr>
+    <tr><td><code>set_theme</code></td><td><span class="tag live">live</span></td><td>테마 변경(<code>applyTheme</code>)</td><td class="ok">✅</td></tr>
+    <tr><td><code>export_diagram</code></td><td><span class="tag read">read</span></td><td>PNG/SVG/JSON/MD 내보내기 트리거(다운로드/다이얼로그)</td><td class="ok">✅</td></tr>
+    <tr><td><code>import_json</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>JSON 스키마 가져오기(add/replace, <code>applyAISchema</code>)</td><td class="ok">✅</td></tr>
+  </table>
+
+  <!-- 4 -->
+  <h2 id="existing"><span class="n">4.</span>기존 19툴 (참고)</h2>
+  <p class="small">변경 없음. 신규 툴과 동일 배열에서 관리된다.</p>
+  <table>
+    <tr><th>write</th><th>read</th></tr>
+    <tr>
+      <td><code>create_entity</code> · <code>create_relation</code> · <code>auto_layout</code> · <code>delete_entity</code>⚠ · <code>delete_relation</code>⚠ · <code>add_attribute</code> · <code>update_attribute</code> · <code>remove_attribute</code>⚠ · <code>update_entity</code> · <code>set_cardinality</code> · <code>register_std_term</code></td>
+      <td><code>find_tables</code> · <code>describe_table</code> · <code>list_relations</code> · <code>generate_ddl</code> · <code>get_selection</code> · <code>describe_tool</code> · <code>normalize_check</code> · <code>lookup_std_term</code></td>
+    </tr>
+  </table>
+
+  <!-- 5 -->
+  <h2 id="arch"><span class="n">5.</span>아키텍처 노트</h2>
+  <div class="box acc">
+    <div class="t">드래프트 vs 라이브 — 충돌 회피 원리</div>
+    <ul>
+      <li><b>드래프트는 entities/relations/layout만</b> 담는다(<code>_agentCloneState</code>). 따라서 엔티티/관계 변경 툴만 드래프트 기반이고, 나머지(섹션·메모·스냅샷·테마·선택·뷰)는 직교 자원이라 라이브 직접 조작해도 드래프트 커밋과 안 부딪힌다.</li>
+      <li><b>워크스페이스 교체 툴</b>(다이어그램 전환/생성/삭제·스냅샷 복원·import)은 <code>ENTITIES/RELATIONS</code>를 통째로 바꾸므로, ① 펜딩 드래프트를 먼저 <code>_agentCommitDraft</code>로 현재 탭에 반영 → ② 교체 → ③ 드래프트를 새 라이브 상태로 재동기화 한다. 이로써 같은 턴에 편집+전환이 섞여도 유실/덮어쓰기가 없다.</li>
+      <li><b>read 분류의 부수효과</b>: 선택/뷰/포커스/내보내기는 데이터를 안 바꾸므로 <code>kind:'read'</code>로 두어 드래프트 클론을 막았다(불필요한 커밋 방지).</li>
+    </ul>
+  </div>
+  <div class="box warn">
+    <div class="t">§9.1 공유 영향</div>
+    <code>agent_tools.js</code>는 v1·v2·v3 공유 frozen 모듈이다. 30툴은 <b>세 버전 모두에</b> 자동 적용된다. 플래너 노출은 프론트가 컨텍스트로 보내는 <code>AGENT_TOOL_CATALOG</code>를 통하므로 별도 버전 분기 없이 v1/v2/v3 계획·ReAct 프롬프트가 새 툴을 인지한다.
+  </div>
+
+  <!-- 6 -->
+  <h2 id="verify"><span class="n">6.</span>검증 현황</h2>
+  <table>
+    <tr><th>검증</th><th>방법</th><th>결과</th></tr>
+    <tr><td>구문</td><td><code>node --check js/agent_tools.js</code></td><td class="ok">✅ 통과</td></tr>
+    <tr><td><code>run</code> 참조 매칭</td><td>49개 <code>run:</code> 참조 ↔ 함수 정의 대조</td><td class="ok">✅ 전부 매칭</td></tr>
+    <tr><td>카탈로그 수</td><td><code>AGENT_TOOL_DEFS.length</code></td><td class="ok">49</td></tr>
+    <tr><td>인앱 동작</td><td>실제 앱(사이드카+패널)에서 자연어 호출 테스트</td><td class="small">권장 — 사용자 검증 필요</td></tr>
+  </table>
+
+  <!-- 7 -->
+  <h2 id="todo"><span class="n">7.</span>후속 과제 (선택)</h2>
+  <ul>
+    <li><b>인앱 E2E 검증</b>: 위험 툴(<code>restore_snapshot</code>·<code>delete_diagram</code>·<code>import_json</code>)은 승인(approve) 게이트 + 드래프트 안전망으로 보호되나, 실제 다이어그램에서 회귀 확인 권장.</li>
+    <li><b>스텝 라벨</b>: 프론트 관측 라벨(<code>_agentV3StepLabel</code> 등)에 신규 툴별 친화 문구 추가 시 UI 가독성↑(미적용 시 <code>desc</code> 폴백).</li>
+    <li><b>REPLAN done-목록</b>: 백엔드 재계획 프롬프트의 읽기-툴 가이드에 신규 read 툴(통계·검증 등) 반영 검토.</li>
+    <li><b>README</b>: 에이전트 기능 설명에 신규 툴군 반영 검토(README 동기화 하네스).</li>
+  </ul>
+
+</main>
+</div>
+</body>
+</html>

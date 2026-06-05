@@ -424,6 +424,474 @@ async function _agentToolRegisterStdTerm(draft, args) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 추가 클라이언트 툴 — 선택·하이라이트·뷰·일괄·분석·내보내기·다이어그램·섹션·메모·버전
+//   분류: read(상태변경 없음) · write-draft(엔티티/관계 드래프트) ·
+//         live(드래프트와 직교한 라이브 전역 직접 조작 + saveState).
+//   워크스페이스 교체 툴은 펜딩 드래프트를 먼저 커밋해 유실을 막고 드래프트를 재동기화한다.
+// ══════════════════════════════════════════════════════════════════
+
+// 대상 id 목록 해소: args.ids/entityIds(배열) → keyword 매칭 → 현재 선택
+function _agentLiveIds(view, args) {
+  const out = [];
+  const raw = args && (args.ids || args.entityIds || args.entities);
+  if (Array.isArray(raw) && raw.length) {
+    raw.forEach(x => { const id = _agentResolveEntityId(view, x, {}); if (id) out.push(id); });
+    return [...new Set(out)];
+  }
+  const kw = args && (args.keyword || args.name || args.query);
+  if (kw) {
+    const t = String(kw).toLowerCase();
+    view.entities.forEach(e => {
+      const hit = (e.id && e.id.toLowerCase().includes(t)) ||
+        (e.logicalName && e.logicalName.toLowerCase().includes(t)) ||
+        (e.physicalName && e.physicalName.toLowerCase().includes(t)) ||
+        (args.includeAttrs && (e.attrs || []).some(a =>
+          (a.physicalName && a.physicalName.toLowerCase().includes(t)) ||
+          (a.logicalName && a.logicalName.toLowerCase().includes(t))));
+      if (hit) out.push(e.id);
+    });
+    return [...new Set(out)];
+  }
+  if (typeof selectedEntities !== 'undefined' && selectedEntities) selectedEntities.forEach(id => out.push(id));
+  if (typeof selectedEntity !== 'undefined' && selectedEntity && selectedEntity.id) out.push(selectedEntity.id);
+  return [...new Set(out)];
+}
+
+function _agentNameOf(e) {
+  return (typeof entDisplayName === 'function') ? entDisplayName(e) : (e.logicalName || e.physicalName || e.id);
+}
+
+// ── 분석·통계 (read) ──────────────────────────────────────────────
+function _agentToolGetStatistics(draft) {
+  const v = _agentReadView(draft);
+  const ents = v.entities, rels = v.relations;
+  let pkCount = 0, fkCount = 0, colTotal = 0, noPk = 0;
+  ents.forEach(e => {
+    const attrs = e.attrs || []; colTotal += attrs.length;
+    const hasPk = attrs.some(a => a.kind === 'pk'); if (hasPk) pkCount++; else noPk++;
+    fkCount += attrs.filter(a => a.kind === 'fk').length;
+  });
+  const deg = {}; ents.forEach(e => deg[e.id] = 0);
+  rels.forEach(r => { if (deg[r.from] != null) deg[r.from]++; if (deg[r.to] != null) deg[r.to]++; });
+  const orphans = ents.filter(e => !deg[e.id]).map(_agentNameOf);
+  return { ok: true, stats: {
+    entityCount: ents.length, relationCount: rels.length,
+    columnsTotal: colTotal, avgColumns: ents.length ? +(colTotal / ents.length).toFixed(1) : 0,
+    tablesWithPk: pkCount, tablesWithoutPk: noPk, fkColumns: fkCount,
+    orphanCount: orphans.length, orphans: orphans.slice(0, 20),
+    cardinalities: { '1:1': rels.filter(r => r.card === '1:1').length, '1:N': rels.filter(r => r.card === '1:N').length, 'N:M': rels.filter(r => r.card === 'N:M').length },
+  } };
+}
+
+function _agentToolGetConnectedEntities(draft, args) {
+  const v = _agentReadView(draft);
+  const id = _agentResolveEntityId(v, args && (args.entityId || args.id || args.name), {});
+  if (!id) return { ok: false, error: '기준 엔티티를 찾을 수 없습니다.' };
+  const adj = {}; v.entities.forEach(e => adj[e.id] = new Set());
+  v.relations.forEach(r => { if (adj[r.from]) adj[r.from].add(r.to); if (adj[r.to]) adj[r.to].add(r.from); });
+  const direct = [...(adj[id] || [])];
+  const depth = (args && args.depth) || 'all';
+  let reach = new Set(direct);
+  if (depth === 'all') {
+    const q = [...direct], seen = new Set([id, ...direct]);
+    while (q.length) { const cur = q.shift(); (adj[cur] || []).forEach(n => { if (!seen.has(n)) { seen.add(n); reach.add(n); q.push(n); } }); }
+  }
+  const nm = x => { const e = v.entities.find(y => y.id === x); return e ? _agentNameOf(e) : x; };
+  return { ok: true, base: nm(id), direct: direct.map(nm), all: [...reach].map(nm), directCount: direct.length, totalReachable: reach.size };
+}
+
+function _agentToolDetectOrphans(draft) {
+  const v = _agentReadView(draft);
+  const deg = {}; v.entities.forEach(e => deg[e.id] = 0);
+  v.relations.forEach(r => { if (deg[r.from] != null) deg[r.from]++; if (deg[r.to] != null) deg[r.to]++; });
+  const orphans = v.entities.filter(e => !deg[e.id]).map(e => ({ id: e.id, name: _agentNameOf(e) }));
+  return { ok: true, orphanCount: orphans.length, orphans };
+}
+
+function _agentToolDetectCircularRefs(draft) {
+  const v = _agentReadView(draft);
+  const adj = {}; v.entities.forEach(e => adj[e.id] = []);
+  v.relations.forEach(r => { if (adj[r.from]) adj[r.from].push(r.to); });
+  const cycles = [], WHITE = 0, GRAY = 1, BLACK = 2, color = {}, stack = [];
+  v.entities.forEach(e => color[e.id] = WHITE);
+  const nm = x => { const e = v.entities.find(y => y.id === x); return e ? _agentNameOf(e) : x; };
+  function dfs(u) {
+    color[u] = GRAY; stack.push(u);
+    for (const w of (adj[u] || [])) {
+      if (color[w] === GRAY) { const i = stack.indexOf(w); cycles.push(stack.slice(i).concat(w).map(nm)); }
+      else if (color[w] === WHITE) dfs(w);
+    }
+    stack.pop(); color[u] = BLACK;
+  }
+  v.entities.forEach(e => { if (color[e.id] === WHITE) dfs(e.id); });
+  return { ok: true, hasCycle: cycles.length > 0, cycleCount: cycles.length, cycles: cycles.slice(0, 10) };
+}
+
+function _agentToolValidateSchema(draft, args) {
+  const v = _agentReadView(draft);
+  const issues = [];
+  const conv = args && args.convention;
+  const reCase = { snake_case: /^[a-z][a-z0-9_]*$/, camelCase: /^[a-z][a-zA-Z0-9]*$/, PascalCase: /^[A-Z][a-zA-Z0-9]*$/ };
+  v.entities.forEach(e => {
+    const nm = _agentNameOf(e);
+    if (!(e.attrs || []).some(a => a.kind === 'pk')) issues.push({ entity: nm, type: 'no_pk', note: 'PK 없음' });
+    (e.attrs || []).forEach(a => {
+      if (!a.type) issues.push({ entity: nm, column: a.physicalName || a.logicalName, type: 'no_type', note: '자료형 누락' });
+      if (conv && reCase[conv] && a.physicalName && !reCase[conv].test(a.physicalName))
+        issues.push({ entity: nm, column: a.physicalName, type: 'naming', note: conv + ' 위반' });
+    });
+  });
+  return { ok: true, valid: issues.length === 0, issueCount: issues.length, issues: issues.slice(0, 40) };
+}
+
+function _agentToolGenerateMarkdown(draft, args) {
+  const v = _agentReadView(draft);
+  let ids = _agentLiveIds(v, args || {});
+  const ents = ids.length ? v.entities.filter(e => ids.includes(e.id)) : v.entities;
+  if (!ents.length) return { ok: false, error: '대상 테이블이 없습니다.' };
+  const style = (args && args.style) || 'table';
+  const lines = [];
+  ents.forEach(e => {
+    lines.push('### ' + _agentNameOf(e) + (e.physicalName ? ' (`' + e.physicalName + '`)' : ''));
+    if (e.description) lines.push('> ' + e.description);
+    if (style === 'list') {
+      (e.attrs || []).forEach(a => lines.push('- **' + (a.physicalName || a.logicalName) + '** ' + (a.type || '') + (a.kind === 'pk' ? ' `PK`' : a.kind === 'fk' ? ' `FK`' : '') + (a.notNull ? ' NOT NULL' : '')));
+    } else {
+      lines.push('| 논리명 | 물리명 | 타입 | 종류 | NN |');
+      lines.push('|---|---|---|---|---|');
+      (e.attrs || []).forEach(a => lines.push('| ' + (a.logicalName || '') + ' | ' + (a.physicalName || '') + ' | ' + (a.type || '') + ' | ' + (a.kind || '') + ' | ' + (a.notNull ? 'Y' : '') + ' |'));
+    }
+    lines.push('');
+  });
+  return { ok: true, count: ents.length, markdown: lines.join('\n') };
+}
+
+function _agentToolListNotes() {
+  const n1 = (typeof NOTES !== 'undefined' ? NOTES : []) || [];
+  const n2 = (typeof NOTES_V2 !== 'undefined' ? NOTES_V2 : []) || [];
+  return { ok: true, count: n1.length + n2.length,
+    notes: n1.map(n => ({ id: n.id, text: n.text, type: 'note' })).concat(n2.map(n => ({ id: n.id, title: n.title, text: n.text, pinned: !!n.pinned, type: 'noteV2' }))) };
+}
+
+function _agentToolListSnapshots() {
+  const s = (typeof SNAPSHOTS !== 'undefined' ? SNAPSHOTS : []) || [];
+  return { ok: true, count: s.length, snapshots: s.map(x => ({ id: x.id, name: x.name, ts: x.ts })) };
+}
+
+// ── 일괄·관계 자동화 (write-draft) ────────────────────────────────
+function _agentToolBatchUpdateEntities(draft, args) {
+  const ids = _agentLiveIds(draft, args);
+  if (!ids.length) throw new Error('대상 엔티티가 없습니다(ids/keyword/선택).');
+  const u = args.updates || args.patch || {};
+  let n = 0;
+  ids.forEach(id => {
+    const e = draft.entities.find(x => x.id === id); if (!e) return;
+    if (u.description != null) e.description = u.description;
+    if (u.color != null || u.colorTag != null) e.colorTag = (u.color != null ? u.color : u.colorTag);
+    if (u.rowCount != null) e.rowCount = u.rowCount;
+    if (u.logicalName != null && ids.length === 1) e.logicalName = u.logicalName;
+    n++;
+  });
+  return { ok: true, updated: n };
+}
+
+function _agentToolBatchRenameAttributes(draft, args) {
+  const ids = _agentLiveIds(draft, args);
+  const from = args.fromPattern || args.from, to = args.toPattern || args.to;
+  const conv = args.convention;  // snake_case|camelCase|PascalCase|UPPER|lower
+  const target = (args.target === 'logical') ? 'logicalName' : 'physicalName';
+  if (!from && !conv) throw new Error('fromPattern→toPattern 또는 convention 이 필요합니다.');
+  let changed = 0;
+  const toCase = (s) => {
+    const words = String(s).replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').split('_').filter(Boolean);
+    if (conv === 'snake_case') return words.join('_').toLowerCase();
+    if (conv === 'UPPER') return words.join('_').toUpperCase();
+    if (conv === 'lower') return words.join('').toLowerCase();
+    if (conv === 'camelCase') return words.map((w, i) => i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()).join('');
+    if (conv === 'PascalCase') return words.map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join('');
+    return s;
+  };
+  const ents = ids.length ? draft.entities.filter(e => ids.includes(e.id)) : draft.entities;
+  ents.forEach(e => (e.attrs || []).forEach(a => {
+    const cur = a[target] || ''; let next = cur;
+    if (from) { if (cur.includes(from)) next = cur.split(from).join(to || ''); }
+    else if (conv) next = toCase(cur);
+    if (next && next !== cur) { a[target] = next; changed++; }
+  }));
+  return { ok: true, renamed: changed };
+}
+
+function _agentToolAutoDetectRelationships(draft, args) {
+  const ents = draft.entities;
+  const byPhysical = {}; ents.forEach(e => { byPhysical[(e.physicalName || e.id).toUpperCase()] = e; });
+  let added = 0;
+  ents.forEach(child => {
+    (child.attrs || []).forEach(a => {
+      const pn = (a.physicalName || '').toUpperCase();
+      const m = pn.match(/^(.*?)_?ID$/); if (!m || !m[1]) return;
+      const parent = byPhysical[m[1]] || ents.find(e => (e.physicalName || '').toUpperCase() === m[1] || (e.id || '').toUpperCase() === m[1]);
+      if (!parent || parent.id === child.id) return;
+      if (draft.relations.some(r => r.from === parent.id && r.to === child.id)) return;
+      draft.relations.push({ from: parent.id, to: child.id, card: '1:N' });
+      if (a.kind !== 'fk') { a.kind = 'fk'; a.ref = { entity: parent.id, attr: 'ID' }; }
+      added++;
+    });
+  });
+  return { ok: true, relationsAdded: added };
+}
+
+function _agentToolDuplicateEntity(draft, args, remap) {
+  const id = _agentResolveEntityId(draft, args.entityId || args.id || args.name, remap);
+  if (!id) throw new Error('복제할 엔티티를 찾을 수 없습니다.');
+  const src = draft.entities.find(e => e.id === id);
+  const existing = new Set(draft.entities.map(e => e.id));
+  let nid = id + '_copy', n = 2; while (existing.has(nid)) nid = id + '_copy' + (n++);
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.id = nid;
+  clone.logicalName = args.newLogicalName || (src.logicalName ? src.logicalName + ' 복사본' : nid);
+  clone.physicalName = args.newPhysicalName || (src.physicalName ? src.physicalName + '_COPY' : nid.toUpperCase());
+  clone.x = (src.x || 60) + 40; clone.y = (src.y || 60) + 40;
+  draft.entities.push(clone);
+  return { ok: true, entityId: nid };
+}
+
+// ── 선택·하이라이트·뷰 (live, read) ───────────────────────────────
+function _agentToolSelectEntities(draft, args) {
+  const v = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []), relations: (typeof RELATIONS !== 'undefined' ? RELATIONS : []) };
+  const ids = _agentLiveIds(v, args || {});
+  if (typeof selectedEntities !== 'undefined' && selectedEntities) { selectedEntities.clear(); ids.forEach(id => selectedEntities.add(id)); }
+  if (typeof selectedEntity !== 'undefined') selectedEntity = ids.length === 1 ? v.entities.find(e => e.id === ids[0]) || null : null;
+  if (typeof render === 'function') render();
+  return { ok: true, selectedCount: ids.length, selected: ids };
+}
+
+function _agentToolHighlightEntities(draft, args) {
+  const v = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []), relations: [] };
+  const ids = _agentLiveIds(v, args || {});
+  if (!ids.length) return { ok: false, error: '강조할 대상을 찾지 못했습니다.' };
+  if (typeof selectedEntities !== 'undefined' && selectedEntities) { selectedEntities.clear(); ids.forEach(id => selectedEntities.add(id)); }
+  if (typeof setFocusEntity === 'function') setFocusEntity(ids[0]);
+  else if (typeof render === 'function') render();
+  return { ok: true, highlighted: ids };
+}
+
+function _agentToolFocusEntity(draft, args) {
+  const v = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []) };
+  const id = _agentResolveEntityId(v, args && (args.entityId || args.id || args.name), {});
+  if (!id) return { ok: false, error: '대상 엔티티를 찾을 수 없습니다.' };
+  if (args && args.focusMode === false) { if (typeof clearFocusMode === 'function') clearFocusMode(); }
+  else if (typeof setFocusEntity === 'function') setFocusEntity(id);
+  return { ok: true, focused: id };
+}
+
+function _agentToolFitView(draft, args) {
+  const mode = (args && args.mode) || 'all';
+  if (mode === 'reset' && typeof resetView === 'function') resetView();
+  else if (typeof fitAll === 'function') fitAll();
+  return { ok: true, mode };
+}
+
+function _agentToolSetViewMode(draft, args) {
+  const out = {};
+  if (args && args.view && typeof setViewMode === 'function') { setViewMode(args.view); out.view = args.view; }
+  else if (args && args.view && typeof viewMode !== 'undefined') { viewMode = args.view; if (typeof render === 'function') render(); out.view = args.view; }
+  if (args && args.notation != null && typeof toggleNotation === 'function') { toggleNotation(); out.notationToggled = true; }
+  if (args && args.gridSnap != null && typeof toggleGridSnap === 'function' && typeof gridSnap !== 'undefined' && gridSnap !== !!args.gridSnap) { toggleGridSnap(); out.gridSnap = !!args.gridSnap; }
+  return { ok: true, applied: out };
+}
+
+function _agentToolAlignEntities(draft, args) {
+  const dirs = ['left', 'right', 'top', 'bottom', 'hcenter', 'vcenter', 'hdist', 'vdist'];
+  const dir = (args && (dirs.includes(args.direction) ? args.direction : (dirs.includes(args.dir) ? args.dir : null)));
+  if (!dir) throw new Error('direction 은 ' + dirs.join('|') + ' 중 하나여야 합니다.');
+  const v = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []), relations: [] };
+  const ids = _agentLiveIds(v, args);
+  if (ids.length < 2) throw new Error('정렬하려면 2개 이상 대상이 필요합니다(ids 또는 현재 선택).');
+  if (typeof selectedEntities !== 'undefined' && selectedEntities) { selectedEntities.clear(); ids.forEach(id => selectedEntities.add(id)); }
+  if (typeof alignEntities !== 'function') throw new Error('정렬 기능(alignEntities)을 찾을 수 없습니다.');
+  alignEntities(dir);
+  if (draft && draft.entities) ids.forEach(id => { const le = v.entities.find(e => e.id === id), de = draft.entities.find(e => e.id === id); if (le && de) { de.x = le.x; de.y = le.y; } });
+  return { ok: true, direction: dir, count: ids.length };
+}
+
+// ── 섹션·메모 (live) ──────────────────────────────────────────────
+function _agentToolCreateSection(draft, args) {
+  if (typeof SECTIONS === 'undefined') throw new Error('섹션 기능을 사용할 수 없습니다.');
+  let x = args.x, y = args.y, w = args.w, h = args.h;
+  if (x == null || w == null) {
+    const v = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []) };
+    const ids = _agentLiveIds(v, args);
+    const targets = v.entities.filter(e => ids.includes(e.id));
+    if (targets.length) {
+      const W2 = (typeof W !== 'undefined' ? W : 295);
+      const minX = Math.min(...targets.map(e => e.x)), minY = Math.min(...targets.map(e => e.y));
+      const maxX = Math.max(...targets.map(e => e.x + W2)), maxY = Math.max(...targets.map(e => (e.y) + 200));
+      x = minX - 30; y = minY - 50; w = (maxX - minX) + 60; h = (maxY - minY) + 80;
+    } else { x = 60; y = 60; w = 400; h = 300; }
+  }
+  const id = (typeof makeSectionId === 'function') ? makeSectionId() : ('sec_' + Math.random().toString(36).slice(2, 8));
+  const sec = { id, name: args.name || '섹션', x, y, w, h, colorIdx: args.colorIdx || 0 };
+  SECTIONS.push(sec);
+  if (typeof render === 'function') render();
+  if (typeof saveState === 'function') saveState();
+  return { ok: true, sectionId: id, name: sec.name };
+}
+
+function _agentToolManageSection(draft, args) {
+  if (typeof SECTIONS === 'undefined') throw new Error('섹션 기능을 사용할 수 없습니다.');
+  const key = String(args.sectionId || args.name || '').toLowerCase();
+  const sec = SECTIONS.find(s => s.id === args.sectionId) || SECTIONS.find(s => (s.name || '').toLowerCase() === key);
+  if (!sec) throw new Error('섹션을 찾을 수 없습니다: ' + (args.sectionId || args.name || ''));
+  const action = args.action || (args.newName ? 'rename' : null);
+  if (action === 'delete') { if (typeof deleteSection === 'function') deleteSection(sec); else { SECTIONS.splice(SECTIONS.indexOf(sec), 1); if (typeof render === 'function') render(); if (typeof saveState === 'function') saveState(); } return { ok: true, deleted: sec.id }; }
+  if (action === 'recolor' && args.colorIdx != null) sec.colorIdx = args.colorIdx;
+  if ((action === 'rename' || args.newName) && args.newName) sec.name = args.newName;
+  if (typeof render === 'function') render();
+  if (typeof saveState === 'function') saveState();
+  return { ok: true, sectionId: sec.id, name: sec.name };
+}
+
+function _agentToolAddNote(draft, args) {
+  const content = args.content || args.text || '';
+  const wx = args.x != null ? args.x : 80, wy = args.y != null ? args.y : 80;
+  if (typeof NOTES_V2 !== 'undefined' && typeof makeNoteV2Id === 'function') {
+    const themes = (typeof NOTE_V2_THEMES !== 'undefined') ? Object.keys(NOTE_V2_THEMES) : ['cream'];
+    const color = (args.color && themes.includes(args.color)) ? args.color : themes[0];
+    const note = { id: makeNoteV2Id(), x: wx, y: wy, w: (typeof NOTE_V2_W !== 'undefined' ? NOTE_V2_W : 220), h: (typeof NOTE_V2_H !== 'undefined' ? NOTE_V2_H : 160), title: args.title || '', text: content, color, pinned: false, tags: [], createdAt: new Date().toISOString() };
+    NOTES_V2.push(note);
+    if (typeof renderNoteV2Overlays === 'function') renderNoteV2Overlays();
+    if (typeof saveState === 'function') saveState();
+    return { ok: true, noteId: note.id };
+  }
+  if (typeof NOTES !== 'undefined') {
+    const note = { id: 'note_' + Math.random().toString(36).slice(2, 8), x: wx, y: wy, w: 180, h: 110, text: content, color: '#f9e2af', mode: (args.style === 'markdown' ? 'markdown' : 'text') };
+    NOTES.push(note);
+    if (typeof render === 'function') render();
+    if (typeof saveState === 'function') saveState();
+    return { ok: true, noteId: note.id };
+  }
+  throw new Error('메모 기능을 사용할 수 없습니다.');
+}
+
+// ── 버전·스냅샷 (live; restore 는 워크스페이스 교체) ───────────────
+function _agentToolSaveSnapshot(draft, args) {
+  if (draft && draft.entities) _agentCommitDraft(draft);   // 펜딩 편집 먼저 반영 후 스냅샷
+  if (typeof autoSnapshot !== 'function') throw new Error('스냅샷 기능을 사용할 수 없습니다.');
+  const snap = autoSnapshot((args && (args.name || args.description)) || '');
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, snapshotId: snap && snap.id, name: snap && snap.name };
+}
+
+function _agentToolRestoreSnapshot(draft, args) {
+  if (typeof SNAPSHOTS === 'undefined') throw new Error('스냅샷 기능을 사용할 수 없습니다.');
+  const key = String((args && (args.snapshot || args.snapshotId || args.name)) || '').toLowerCase();
+  const snap = SNAPSHOTS.find(s => s.id === (args && (args.snapshot || args.snapshotId))) || SNAPSHOTS.find(s => (s.name || '').toLowerCase() === key);
+  if (!snap) throw new Error('스냅샷을 찾을 수 없습니다: ' + ((args && (args.snapshot || args.name)) || ''));
+  if (typeof restoreFromSnapshot !== 'function') throw new Error('복원 기능(restoreFromSnapshot)을 찾을 수 없습니다.');
+  try { restoreFromSnapshot(JSON.parse(snap.state)); } catch (e) { throw new Error('스냅샷 복원 실패: ' + e.message); }
+  if (typeof saveState === 'function') saveState();
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, restored: snap.name };
+}
+
+// ── 다이어그램 (live, 워크스페이스 교체) ──────────────────────────
+function _agentDiagFind(arg) {
+  if (typeof diagrams === 'undefined') return null;
+  return diagrams.find(d => d.id === arg) || diagrams.find(d => (d.name || '').toLowerCase() === String(arg || '').toLowerCase()) || null;
+}
+
+function _agentToolCreateDiagram(draft, args) {
+  if (typeof diagrams === 'undefined' || typeof createEmptyDiagram !== 'function') throw new Error('다이어그램 기능을 사용할 수 없습니다.');
+  if (draft && draft.entities) _agentCommitDraft(draft);
+  if (typeof flushCurrentState === 'function') flushCurrentState();
+  const d = createEmptyDiagram(args && args.name ? args.name : '새 다이어그램');
+  diagrams.push(d);
+  activeDiagramId = d.id;
+  if (typeof loadDiagramIntoWorkspace === 'function') loadDiagramIntoWorkspace(d);
+  if (Array.isArray(args && args.entities) && typeof applyAISchema === 'function') {
+    const sel = document.getElementById('aiApplyMode'); const prev = sel ? sel.value : null; if (sel) sel.value = 'replace';
+    applyAISchema({ entities: args.entities, relations: args.relations || [] });
+    if (sel && prev != null) sel.value = prev;
+  }
+  if (typeof renderDiagramPanel === 'function') renderDiagramPanel();
+  if (typeof render === 'function') render();
+  if (typeof saveState === 'function') saveState();
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, diagramId: d.id, name: d.name };
+}
+
+function _agentToolSwitchDiagram(draft, args) {
+  const d = _agentDiagFind(args && (args.diagram || args.diagramId || args.diagramName || args.name));
+  if (!d) throw new Error('다이어그램을 찾을 수 없습니다.');
+  if (draft && draft.entities) _agentCommitDraft(draft);
+  if (typeof switchDiagram === 'function') switchDiagram(d.id);
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, diagramId: d.id, name: d.name };
+}
+
+function _agentToolRenameDiagram(draft, args) {
+  const d = _agentDiagFind(args && (args.diagram || args.diagramId || args.name));
+  if (!d) throw new Error('다이어그램을 찾을 수 없습니다.');
+  if (!args.newName) throw new Error('newName 이 필요합니다.');
+  d.name = args.newName;
+  if (typeof renderDiagramPanel === 'function') renderDiagramPanel();
+  if (typeof saveState === 'function') saveState();
+  return { ok: true, diagramId: d.id, name: d.name };
+}
+
+function _agentToolDeleteDiagram(draft, args) {
+  if (typeof diagrams === 'undefined') throw new Error('다이어그램 기능을 사용할 수 없습니다.');
+  if (diagrams.length <= 1) throw new Error('마지막 다이어그램은 삭제할 수 없습니다.');
+  const d = _agentDiagFind(args && (args.diagram || args.diagramId || args.name));
+  if (!d) throw new Error('다이어그램을 찾을 수 없습니다.');
+  const wasActive = (typeof activeDiagramId !== 'undefined') && d.id === activeDiagramId;
+  if (draft && draft.entities && !wasActive) _agentCommitDraft(draft);
+  const idx = diagrams.indexOf(d); diagrams.splice(idx, 1);
+  if (wasActive) { activeDiagramId = diagrams[Math.max(0, idx - 1)].id; if (typeof loadDiagramIntoWorkspace === 'function') loadDiagramIntoWorkspace(getActiveDiagram()); }
+  if (typeof renderDiagramPanel === 'function') renderDiagramPanel();
+  if (typeof render === 'function') render();
+  if (typeof saveState === 'function') saveState();
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, deleted: d.id };
+}
+
+// ── 테마·내보내기·가져오기 ────────────────────────────────────────
+function _agentToolSetTheme(draft, args) {
+  if (typeof applyTheme !== 'function') throw new Error('테마 기능을 사용할 수 없습니다.');
+  const name = args && (args.theme || args.name || args.themeName);
+  if (!name || (typeof THEMES !== 'undefined' && !THEMES[name])) throw new Error('알 수 없는 테마: ' + name + (typeof THEMES !== 'undefined' ? ' (사용가능: ' + Object.keys(THEMES).join(', ') + ')' : ''));
+  applyTheme(name);
+  return { ok: true, theme: name };
+}
+
+function _agentToolExportDiagram(draft, args) {
+  const fmt = (args && args.format) || 'png';
+  if (draft && draft.entities) _agentCommitDraft(draft);
+  try {
+    if (fmt === 'png' && typeof downloadImage === 'function') { downloadImage(args && args.includeSection !== false, !!(args && args.hiRes)); }
+    else if (fmt === 'svg' && typeof downloadSVG === 'function') { downloadSVG(); }
+    else if (fmt === 'json' && typeof exportData === 'function') { exportData(); }
+    else if (fmt === 'markdown' && typeof exportMarkdown === 'function') { exportMarkdown(); }
+    else return { ok: false, error: '지원하지 않는 포맷이거나 내보내기 함수를 찾을 수 없습니다: ' + fmt };
+  } catch (e) { return { ok: false, error: e.message }; }
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, format: fmt, note: '내보내기 다이얼로그/다운로드를 시작했습니다.' };
+}
+
+function _agentToolImportJson(draft, args) {
+  if (typeof applyAISchema !== 'function') throw new Error('가져오기 기능을 사용할 수 없습니다.');
+  const data = args && (args.data || args.json);
+  if (!data || !Array.isArray(data.entities)) throw new Error('data.entities 배열이 필요합니다.');
+  if (draft && draft.entities) _agentCommitDraft(draft);
+  const sel = document.getElementById('aiApplyMode'); const prev = sel ? sel.value : null;
+  if (sel) sel.value = (args.mode === 'replace') ? 'replace' : 'add';
+  applyAISchema({ entities: data.entities, relations: data.relations || [] });
+  if (sel && prev != null) sel.value = prev;
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, imported: data.entities.length, mode: (args.mode === 'replace') ? 'replace' : 'add' };
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 단일 소스(SSOT): 툴의 모든 정보(실행·메타·상세)를 여기서만 정의한다.
 //   - AGENT_TOOLS(이름→실행), AGENT_TOOL_CATALOG(프록시 전달 메타),
 //     describe_tool, 스텝 라벨 폴백이 모두 이 배열에서 파생된다.
@@ -487,6 +955,98 @@ const AGENT_TOOL_DEFS = [
   { name: 'register_std_term', kind: 'write', danger: false, run: _agentToolRegisterStdTerm,
     desc: '표준용어사전 등록', params: 'name(표준용어명), abbr(영문약어), descr?, domain_name?',
     detail: '표준용어사전(term)에 새 용어를 등록한다(name·abbr 필수). 이미 있으면 중복 등록하지 않는다. 데스크탑(사이드카) 전용.' },
+
+  // ── 추가 툴 (선택·일괄·분석·내보내기·다이어그램·섹션·메모·버전) ──
+  { name: 'get_statistics', kind: 'read', danger: false, run: _agentToolGetStatistics,
+    desc: 'ERD 통계 요약', params: '(없음)',
+    detail: '엔티티/관계 수·평균 컬럼수·PK 유무·FK 수·고아 테이블·카디널리티 분포를 반환한다(읽기 전용). "ERD 통계/현황 보여줘".' },
+  { name: 'get_connected_entities', kind: 'read', danger: false, run: _agentToolGetConnectedEntities,
+    desc: '특정 테이블과 연결된 테이블 탐색', params: 'entityId, depth?(direct|all)',
+    detail: '기준 엔티티와 직접(direct) 또는 간접 전체(all) 연결된 엔티티를 반환한다(읽기 전용). "USER와 연결된 테이블 모두 찾아줘".' },
+  { name: 'detect_orphans', kind: 'read', danger: false, run: _agentToolDetectOrphans,
+    desc: '고아(관계 없는) 테이블 탐지', params: '(없음)',
+    detail: '어떤 관계에도 연결되지 않은 엔티티를 찾아 반환한다(읽기 전용). "고아 테이블 있나 확인".' },
+  { name: 'detect_circular_refs', kind: 'read', danger: false, run: _agentToolDetectCircularRefs,
+    desc: '순환 참조 탐지', params: '(없음)',
+    detail: '관계 방향(from→to)을 따라 순환(A→B→…→A)을 DFS로 탐지해 경로를 반환한다(읽기 전용). "순환 참조 진단".' },
+  { name: 'validate_schema', kind: 'read', danger: false, run: _agentToolValidateSchema,
+    desc: '스키마 검증(PK·자료형·네이밍)', params: 'convention?(snake_case|camelCase|PascalCase)',
+    detail: 'PK 부재·자료형 누락·네이밍 컨벤션 위반을 점검해 이슈 목록을 반환한다(읽기 전용). "스키마 검증해줘".' },
+  { name: 'generate_markdown', kind: 'read', danger: false, run: _agentToolGenerateMarkdown,
+    desc: '테이블 정의를 마크다운 텍스트로 생성', params: 'ids?|keyword?, style?(table|list)',
+    detail: '대상(또는 전체) 테이블의 컬럼 정의를 마크다운으로 만들어 텍스트로 반환한다(파일 저장 아님, 읽기 전용). "문서용 마크다운 만들어줘".' },
+  { name: 'list_notes', kind: 'read', danger: false, run: _agentToolListNotes,
+    desc: '캔버스 메모 목록', params: '(없음)',
+    detail: '현재 다이어그램의 메모(V1·V2) 목록을 반환한다(읽기 전용).' },
+  { name: 'list_snapshots', kind: 'read', danger: false, run: _agentToolListSnapshots,
+    desc: '스냅샷 목록', params: '(없음)',
+    detail: '저장된 스냅샷(id·이름·시각) 목록을 반환한다(읽기 전용).' },
+  { name: 'batch_update_entities', kind: 'write', danger: false, run: _agentToolBatchUpdateEntities,
+    desc: '여러 테이블 속성 일괄 수정', params: 'ids?|keyword?, updates{description?,color?,rowCount?}',
+    detail: '대상(또는 현재 선택) 테이블들의 설명·색상(color)·예상행수(rowCount)를 일괄 수정한다. color는 blue|green|orange|red|purple|yellow|teal|null.' },
+  { name: 'batch_rename_attributes', kind: 'write', danger: false, run: _agentToolBatchRenameAttributes,
+    desc: '컬럼명 일괄 변경(패턴/컨벤션)', params: 'ids?, fromPattern→toPattern 또는 convention(snake_case|camelCase|PascalCase|UPPER|lower), target?(physical|logical)',
+    detail: '대상 테이블 컬럼명을 패턴 치환 또는 네이밍 컨벤션으로 일괄 변경한다. "FK 컬럼명을 snake_case로 통일".' },
+  { name: 'auto_detect_relationships', kind: 'write', danger: false, run: _agentToolAutoDetectRelationships,
+    desc: 'FK 컬럼명 패턴으로 관계 자동 감지', params: '(없음)',
+    detail: '컬럼명이 <테이블>_ID 패턴이면 해당 부모 테이블과 1:N 관계를 자동 추가한다(기존 관계는 보존). "FK 패턴으로 관계 연결".' },
+  { name: 'duplicate_entity', kind: 'write', danger: false, run: _agentToolDuplicateEntity,
+    desc: '테이블 복제', params: 'entityId, newLogicalName?, newPhysicalName?',
+    detail: '대상 엔티티를 컬럼 포함 복제해 새 id로 추가한다(관계는 복제하지 않음). "이 테이블 복제해줘".' },
+  { name: 'select_entities', kind: 'read', danger: false, run: _agentToolSelectEntities,
+    desc: '키워드/조건으로 테이블 선택', params: 'ids?|keyword?, includeAttrs?',
+    detail: '대상 엔티티를 화면에서 다중 선택한다(후속 정렬·일괄작업·내보내기의 대상 지정). "주문 관련 테이블 선택해줘".' },
+  { name: 'highlight_entities', kind: 'read', danger: false, run: _agentToolHighlightEntities,
+    desc: '테이블 강조 표시', params: 'ids?|keyword?',
+    detail: '대상 엔티티를 선택+포커스로 강조한다. "회원 테이블 강조해줘".' },
+  { name: 'focus_entity', kind: 'read', danger: false, run: _agentToolFocusEntity,
+    desc: '특정 테이블로 포커스 이동', params: 'entityId, focusMode?(false면 해제)',
+    detail: '특정 엔티티에 포커스 배지를 표시한다. "주문 테이블로 이동/포커스".' },
+  { name: 'fit_view', kind: 'read', danger: false, run: _agentToolFitView,
+    desc: '화면 맞춤/뷰 초기화', params: 'mode?(all|reset)',
+    detail: 'all=전체가 보이게 맞춤, reset=줌/위치 초기화. "전체 보이게 맞춰줘".' },
+  { name: 'set_view_mode', kind: 'read', danger: false, run: _agentToolSetViewMode,
+    desc: '표시 모드 전환(논리/물리·표기·그리드)', params: 'view?(logical|physical), notation?, gridSnap?',
+    detail: '논리/물리 표시 전환, 크로우풋 표기·그리드 스냅 토글. "물리명으로 보여줘".' },
+  { name: 'align_entities', kind: 'write', danger: false, run: _agentToolAlignEntities,
+    desc: '선택 테이블 정렬/균등배분', params: 'direction(left|right|top|bottom|hcenter|vcenter|hdist|vdist), ids?',
+    detail: '2개 이상 대상(ids 또는 현재 선택)을 지정 방향으로 정렬하거나 균등 배분한다. "수평 중앙 정렬해줘".' },
+  { name: 'create_section', kind: 'write', danger: false, run: _agentToolCreateSection,
+    desc: '섹션(그룹 영역) 생성', params: 'name, ids?|keyword?(범위 자동) 또는 x,y,w,h, colorIdx?',
+    detail: '엔티티 그룹을 감싸는 섹션을 만든다. ids/keyword를 주면 그 엔티티들을 감싸는 범위로 자동 계산. "이 테이블들을 \'회원관리\' 섹션으로".' },
+  { name: 'manage_section', kind: 'write', danger: false, run: _agentToolManageSection,
+    desc: '섹션 이름변경/색상/삭제', params: 'sectionId|name, action(rename|recolor|delete), newName?|colorIdx?',
+    detail: '기존 섹션을 이름변경·색상변경·삭제한다.' },
+  { name: 'add_note', kind: 'write', danger: false, run: _agentToolAddNote,
+    desc: '메모 추가', params: 'content, title?, x?, y?, color?, style?(text|markdown)',
+    detail: '캔버스에 메모(노트)를 추가한다. "여기에 설명 메모 붙여줘".' },
+  { name: 'save_snapshot', kind: 'write', danger: false, run: _agentToolSaveSnapshot,
+    desc: '현재 상태 스냅샷 저장', params: 'name?',
+    detail: '현재 워크스페이스를 스냅샷으로 저장한다(펜딩 편집을 먼저 반영). "현재를 \'v1.0\'으로 저장".' },
+  { name: 'restore_snapshot', kind: 'write', danger: true, run: _agentToolRestoreSnapshot,
+    desc: '스냅샷으로 복원', params: 'snapshot(id|name)',
+    detail: '되돌리기 주의 — 지정 스냅샷으로 워크스페이스 전체를 교체한다. "2시간 전 저장본으로 복원".' },
+  { name: 'create_diagram', kind: 'write', danger: false, run: _agentToolCreateDiagram,
+    desc: '새 다이어그램 생성', params: 'name?, entities?, relations?',
+    detail: '새 다이어그램 탭을 만들고 전환한다(초기 엔티티/관계 선택 가능). "\'쇼핑몰\' 다이어그램 만들어줘".' },
+  { name: 'switch_diagram', kind: 'write', danger: false, run: _agentToolSwitchDiagram,
+    desc: '활성 다이어그램 전환', params: 'diagram(id|name)',
+    detail: '다른 다이어그램 탭으로 전환한다(펜딩 편집을 현재 탭에 먼저 반영). "\'회원관리\'로 넘어가줘".' },
+  { name: 'rename_diagram', kind: 'write', danger: false, run: _agentToolRenameDiagram,
+    desc: '다이어그램 이름 변경', params: 'diagram(id|name), newName',
+    detail: '다이어그램 이름을 변경한다.' },
+  { name: 'delete_diagram', kind: 'write', danger: true, run: _agentToolDeleteDiagram,
+    desc: '다이어그램 삭제', params: 'diagram(id|name)',
+    detail: '되돌리기 주의 — 다이어그램을 삭제한다(마지막 1개는 불가).' },
+  { name: 'set_theme', kind: 'write', danger: false, run: _agentToolSetTheme,
+    desc: '테마 변경', params: 'theme(dark|light|frappe|macchiato 등)',
+    detail: '앱 테마를 변경한다. "라이트 테마로 바꿔줘".' },
+  { name: 'export_diagram', kind: 'read', danger: false, run: _agentToolExportDiagram,
+    desc: '다이어그램 내보내기(이미지/SVG/JSON/MD)', params: 'format(png|svg|json|markdown), includeSection?, hiRes?',
+    detail: '현재 다이어그램을 지정 포맷으로 내보내기(다운로드/다이얼로그)를 시작한다. 파일 저장은 사용자 상호작용을 동반할 수 있다.' },
+  { name: 'import_json', kind: 'write', danger: true, run: _agentToolImportJson,
+    desc: 'JSON 스키마 가져오기', params: 'data{entities[],relations[]}, mode?(add|replace)',
+    detail: '되돌리기 주의(replace) — JSON 엔티티/관계를 현재 다이어그램에 추가(add)하거나 교체(replace)한다.' },
 ];
 
 // ── 파생(중복 정의 없음) ──────────────────────────────────────────

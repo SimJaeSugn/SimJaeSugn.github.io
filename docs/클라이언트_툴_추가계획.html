@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에이전트 Client 툴 추가 계획 — UXERManager</title>
+<style>
+  :root{
+    --bg:#ffffff; --tx:#1e2330; --tx-sub:#5b6473; --line:#e3e7ee;
+    --accent:#3b6fd4; --accent-bg:#eef3fc;
+    --hi:#1e7d4f; --hi-bg:#e9f7ef; --warn:#b4541a; --warn-bg:#fdf0e6;
+    --p1:#1e7d4f; --p2:#3b6fd4; --p3:#7a7f8c;
+    --code:#f4f6fa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;color:var(--tx);
+       background:#f6f8fb;line-height:1.6;font-size:14px}
+  .wrap{max-width:1080px;margin:0 auto;padding:36px 28px 80px;background:var(--bg);
+        box-shadow:0 0 0 1px var(--line)}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.4px}
+  h2{font-size:19px;margin:38px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--accent);
+     letter-spacing:-.3px}
+  h3{font-size:15px;margin:22px 0 8px;color:var(--accent)}
+  .meta{color:var(--tx-sub);font-size:13px;margin-bottom:6px}
+  .lead{background:var(--accent-bg);border-left:4px solid var(--accent);padding:12px 16px;
+        border-radius:0 6px 6px 0;margin:14px 0}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--accent-bg);font-weight:600;white-space:nowrap}
+  td code,p code,li code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:12.5px;
+        font-family:"Cascadia Code",Consolas,monospace}
+  .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+  .read{background:#e9f0fb;color:#2b59b3}
+  .write{background:#fdf3e6;color:#b4671a}
+  .danger{background:#fcebec;color:#c0392b}
+  .p1{background:var(--hi-bg);color:var(--p1)}
+  .p2{background:#eef3fc;color:var(--p2)}
+  .p3{background:#f0f1f4;color:var(--p3)}
+  .yes{color:var(--hi);font-weight:600}
+  .no{color:var(--warn);font-weight:600}
+  .note{background:var(--hi-bg);border-left:4px solid var(--hi);padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0}
+  .warnbox{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0}
+  ul{margin:8px 0 8px 4px;padding-left:20px}
+  li{margin:3px 0}
+  .small{font-size:12px;color:var(--tx-sub)}
+  .cat{font-weight:700;color:var(--tx);background:#f0f3f8}
+  footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);color:var(--tx-sub);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>에이전트 Client 툴 추가 계획</h1>
+<div class="meta">UXERManager · 작성일 2026-06-06 · 대상: <code>js/agent_tools.js</code> (AGENT_TOOL_DEFS)</div>
+
+<div class="lead">
+ERD 시스템이 제공하는 사용자 기능 중, <b>에이전트가 자연어로 호출하면 유용한 것</b>을 전수 조사해 <b>새 Client 툴 후보</b>로 정리한 계획서다.
+Client 툴은 브라우저/Electron 렌더러에서 ERD 상태·캔버스·UI를 직접 조작하는 툴로, <code>interrupt</code>로 프론트에 위임되어 실행된다(서버/DB 불필요).
+</div>
+
+<div class="warnbox">
+<b>격리·공유 주의(§9.1):</b> <code>js/agent_tools.js</code>는 <b>v1·v2·v3 에이전트가 공유</b>하는 frozen 모듈이다.
+여기에 툴을 추가하면 <b>세 버전 모두에 자동 적용</b>된다(과거 <code>set_cardinality</code>·<code>normalize_check</code>·<code>lookup_std_term</code>·<code>register_std_term</code> 추가와 동일한 "의도적 공유" 방식).
+따라서 본 계획의 모든 툴은 시그니처·반환을 신중히 설계해 세 버전 어디서도 안전해야 한다.
+</div>
+
+<div class="note">
+<b>✅ 구현 완료 (2026-06-06)</b> — 본 계획의 <b>제안 툴 30개 전부</b>를 <code>js/agent_tools.js</code> <code>AGENT_TOOL_DEFS</code>에 구현·등록했다(기존 19 + 신규 30 = <b>총 49 툴</b>). 공유 모듈이라 <b>v1·v2·v3 에이전트에 자동 적용</b>되며, 프론트 <code>execTools</code>가 종류(read/write·draft/live)에 따라 실행한다. 전체 현황·분류는 → <code>docs/plan/클라이언트_툴_현황.html</code>.
+</div>
+
+<!-- ============================================================= -->
+<h2>1. 기존 Client 툴 현황 (19개)</h2>
+<p>이미 제공 중인 툴. 중복 제안을 피하기 위한 기준선이다.</p>
+<table>
+<thead><tr><th>툴</th><th>종류</th><th>설명</th><th>주요 params</th></tr></thead>
+<tbody>
+<tr><td><code>create_entity</code></td><td><span class="tag write">write</span></td><td>새 테이블 생성(PK 1개 이상)</td><td>id, logicalName, physicalName, attrs[]</td></tr>
+<tr><td><code>create_relation</code></td><td><span class="tag write">write</span></td><td>관계 생성(+FK 자동)</td><td>from, to, card, addFk?</td></tr>
+<tr><td><code>auto_layout</code></td><td><span class="tag write">write</span></td><td>자동 배치(hierarchical/grid/circular)</td><td>type</td></tr>
+<tr><td><code>delete_entity</code></td><td><span class="tag danger">write·위험</span></td><td>테이블 삭제(연결 관계 포함)</td><td>entityId</td></tr>
+<tr><td><code>delete_relation</code></td><td><span class="tag danger">write·위험</span></td><td>관계 삭제</td><td>from, to</td></tr>
+<tr><td><code>add_attribute</code></td><td><span class="tag write">write</span></td><td>컬럼 추가</td><td>entityId, attr{…}</td></tr>
+<tr><td><code>update_attribute</code></td><td><span class="tag write">write</span></td><td>컬럼 수정</td><td>entityId, attrName, {…}</td></tr>
+<tr><td><code>remove_attribute</code></td><td><span class="tag danger">write·위험</span></td><td>컬럼 삭제</td><td>entityId, attrName</td></tr>
+<tr><td><code>update_entity</code></td><td><span class="tag write">write</span></td><td>테이블 이름/설명 수정</td><td>entityId, logicalName?, physicalName?, description?</td></tr>
+<tr><td><code>set_cardinality</code></td><td><span class="tag write">write</span></td><td>기존 관계 카디널리티 변경</td><td>from, to, card</td></tr>
+<tr><td><code>find_tables</code></td><td><span class="tag read">read</span></td><td>키워드로 테이블 검색</td><td>keyword?</td></tr>
+<tr><td><code>describe_table</code></td><td><span class="tag read">read</span></td><td>테이블 상세(컬럼·관계)</td><td>entityId</td></tr>
+<tr><td><code>list_relations</code></td><td><span class="tag read">read</span></td><td>관계 목록 조회</td><td>entityId?</td></tr>
+<tr><td><code>generate_ddl</code></td><td><span class="tag read">read</span></td><td>CREATE TABLE 생성(DB 미실행)</td><td>dialect?, entityIds?</td></tr>
+<tr><td><code>get_selection</code></td><td><span class="tag read">read</span></td><td>현재 선택·활성 다이어그램</td><td>(없음)</td></tr>
+<tr><td><code>describe_tool</code></td><td><span class="tag read">read</span></td><td>툴 상세정보</td><td>name?</td></tr>
+<tr><td><code>normalize_check</code></td><td><span class="tag read">read</span></td><td>정규화 위반 진단</td><td>(없음)</td></tr>
+<tr><td><code>lookup_std_term</code></td><td><span class="tag read">read</span></td><td>표준용어사전 조회<span class="small"> (사이드카)</span></td><td>name</td></tr>
+<tr><td><code>register_std_term</code></td><td><span class="tag write">write</span></td><td>표준용어사전 등록<span class="small"> (사이드카)</span></td><td>name, abbr, descr?, domain_name?</td></tr>
+</tbody>
+</table>
+<p class="small">정리하면 현행 툴은 <b>단일 엔티티/관계의 생성·수정·삭제 + 단순 조회/진단</b>에 집중돼 있다. 아래의 갭은 <b>선택·일괄·분석·내보내기·다이어그램/섹션/메모·뷰 제어</b> 영역에 몰려 있다.</p>
+
+<!-- ============================================================= -->
+<h2>2. ERD 기능 인벤토리 (카테고리 요약)</h2>
+<p>사용자가 메뉴/툴바/단축키로 쓸 수 있는 기능. 굵게 표시된 영역이 에이전트 미커버 갭이 큰 곳이다.</p>
+<table>
+<thead><tr><th>카테고리</th><th>대표 기능</th><th>에이전트 커버</th></tr></thead>
+<tbody>
+<tr><td class="cat">엔티티 편집</td><td>추가·편집·삭제·복제·색상·포커스·속성추출</td><td>부분 (복제·색상·포커스 미커버)</td></tr>
+<tr><td class="cat">관계 편집</td><td>추가·편집·삭제·카디널리티·경로/레이블/스타일/색상</td><td>부분 (스타일·색상·자동감지 미커버)</td></tr>
+<tr><td class="cat">캔버스·뷰</td><td>줌·팬·전체맞춤·논리/물리 전환·표기법·미니맵·범례</td><td><b>거의 미커버</b></td></tr>
+<tr><td class="cat">선택</td><td>단일/다중/범위/전체 선택, 해제</td><td><b>미커버</b></td></tr>
+<tr><td class="cat">배치·정렬</td><td>3종 레이아웃·정렬 8종·균등배분·관계선 최적화·그리드스냅</td><td>부분 (정렬·고급옵션 미커버)</td></tr>
+<tr><td class="cat">섹션·메모</td><td>섹션 그리기/이름/색상, 메모 V1·V2(텍스트/MD/핀/색상)</td><td><b>미커버</b></td></tr>
+<tr><td class="cat">내보내기</td><td>JSON·백업·PNG·SVG·Markdown·HTML·PDF·DDL</td><td>부분 (generate_ddl만)</td></tr>
+<tr><td class="cat">가져오기</td><td>JSON·백업복원·DDL 파싱</td><td><b>미커버</b></td></tr>
+<tr><td class="cat">다이어그램</td><td>추가·전환·이름변경·삭제·색상·엔티티 복사</td><td><b>미커버</b></td></tr>
+<tr><td class="cat">버전·스냅샷</td><td>스냅샷 저장/목록/복원/Diff·타임라인·undo/redo</td><td><b>미커버</b></td></tr>
+<tr><td class="cat">분석</td><td>정규화 진단·JOIN 탐색·SQL 실행기(sql.js)</td><td>부분 (normalize_check만)</td></tr>
+<tr><td class="cat">검색</td><td>엔티티 검색(Ctrl+F)·명령 팔레트(Ctrl+K)</td><td>부분 (find_tables만)</td></tr>
+<tr><td class="cat">UI·설정</td><td>테마·컬럼템플릿·패널 토글·퀵바</td><td><b>미커버</b></td></tr>
+<tr><td class="cat">협업·공유</td><td>P2P(PeerJS)·탭동기화·공유 URL</td><td>미커버 <span class="small">(에이전트 적합성 낮음)</span></td></tr>
+<tr><td class="cat">원격 DB</td><td>프로파일·정/역공학</td><td>해당없음 <span class="small">(프록시 툴 영역)</span></td></tr>
+</tbody>
+</table>
+
+<!-- ============================================================= -->
+<h2>3. 갭 분석 — 새 Client 툴 후보</h2>
+<p>아래 모든 후보는 <b>클라이언트 상태/캔버스만으로 구현 가능</b>하다(서버/DB 불필요 → Client 툴 적합). 위험 작업은 <span class="tag danger">위험</span>으로 표시했다.</p>
+
+<h3>3.1 선택 · 하이라이트 · 뷰 제어 <span class="tag p1">우선 높음</span></h3>
+<table>
+<thead><tr><th>제안 툴</th><th>종류</th><th>하는 일</th><th>params</th><th>시나리오</th></tr></thead>
+<tbody>
+<tr><td><code>select_entities</code></td><td><span class="tag read">read</span></td><td>키워드/조건으로 엔티티 다중 선택(후속 작업의 대상 지정)</td><td>keyword?, ids?, includeAttrs?</td><td>"주문 관련 테이블 선택해줘"</td></tr>
+<tr><td><code>highlight_entities</code></td><td><span class="tag read">read</span></td><td>지정 엔티티를 일시 강조(테두리/배경)</td><td>ids|keyword, color?, duration?</td><td>"회원·주문 테이블 강조해줘"</td></tr>
+<tr><td><code>focus_entity</code></td><td><span class="tag read">read</span></td><td>특정 엔티티로 화면 이동·줌(+포커스 모드)</td><td>entityId, focusMode?</td><td>"주문 테이블로 이동해줘"</td></tr>
+<tr><td><code>fit_view</code></td><td><span class="tag read">read</span></td><td>전체 맞춤/뷰 초기화/줌 레벨 설정</td><td>mode{all|reset}, zoom?</td><td>"전체가 보이게 맞춰줘"</td></tr>
+<tr><td><code>set_view_mode</code></td><td><span class="tag write">write</span></td><td>논리/물리 표시 전환, 크로우풋 표기 토글</td><td>view{logical|physical}?, notation?</td><td>"물리명으로 보여줘"</td></tr>
+</tbody>
+</table>
+
+<h3>3.2 일괄 작업 · 관계 자동화 <span class="tag p1">우선 높음</span></h3>
+<table>
+<thead><tr><th>제안 툴</th><th>종류</th><th>하는 일</th><th>params</th><th>시나리오</th></tr></thead>
+<tbody>
+<tr><td><code>batch_update_entities</code></td><td><span class="tag write">write</span></td><td>선택/지정 엔티티의 설명·색상·DB유형·볼륨 일괄 수정</td><td>ids?, updates{description?,color?,rowCount?}</td><td>"선택 테이블 색상을 파랑으로 통일"</td></tr>
+<tr><td><code>batch_rename_attributes</code></td><td><span class="tag write">write</span></td><td>컬럼명 네이밍 컨벤션 일괄 변환(패턴 기반)</td><td>ids?, fromPattern, toPattern, target{physical|logical}</td><td>"FK 컬럼명을 모두 snake_case로"</td></tr>
+<tr><td><code>auto_detect_relationships</code></td><td><span class="tag write">write</span></td><td>컬럼명 패턴(<code>*_id</code> 등)으로 누락 FK 관계 자동 추가(기존 보존)</td><td>pattern?, skipExisting?</td><td>"USER_ID 패턴 FK들을 관계로 연결"</td></tr>
+<tr><td><code>duplicate_entity</code></td><td><span class="tag write">write</span></td><td>엔티티 복제(이름 변경)</td><td>entityId, newLogicalName?, newPhysicalName?</td><td>"이 테이블을 복제해줘"</td></tr>
+</tbody>
+</table>
+
+<h3>3.3 분석 · 검증 · 통계 <span class="tag p2">우선 중</span></h3>
+<table>
+<thead><tr><th>제안 툴</th><th>종류</th><th>하는 일</th><th>params</th><th>시나리오</th></tr></thead>
+<tbody>
+<tr><td><code>get_statistics</code></td><td><span class="tag read">read</span></td><td>엔티티/관계 수·PK·FK 비율·고아·평균 컬럼 수 등 요약</td><td>(없음)</td><td>"현재 ERD 통계 보여줘"</td></tr>
+<tr><td><code>get_connected_entities</code></td><td><span class="tag read">read</span></td><td>특정 엔티티와 직/간접 연결된 엔티티 탐색</td><td>entityId, depth{direct|all}</td><td>"USER와 연결된 테이블 모두 찾아줘"</td></tr>
+<tr><td><code>detect_orphans</code></td><td><span class="tag read">read</span></td><td>관계 없는 고아 엔티티 탐지</td><td>(없음)</td><td>"고아 테이블 있나 확인"</td></tr>
+<tr><td><code>detect_circular_refs</code></td><td><span class="tag read">read</span></td><td>순환 참조(A→B→…→A) 탐지</td><td>(없음)</td><td>"순환 참조 진단해줘"</td></tr>
+<tr><td><code>validate_schema</code></td><td><span class="tag read">read</span></td><td>PK 부재·네이밍 위반·타입 누락 등 스키마 품질 검증</td><td>rules?, convention?</td><td>"스키마 검증해줘"</td></tr>
+</tbody>
+</table>
+
+<h3>3.4 내보내기 · 가져오기 <span class="tag p2">우선 중</span></h3>
+<table>
+<thead><tr><th>제안 툴</th><th>종류</th><th>하는 일</th><th>params</th><th>시나리오</th></tr></thead>
+<tbody>
+<tr><td><code>export_diagram</code></td><td><span class="tag read">read</span></td><td>현재 다이어그램을 포맷별로 내보내기 트리거</td><td>format{png|svg|json|markdown|html}, options?</td><td>"ERD를 이미지로 저장해줘"</td></tr>
+<tr><td><code>generate_markdown</code></td><td><span class="tag read">read</span></td><td>테이블·컬럼 정의를 마크다운 텍스트로 반환(문서화용)</td><td>ids?, style{table|list}</td><td>"문서용 마크다운 만들어줘"</td></tr>
+<tr><td><code>import_json</code></td><td><span class="tag write">write</span></td><td>JSON 데이터를 다이어그램으로 적재(병합/교체)</td><td>data, mode{merge|replace}</td><td>"이 JSON을 불러와줘"</td></tr>
+</tbody>
+</table>
+<p class="small"><code>export_diagram</code>은 파일 저장(File System API/다운로드)을 동반하므로 사용자 상호작용이 필요할 수 있다 — 드래프트 커밋과 별개의 "사이드이펙트 트리거" 툴로 분류한다.</p>
+
+<h3>3.5 다이어그램 · 섹션 · 메모 <span class="tag p2">우선 중</span></h3>
+<table>
+<thead><tr><th>제안 툴</th><th>종류</th><th>하는 일</th><th>params</th><th>시나리오</th></tr></thead>
+<tbody>
+<tr><td><code>create_diagram</code></td><td><span class="tag write">write</span></td><td>새 다이어그램 생성(초기 엔티티/관계 옵션)</td><td>name?, entities?, relations?</td><td>"'쇼핑몰' 다이어그램 만들어줘"</td></tr>
+<tr><td><code>switch_diagram</code></td><td><span class="tag write">write</span></td><td>활성 다이어그램 전환</td><td>diagram(id|name)</td><td>"'회원관리'로 넘어가줘"</td></tr>
+<tr><td><code>rename_diagram</code></td><td><span class="tag write">write</span></td><td>다이어그램 이름 변경</td><td>diagram, newName</td><td>"이름을 '주문시스템'으로"</td></tr>
+<tr><td><code>delete_diagram</code></td><td><span class="tag danger">write·위험</span></td><td>다이어그램 삭제</td><td>diagram</td><td>"이 다이어그램 삭제"</td></tr>
+<tr><td><code>create_section</code></td><td><span class="tag write">write</span></td><td>엔티티 그룹을 섹션으로 묶기(이름·색상)</td><td>name, ids?|bounds?, colorIdx?</td><td>"이 4개를 '회원관리' 섹션으로"</td></tr>
+<tr><td><code>manage_section</code></td><td><span class="tag write">write</span></td><td>섹션 이름/색상 변경·삭제</td><td>sectionId, action{rename|recolor|delete}, value?</td><td>"섹션 이름 바꿔줘"</td></tr>
+<tr><td><code>add_note</code></td><td><span class="tag write">write</span></td><td>메모(텍스트/마크다운) 추가</td><td>content, x?, y?, color?, style{text|markdown}</td><td>"여기에 설명 메모 붙여줘"</td></tr>
+<tr><td><code>list_notes</code></td><td><span class="tag read">read</span></td><td>캔버스 메모 목록 조회</td><td>(없음)</td><td>"메모들 보여줘"</td></tr>
+</tbody>
+</table>
+
+<h3>3.6 버전 · UI 설정 <span class="tag p3">우선 낮음</span></h3>
+<table>
+<thead><tr><th>제안 툴</th><th>종류</th><th>하는 일</th><th>params</th><th>시나리오</th></tr></thead>
+<tbody>
+<tr><td><code>save_snapshot</code></td><td><span class="tag write">write</span></td><td>현재 상태 스냅샷 저장</td><td>name?, description?</td><td>"현재를 'v1.0'으로 저장"</td></tr>
+<tr><td><code>list_snapshots</code></td><td><span class="tag read">read</span></td><td>스냅샷 목록 조회</td><td>(없음)</td><td>"저장본 목록 보여줘"</td></tr>
+<tr><td><code>restore_snapshot</code></td><td><span class="tag danger">write·위험</span></td><td>스냅샷으로 복원(현재 상태 교체)</td><td>snapshot(id|name)</td><td>"2시간 전 저장본으로 복원"</td></tr>
+<tr><td><code>align_entities</code></td><td><span class="tag write">write</span></td><td>선택 엔티티 정렬/균등배분</td><td>direction{left|h-center|…|h-dist|v-dist}</td><td>"수평 중앙 정렬해줘"</td></tr>
+<tr><td><code>set_theme</code></td><td><span class="tag write">write</span></td><td>테마/표시 설정 변경</td><td>theme, gridSnap?</td><td>"라이트 테마로 바꿔줘"</td></tr>
+</tbody>
+</table>
+
+<!-- ============================================================= -->
+<h2>4. 우선순위 로드맵</h2>
+<div class="note">
+<b>✅ Phase 1·2·3 전부 구현 완료 (2026-06-06)</b> — 아래 우선순위는 원래 계획 순서이며, 현재는 모두 <code>AGENT_TOOL_DEFS</code>에 등록돼 동작한다.<br>
+선정 기준(원안): ① 에이전트 활용 빈도·체감 가치 ② 구현 난이도(낮을수록 우선) ③ 위험도(읽기/안전 우선).
+"읽기·선택·분석" 툴은 부수효과가 없어 빠르고 안전하므로 앞단에 배치했다.
+</div>
+<table>
+<thead><tr><th>Phase</th><th>툴</th><th>핵심 가치</th></tr></thead>
+<tbody>
+<tr><td><span class="tag p1">Phase 1</span><br><span class="small">기본 경험</span></td>
+<td><code>select_entities</code> · <code>highlight_entities</code> · <code>focus_entity</code> · <code>get_statistics</code> · <code>get_connected_entities</code> · <code>auto_detect_relationships</code></td>
+<td>에이전트가 "선택/강조/이동"으로 화면을 직접 운전 + 빠른 분석·관계 자동화. 대부분 read라 안전·저난이도.</td></tr>
+<tr><td><span class="tag p2">Phase 2</span><br><span class="small">생산성</span></td>
+<td><code>batch_update_entities</code> · <code>batch_rename_attributes</code> · <code>create_section</code>/<code>manage_section</code> · <code>generate_markdown</code>/<code>export_diagram</code> · <code>detect_orphans</code>/<code>detect_circular_refs</code>/<code>validate_schema</code></td>
+<td>일괄 편집·문서화·구조 진단. "ERD 건강검진 + 정리" 시나리오 완성.</td></tr>
+<tr><td><span class="tag p3">Phase 3</span><br><span class="small">자동화·관리</span></td>
+<td><code>create_diagram</code>/<code>switch_diagram</code>/<code>rename_diagram</code>/<code>delete_diagram</code> · <code>add_note</code>/<code>list_notes</code> · <code>save_snapshot</code>/<code>list_snapshots</code>/<code>restore_snapshot</code> · <code>align_entities</code> · <code>set_theme</code>/<code>set_view_mode</code> · <code>import_json</code> · <code>duplicate_entity</code></td>
+<td>멀티 다이어그램·버전·메모·UI 자동화. 장기 프로젝트 운영 편의.</td></tr>
+</tbody>
+</table>
+
+<!-- ============================================================= -->
+<h2>5. 구현 가이드 · 주의사항</h2>
+<h3>5.1 공통 규약 (기존 툴과 동일)</h3>
+<ul>
+<li><b>드래프트 메커니즘 재사용</b>: write 툴은 <code>_agentCloneState()</code>로 복제한 드래프트에 작업하고, 턴 종료 시 <code>_agentCommitDraft()</code>로 커밋한다(원자성·undo 보장).</li>
+<li><b>카탈로그 등록</b>: <code>AGENT_TOOL_DEFS</code>에 <code>{name, kind, danger, desc, params, detail, run}</code> 형태로 추가. <code>run(state, args, idRemap)</code> 시그니처 준수.</li>
+<li><b>read/write·danger 구분</b>: 삭제·복원·교체 류는 <code>danger:true</code> → 승인(approve) 게이트를 거친다.</li>
+<li><b>async 지원</b>: 표준사전 등 비동기 작업이 필요하면 <code>run</code>을 async로(execTools가 <code>await</code>함).</li>
+<li><b>사이드이펙트 트리거 툴</b>: <code>export_diagram</code>처럼 파일 저장/다운로드를 부르는 툴은 드래프트와 무관한 "직접 실행" 분류로 두고, 결과만 보고한다.</li>
+</ul>
+
+<h3>5.2 격리·하네스 영향 (반드시 점검)</h3>
+<ul>
+<li><b>공유 적용(§9.1)</b>: <code>agent_tools.js</code> 추가는 v1·v2·v3 공통이다. 새 툴은 세 버전의 execTools(<code>agent_panel.js</code>·<code>client_v2.js</code>·<code>client_v3.js</code>)에서 동일하게 호출되므로, 버전별 분기 없이 동작해야 한다.</li>
+<li><b>feature-dev 하네스</b>: UXERManager 기능 변경이므로 단축키 동기화·백업 통합 검증 대상이다. 새 툴이 상태를 바꾸면 백업/스냅샷·undo와 정합해야 한다.</li>
+<li><b>프롬프트 노출</b>: 계획(plan/react) 프롬프트가 새 툴을 인지하도록, 카탈로그 텍스트·REPLAN done-목록 등 필요한 곳에 반영한다(특히 read 툴 사용 가이드).</li>
+<li><b>README 동기화</b>: 툴 추가는 기능 변경이므로 <code>README.md</code> 에이전트 기능 설명에 반영 검토.</li>
+</ul>
+
+<h3>5.3 설계 시 결정 필요</h3>
+<ul>
+<li><b>선택·하이라이트의 지속성</b>: 에이전트가 선택한 상태를 턴 종료 후에도 유지할지(사용자가 이어서 작업) 여부.</li>
+<li><b>대상 식별</b>: 다수 툴이 <code>ids</code> 또는 <code>keyword</code>로 대상을 받는다 — id 미상 시 <code>find_tables</code>/<code>select_entities</code>로 먼저 해소하는 흐름 권장.</li>
+<li><b>일괄 작업 범위</b>: "선택된 것" vs "키워드 매칭" vs "전체" 중 기본값과 안전장치(전체 수정 시 확인).</li>
+</ul>
+
+<footer>
+UXERManager · 에이전트 Client 툴 추가 계획 · 2026-06-06<br>
+조사 기준: <code>js/agent_tools.js</code> AGENT_TOOL_DEFS(19개) + README/메뉴/js 모듈 기능 인벤토리.
+본 문서는 <b>제안·계획</b>이며, 각 툴의 정확한 함수 연동·시그니처는 구현 시 확정한다.
+</footer>
+
+</div>
+</body>
+</html>

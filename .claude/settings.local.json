@@ -148,7 +148,10 @@
       "Bash(python _smoke_v3.py)",
       "Bash(PYTHONIOENCODING=utf-8 python _smoke_v3.py)",
       "PowerShell($p = Get-NetTCPConnection -LocalPort 3737 -State Listen -ErrorAction SilentlyContinue; if \\($p\\) { \"3737 아직 점유 \\(PID $\\($p.OwningProcess\\)\\) — 앱/사이드카 잔존\" } else { \"3737 해제됨 — exe 잠금 풀림, 빌드 가능\" })",
-      "PowerShell(try { $proc = Get-Process -Id 5168 -ErrorAction Stop; \"PID 5168 = $\\($proc.ProcessName\\)\"; \"경로: $\\($proc.Path\\)\" } catch { \"PID 5168 프로세스 없음 \\(이미 종료, TIME_WAIT 잔여일 수 있음\\)\" })"
+      "PowerShell(try { $proc = Get-Process -Id 5168 -ErrorAction Stop; \"PID 5168 = $\\($proc.ProcessName\\)\"; \"경로: $\\($proc.Path\\)\" } catch { \"PID 5168 프로세스 없음 \\(이미 종료, TIME_WAIT 잔여일 수 있음\\)\" })",
+      "Bash(Get-ChildItem -Path \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\\\\js\" -Filter \"*.js\")",
+      "Bash(Select-Object Name)",
+      "Bash(Sort-Object Name)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
