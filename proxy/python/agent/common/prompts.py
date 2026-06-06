@@ -1,5 +1,7 @@
 """시스템 프롬프트 및 ERD 컨텍스트 요약."""
 
+import json
+
 GATE_SYSTEM = (
     "당신은 ERD 에이전트의 의도 분류기입니다. 사용자 질의를 두 가지로 분류하세요.\n"
     "- act: 도구(툴)를 실행해야 답할 수 있는 요청.\n"
@@ -191,6 +193,18 @@ def results_detail(past_steps: list) -> str:
             rels = ", ".join(f"{r.get('from')}→{r.get('to')}({r.get('card')})" for r in t.get("relations", []))
             label = _ent_label(t.get("logicalName"), t.get("physicalName"), t.get("id"))
             lines.append(f"- describe_table {label}: cols[{cols}]" + (f" rels[{rels}]" if rels else ""))
+        elif tool == "list_db_tables":
+            tbls = res.get("tables") or []
+            names = [(t.get("tableName") or "?") + (" (view)" if t.get("isView") else "") for t in tbls]
+            lines.append(f"- list_db_tables: 운영 DB 테이블 {res.get('tableCount', len(names))}개 — " + ", ".join(names))
+        elif tool == "describe_db_table":
+            t = res.get("table") or {}
+            cols = ", ".join(
+                (c.get("columnName") or "?")
+                + (f":{c.get('dataType')}" if c.get("dataType") else "")
+                + (" PK" if c.get("isPk") else "")
+                for c in (t.get("columns") or []))
+            lines.append(f"- describe_db_table {t.get('tableName', '?')}: cols[{cols}]")
         elif tool == "find_tables":
             m = res.get("matches") or []
             lines.append("- find_tables: " + ", ".join((x.get("name") or x.get("id") or "") for x in m))
@@ -206,7 +220,19 @@ def results_detail(past_steps: list) -> str:
             args = step.get("args") or {}
             asum = ", ".join(f"{k}={v}" for k, v in args.items() if not isinstance(v, (dict, list)))
             head = f"{tool}({asum})" if asum else tool
-            lines.append(f"- {head}: {res.get('entityId') or res.get('note') or '성공'}")
+            summary = res.get("entityId") or res.get("note")
+            if not summary:
+                # 데이터를 반환하는 read 툴(count_db_rows·find_db_column 등)은 'ok' 외 페이로드를
+                # 그대로 노출해야 최종 보고 LLM이 실제 데이터를 보고 답한다(없으면 환각).
+                payload = {k: v for k, v in res.items() if k not in ("ok",)}
+                if payload:
+                    try:
+                        summary = json.dumps(payload, ensure_ascii=False)[:2000]
+                    except Exception:  # noqa: BLE001
+                        summary = str(payload)[:2000]
+                else:
+                    summary = "성공"
+            lines.append(f"- {head}: {summary}")
     return "\n".join(lines)
 
 

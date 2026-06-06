@@ -135,8 +135,8 @@ function _agentResolveEntityId(draft, idOrName, remap) {
     if (remap && remap[inner]) return remap[inner];
     if (ents.some(e => e.id === inner)) return inner;
   }
-  // 3) 이름(논리/물리) 정확 일치 — 괄호 앞 부분 포함
-  const namePart = raw.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+  // 3) 이름(논리/물리) 정확 일치 — 괄호/대괄호(라벨 "논리명 [물리명]") 앞 부분 포함
+  const namePart = raw.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\[[^\]]*\]\s*$/, '').trim().toLowerCase();
   const cands = [raw.toLowerCase(), namePart].filter(Boolean);
   let hit = ents.find(e =>
     cands.includes((e.logicalName || '').toLowerCase()) ||
@@ -270,10 +270,11 @@ function _agentToolDescribeTable(draft, args) {
   const id = _agentResolveEntityId(view, (args && (args.entityId || args.id || args.name)), {});
   if (!id) return { ok: false, error: '테이블을 찾을 수 없습니다: ' + ((args && (args.entityId || args.id || args.name)) || '') };
   const e = view.entities.find(x => x.id === id);
-  const rels = view.relations.filter(r => r.from === id || r.to === id).map(r => ({ from: r.from, to: r.to, card: r.card }));
+  const rels = view.relations.filter(r => r.from === id || r.to === id).map(r => ({ from: _agentEntLabel(view, r.from), to: _agentEntLabel(view, r.to), card: r.card }));
   return { ok: true, table: {
     id: e.id, logicalName: e.logicalName, physicalName: e.physicalName, description: e.description || '',
-    attrs: (e.attrs || []).map(a => ({ logicalName: a.logicalName, physicalName: a.physicalName, type: a.type, kind: a.kind, notNull: !!a.notNull, ref: a.ref || null })),
+    attrs: (e.attrs || []).map(a => ({ logicalName: a.logicalName, physicalName: a.physicalName, type: a.type, kind: a.kind, notNull: !!a.notNull,
+      ref: (a.ref && a.ref.entity) ? { entity: _agentEntLabel(view, a.ref.entity), attr: a.ref.attr } : (a.ref || null) })),
     relations: rels,
   } };
 }
@@ -281,7 +282,7 @@ function _agentToolDescribeTable(draft, args) {
 function _agentToolListRelations(draft, args) {
   const view = _agentReadView(draft);
   const id = (args && (args.entityId || args.id || args.name)) ? _agentResolveEntityId(view, args.entityId || args.id || args.name, {}) : null;
-  const rels = view.relations.filter(r => !id || r.from === id || r.to === id).map(r => ({ from: r.from, to: r.to, card: r.card }));
+  const rels = view.relations.filter(r => !id || r.from === id || r.to === id).map(r => ({ from: _agentEntLabel(view, r.from), to: _agentEntLabel(view, r.to), card: r.card }));
   return { ok: true, relations: rels };
 }
 
@@ -364,12 +365,13 @@ function _agentToolNormalizeCheck(draft) {
   const ents = (draft && draft.entities) || [];
   const rels = (draft && draft.relations) || [];
   const findings = [];
+  const _view = { entities: ents };
   ents.forEach(e => {
     const hasPk = (e.attrs || []).some(a => a.kind === 'pk');
-    if (!hasPk) findings.push({ type: 'no_pk', entity: e.logicalName || e.physicalName || e.id, note: 'PK가 없어 식별 불가(1NF 점검)' });
+    if (!hasPk) findings.push({ type: 'no_pk', entity: _agentEntLabel(_view, e), note: 'PK가 없어 식별 불가(1NF 점검)' });
   });
   rels.forEach(r => {
-    if (r.card === 'N:M') findings.push({ type: 'nm_relation', from: r.from, to: r.to, note: 'N:M은 연결(junction) 테이블로 분해 권장' });
+    if (r.card === 'N:M') findings.push({ type: 'nm_relation', from: _agentEntLabel(_view, r.from), to: _agentEntLabel(_view, r.to), note: 'N:M은 연결(junction) 테이블로 분해 권장' });
   });
   return { ok: true, violationCount: findings.length, findings };
 }
@@ -466,6 +468,19 @@ function _agentLiveIds(view, args) {
 
 function _agentNameOf(e) {
   return (typeof entDisplayName === 'function') ? entDisplayName(e) : (e.logicalName || e.physicalName || e.id);
+}
+
+// 엔티티 ID → 사용자용 라벨. 엔티티ID는 내부값이므로 사용자/LLM에 노출되는 모든 ERD 툴 출력은
+// 이 라벨(논리명 [물리명])을 쓴다. 관계 from/to·정규화 대상 등 ID 참조를 이 함수로 치환한다.
+// (라벨은 _agentResolveEntityId 가 괄호·대괄호를 떼고 논리/물리명으로 되해소하므로 후속 툴 호출에도 안전)
+function _agentEntLabel(view, idOrEnt) {
+  const e = (idOrEnt && typeof idOrEnt === 'object')
+    ? idOrEnt
+    : ((view && view.entities) || []).find(x => x.id === idOrEnt);
+  if (!e) return String(idOrEnt == null ? '' : idOrEnt);   // 못 찾으면 최후로 원값(ID 노출 회피 불가 시)
+  const ln = e.logicalName || '', pn = e.physicalName || '';
+  if (ln && pn) return ln + ' [' + pn + ']';
+  return ln || pn || e.id || '';
 }
 
 // ── 분석·통계 (read) ──────────────────────────────────────────────
@@ -1004,6 +1019,63 @@ function _agentOpenDoc(title, innerHtml) {
   return true;
 }
 
+// LLM이 직접 생성한 임의 콘텐츠(HTML 보고서·Markdown·CSV·JSON·텍스트 등)를 파일로 저장(다운로드).
+// "위 내용을 HTML 보고서로 만들어 저장해줘" 류 — 모델이 완성한 본문을 content 인자에 담아 전달하면 파일로 떨군다.
+// 클라 전용(웹·데스크탑 공통, Blob 다운로드). ERD 를 바꾸지 않음(read).
+function _agentToolSaveContent(draft, args) {
+  args = args || {};
+  let content = (args.content != null) ? args.content : (args.text != null ? args.text : args.body);
+  if (content == null || String(content).trim() === '')
+    return { ok: false, error: 'content(저장할 본문)가 비어 있습니다. 완성된 본문을 content 인자에 담아 전달하세요.' };
+  if (typeof content !== 'string') { try { content = JSON.stringify(content, null, 2); } catch (e) { content = String(content); } }
+
+  // 포맷 결정: format 인자 → fileName 확장자 → 기본 txt
+  const fmtRaw = String(args.format || '').toLowerCase().trim().replace(/^\./, '');
+  const nameExt = (String(args.fileName || '').match(/\.([a-z0-9]+)\s*$/i) || [])[1];
+  const fmt = fmtRaw || (nameExt ? nameExt.toLowerCase() : 'txt');
+  const MAP = {
+    html: { ext: 'html', mime: 'text/html' }, htm: { ext: 'html', mime: 'text/html' },
+    md: { ext: 'md', mime: 'text/markdown' }, markdown: { ext: 'md', mime: 'text/markdown' },
+    txt: { ext: 'txt', mime: 'text/plain' }, text: { ext: 'txt', mime: 'text/plain' },
+    csv: { ext: 'csv', mime: 'text/csv' }, json: { ext: 'json', mime: 'application/json' },
+    svg: { ext: 'svg', mime: 'image/svg+xml' }, xml: { ext: 'xml', mime: 'application/xml' },
+    sql: { ext: 'sql', mime: 'text/plain' },
+  };
+  const spec = MAP[fmt] || { ext: (fmt.replace(/[^a-z0-9]/gi, '') || 'txt'), mime: 'text/plain' };
+  const title = String(args.title || '에이전트 산출물');
+
+  // HTML 인데 단편(fragment)이면 인쇄 가능한 문서로 감싼다(전체 문서면 그대로).
+  if (spec.ext === 'html' && !/<!doctype|<html[\s>]/i.test(content)) {
+    const esc = _agentEscHtml;
+    const css = 'body{font-family:"Malgun Gothic","Segoe UI",sans-serif;margin:28px;color:#222;font-size:13px;line-height:1.6}'
+      + 'h1{font-size:22px}h2{font-size:16px;border-bottom:2px solid #4472c4;padding-bottom:4px;margin-top:22px}'
+      + 'table{border-collapse:collapse;width:100%;margin:8px 0}td,th{border:1px solid #bbb;padding:5px 8px;text-align:left}'
+      + 'th{background:#4472c4;color:#fff}code,pre{background:#f4f4f4;padding:2px 5px;border-radius:3px}'
+      + '@media print{body{margin:0}}';
+    content = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc(title)
+      + '</title><style>' + css + '</style></head><body>' + content + '</body></html>';
+  }
+
+  // 파일명 결정 + 금지문자 정리
+  let fileName = String(args.fileName || '').trim();
+  if (!fileName) fileName = title + '.' + spec.ext;
+  else if (!/\.[a-z0-9]+$/i.test(fileName)) fileName += '.' + spec.ext;
+  fileName = fileName.replace(/[\\/:*?"<>|]/g, '_');
+
+  try {
+    const blob = new Blob([content], { type: spec.mime + ';charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (e) {
+    return { ok: false, error: '파일 저장 실패: ' + e.message };
+  }
+  return { ok: true, fileName: fileName, format: spec.ext, chars: content.length,
+           note: '"' + fileName + '" 파일로 저장(다운로드)했습니다.' };
+}
+
 // ERD 구조 메트릭(허브·결합도·fan-in/out) — read
 function _agentToolAnalyzeErdMetrics(draft) {
   const v = _agentReadView(draft);
@@ -1034,7 +1106,13 @@ function _agentToolSuggestNormalization(draft) {
     (e.attrs || []).forEach(a => { const m = (a.physicalName || '').match(/^(.*?)(\d+)$/); if (m && m[1]) grp[m[1]] = (grp[m[1]] || 0) + 1; });
     Object.keys(grp).forEach(k => { if (grp[k] >= 2) findings.push({ target: nm, issue: '반복 컬럼 의심: ' + k + '1..' + grp[k], suggestion: '반복 그룹을 별도 테이블로 분해(1NF)' }); });
   });
-  v.relations.forEach(r => { if (r.card === 'N:M') findings.push({ target: r.from + ' ↔ ' + r.to, issue: 'N:M 관계', suggestion: '연결(junction) 테이블로 분해 (예: ' + r.from + '_' + r.to + ')' }); });
+  v.relations.forEach(r => {
+    if (r.card !== 'N:M') return;
+    const ef = (v.entities || []).find(x => x.id === r.from), et = (v.entities || []).find(x => x.id === r.to);
+    // 대상은 사용자용 라벨(논리명 [물리명]), junction 제안명은 유효 식별자라야 하므로 물리명 기반
+    const jn = ((ef && ef.physicalName) || _agentEntLabel(v, r.from)) + '_' + ((et && et.physicalName) || _agentEntLabel(v, r.to));
+    findings.push({ target: _agentEntLabel(v, r.from) + ' ↔ ' + _agentEntLabel(v, r.to), issue: 'N:M 관계', suggestion: '연결(junction) 테이블로 분해 (예: ' + jn + ')' });
+  });
   return { ok: true, count: findings.length, findings };
 }
 
@@ -1077,7 +1155,7 @@ function _agentToolGenerateErdReport(draft, args) {
   inner += '<h2>2. 엔티티 목록</h2><table><thead><tr><th>#</th><th>논리명</th><th>물리명</th><th>컬럼수</th><th>설명</th></tr></thead><tbody>'
     + v.entities.map((e, i) => '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(_agentNameOf(e)) + '</td><td>' + esc(e.physicalName || '') + '</td><td class="c">' + (e.attrs || []).length + '</td><td>' + esc(e.description || '') + '</td></tr>').join('') + '</tbody></table>';
   inner += '<h2>3. 관계 목록</h2><table><thead><tr><th>From</th><th>To</th><th>카디널리티</th></tr></thead><tbody>'
-    + (v.relations.length ? v.relations.map(r => '<tr><td>' + esc(r.from) + '</td><td>' + esc(r.to) + '</td><td class="c">' + esc(r.card) + '</td></tr>').join('') : '<tr><td colspan="3">관계 없음</td></tr>') + '</tbody></table>';
+    + (v.relations.length ? v.relations.map(r => '<tr><td>' + esc(_agentEntLabel(v, r.from)) + '</td><td>' + esc(_agentEntLabel(v, r.to)) + '</td><td class="c">' + esc(r.card) + '</td></tr>').join('') : '<tr><td colspan="3">관계 없음</td></tr>') + '</tbody></table>';
   inner += '<h2>4. 정규화·이슈 진단</h2><table><thead><tr><th>대상</th><th>이슈</th><th>권고</th></tr></thead><tbody>'
     + (norm.length ? norm.map(f => '<tr><td>' + esc(f.target) + '</td><td class="bad">' + esc(f.issue) + '</td><td>' + esc(f.suggestion) + '</td></tr>').join('') : '<tr><td colspan="3" class="ok">발견된 이슈 없음</td></tr>') + '</tbody></table>';
   if (!_agentOpenDoc(title, inner)) return { ok: false, error: '팝업이 차단되었습니다. 허용 후 다시 시도하세요.' };
@@ -1328,6 +1406,9 @@ const AGENT_TOOL_DEFS = [
   { name: 'export_data_dictionary_xlsx', kind: 'read', danger: false, run: _agentToolExportDataDictionaryXlsx,
     desc: '데이터 사전 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
     detail: '대상(또는 전체) 테이블의 전 컬럼을 엑셀 데이터 사전으로 생성·다운로드한다(사이드카 openpyxl, /export/data-dictionary). 데스크탑 전용.' },
+  { name: 'save_content', kind: 'read', danger: false, run: _agentToolSaveContent,
+    desc: 'LLM 생성 콘텐츠를 파일로 저장(다운로드)', params: 'content(필수), format?(html|md|csv|json|txt|svg|xml|sql), fileName?, title?',
+    detail: '모델(너)이 직접 작성한 본문을 그대로 파일로 저장(다운로드)한다. "위 내용을 HTML 보고서로 만들어 저장해줘"처럼 산출물을 파일로 떨궈야 할 때 쓴다 — 완성된 HTML/Markdown/CSV/JSON/텍스트 본문 전체를 content 인자에 담아 전달하면 된다(본문은 네가 만든다, 이 툴은 저장만 한다). 포맷은 format 또는 fileName 확장자로 결정(기본 txt), HTML 단편은 인쇄용 문서로 자동 래핑. 클라 전용(웹·데스크탑 공통). 다른 산출물 툴(generate_table_spec 등)이 다루지 못하는 자유형 문서에 사용.' },
 ];
 
 // ── 파생(중복 정의 없음) ──────────────────────────────────────────
@@ -1390,7 +1471,9 @@ function _agentToolLabel(tool, args) {
     case 'export_data_dictionary_xlsx': return '데이터 사전 엑셀 다운로드';
     case 'generate_erd_report': return 'ERD 종합 명세서 생성(문서)';
     case 'generate_term_compliance': return '표준용어 준수 점검';
+    case 'save_content': return '파일로 저장' + (a.fileName ? ': ' + a.fileName : (a.format ? ' (' + a.format + ')' : ''));
     // 프록시 DB (서버)
+    case 'get_db_connection_info': return 'DB 접속 정보(서버)';
     case 'list_db_tables': return 'DB 테이블 목록(서버)';
     case 'describe_db_table': return 'DB 테이블 구조(서버): ' + tbl;
     case 'count_db_rows': return 'DB 행 수 조회(서버): ' + tbl;

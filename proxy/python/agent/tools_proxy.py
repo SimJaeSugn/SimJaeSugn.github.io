@@ -20,6 +20,10 @@ PROXY_TOOL_CATALOG = [
      "detail": "SQL을 실행한다. SQL 작성 전 대상 DB의 db_doc_<유형> 으로 문법·자료형을 참고하라. "
                "DML/DDL은 되돌리기 어려우므로 신중히. 사용자 승인(approve)을 거친다."},
     # ── 세분화 introspection·조회 툴 (2026-06-06 추가, 모두 읽기 전용) ──
+    {"name": "get_db_connection_info", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "현재 연결된 DB 접속 프로파일 정보(비밀번호 제외)", "params": "(없음)",
+     "detail": "현재 설정된 DB 접속 정보(유형·host·port·database·사용자·스키마, Oracle은 clientLibDir)를 반환한다. "
+               "비밀번호는 보안상 절대 포함하지 않는다. '어느 DB에 붙어 있어?'·접속 환경 확인·SQL 작성 전 대상 DB 유형 파악용. DB 쿼리 없이 설정만 읽는다."},
     {"name": "list_db_tables", "kind": "read", "location": "proxy", "danger": False,
      "desc": "연결된 DB의 테이블·뷰 이름 목록(경량)", "params": "(없음)",
      "detail": "테이블/뷰 이름과 컬럼 수만 반환한다. 대상을 모를 때 먼저 호출해 좁힌 뒤 describe_db_table 로 상세를 본다."},
@@ -159,6 +163,24 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
         return {"ok": False, "error": "DB 접속정보가 설정되지 않았습니다. (DB 연결 후 사용하세요)"}
     args = args or {}
     db_type = config["dbType"]
+
+    # 접속 프로파일 정보 — DB 쿼리/어댑터 불필요(드라이버 오류와 무관하게 진단 가능)하므로 try 밖에서 처리.
+    # 비밀번호는 보안상 절대 포함하지 않는다.
+    if name == "get_db_connection_info":
+        info = {
+            "dbType": config.get("dbType"),
+            "host": config.get("host"),
+            "port": config.get("port"),
+            "database": config.get("database"),
+            "username": config.get("username"),
+            "schema": config.get("schema") or "",
+        }
+        if config.get("name"):
+            info["profileName"] = config.get("name")
+        if config.get("dbType") == "oracle" and config.get("clientLibDir"):
+            info["clientLibDir"] = config.get("clientLibDir")
+        return {"ok": True, "connection": info}
+
     try:
         adapter = get_adapter(db_type)
 
