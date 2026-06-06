@@ -51,13 +51,29 @@ def _execute_sync(config: dict, sql: str) -> dict:
     conn = _get_conn(config)
     cursor = conn.cursor()
     cursor.execute(sql)
-    if cursor.description:
-        fields = [col[0] for col in cursor.description]
-        rows = [dict(zip(fields, row)) for row in cursor.fetchall()]
-        return {"rows": rows, "rowCount": len(rows), "fields": fields}
-    # 결과셋 없음(INSERT/UPDATE/DELETE/DDL) → 커밋. pyodbc 기본 autocommit=False.
-    conn.commit()
-    return {"rows": [], "rowCount": cursor.rowcount or 0, "fields": []}
+    # multi-statement(배치) 대응 — 모든 결과셋을 소진하며 영향 행을 누적하고,
+    # DML 이 하나라도 있었으면 마지막에 한 번만 커밋한다(일부만 반영/롤백되던 버그 방지).
+    result_rows: list = []
+    total_affected = 0
+    saw_dml = False
+    while True:
+        if cursor.description:                         # SELECT 등 결과셋 있는 문장
+            fields = [col[0] for col in cursor.description]
+            fetched = cursor.fetchall()
+            if fetched:
+                result_rows = [dict(zip(fields, row)) for row in fetched]
+        else:                                          # INSERT/UPDATE/DELETE/DDL — 결과셋 없음
+            saw_dml = True
+            if cursor.rowcount and cursor.rowcount > 0:
+                total_affected += cursor.rowcount
+        if not cursor.nextset():
+            break
+    # 결과셋 없는 DML → 커밋. pyodbc 기본 autocommit=False.
+    if saw_dml:
+        conn.commit()
+    fields = list(result_rows[0].keys()) if result_rows else []
+    row_count = len(result_rows) if result_rows else total_affected
+    return {"rows": result_rows, "rowCount": row_count, "fields": fields}
 
 
 async def test(config: dict) -> bool:

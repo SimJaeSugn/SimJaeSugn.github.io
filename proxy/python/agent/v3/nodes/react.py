@@ -12,6 +12,7 @@ react_route 가 결정된 react_tool 의 location 으로 분기한다:
   finish → respond / meta → meta_exec / proxy → proxy_exec / client → client_exec
 """
 import json
+import re
 
 from agent.common.llm import get_main_llm
 from agent.common.state import recent_messages
@@ -24,6 +25,8 @@ from agent.v3.common.prompts import (
     tools_catalog_text,
 )
 from agent.v3.common.schemas import (
+    ASK_USER,
+    ASK_USER_TOOL,
     FINISH,
     MAX_LOOP,
     META_TOOL_CATALOG,
@@ -49,6 +52,26 @@ def _tail_meta_streak(scratchpad: list) -> int:
     return n
 
 
+# INSERT/REPLACE(=행을 새로 추가하는 DML) 판별 — 중복 누적 방지용
+_INSERT_RE = re.compile(r"^\s*(INSERT|REPLACE)\b", re.IGNORECASE)
+
+
+def _prior_insert_succeeded(scratchpad: list) -> bool:
+    """이번 턴에 이미 성공한 INSERT/REPLACE run_sql 이 있는지.
+
+    임의 데이터 INSERT 는 매 스텝 args(값)가 달라 '동일 행동 반복' 가드(①)를 빠져나가
+    react 가 INSERT 를 계속 재선택 → 100행씩 무한 누적되는 문제를 막기 위한 판별.
+    (검증용 SELECT 는 INSERT 가 아니므로 허용 — INSERT→SELECT→finish 흐름은 유지된다.)
+    """
+    for e in (scratchpad or []):
+        if e.get("tool") == "run_sql":
+            sql = (e.get("args") or {}).get("sql") or ""
+            obs = e.get("observation") or ""
+            if _INSERT_RE.match(sql) and not obs.startswith("실패"):
+                return True
+    return False
+
+
 def react_node(state: AgentState) -> dict:
     loop = int(state.get("loop_count") or 0) + 1
 
@@ -56,7 +79,7 @@ def react_node(state: AgentState) -> dict:
     if loop > MAX_LOOP:
         return _finish(loop, f"반복 상한({MAX_LOOP}회) 도달 — 현재까지 결과로 종료합니다.")
 
-    catalog = (state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG + META_TOOL_CATALOG
+    catalog = (state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG + META_TOOL_CATALOG + [ASK_USER_TOOL]
     known = {t.get("name") for t in catalog if t.get("name")}
     intent_json = json.dumps(state.get("intent") or {}, ensure_ascii=False)
 
@@ -93,6 +116,12 @@ def react_node(state: AgentState) -> dict:
     if tool in META_TOOL_NAMES and _tail_meta_streak(scratch) >= 1:
         return _finish(loop, thought + " (점검 완료 — 분석을 마치고 종료)")
 
+    # 가드 ③: INSERT 중복 누적 방지 — 이미 INSERT/REPLACE 가 성공했는데 또 INSERT면
+    # (임의 데이터라 args가 달라 가드①을 빠져나감) 100행씩 무한 삽입된다 → 종료.
+    # 검증은 SELECT 로(이 가드는 INSERT만 차단), 추가 삽입이 필요하면 사용자가 다시 요청.
+    if tool == "run_sql" and _INSERT_RE.match(args.get("sql") or "") and _prior_insert_succeeded(scratch):
+        return _finish(loop, thought + " (이미 INSERT가 적용됨 — 중복 누적 삽입 방지로 종료. 검증은 SELECT로 수행)")
+
     # 승인 필요 판정: write/external/danger 툴은 실행 전 사용자 승인을 받는다(read/meta 면제)
     tdef = next((t for t in catalog if t.get("name") == tool), None)
     needs_approval = bool(tdef) and ((tdef.get("kind") in ("write", "external")) or bool(tdef.get("danger")))
@@ -110,6 +139,8 @@ def react_route(state: AgentState) -> str:
     tool = state.get("react_tool")
     if not tool or tool == FINISH:
         return "finish"
+    if tool == ASK_USER:
+        return "clarify"   # 정보/방향 부족 → 사용자에게 되묻기(interrupt)
     if tool in META_TOOL_NAMES:
         return "meta"
     if state.get("react_needs_approval"):

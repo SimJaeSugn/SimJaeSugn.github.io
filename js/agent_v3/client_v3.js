@@ -211,6 +211,13 @@ async function agentV3Send() {
           phase = 'resume';
           continue;
         }
+        if (interruptData.type === 'clarify') {
+          // 의도불명·정보부족 → 사용자에게 되묻고 답을 resume({text})로 회신
+          const ans = await _agentV3AwaitClarify(interruptData, bubble);
+          resumePayload = { text: ans || '' };
+          phase = 'resume';
+          continue;
+        }
         // tool_calls — 클라 툴 실행(드래프트) + 진행 표시
         const results = await _agentV3ExecTools(interruptData.calls || [], bubble);
         if (results.some(r => r.ok === false)) turnHadError = true;

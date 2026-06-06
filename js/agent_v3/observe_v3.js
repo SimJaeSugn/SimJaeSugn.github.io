@@ -122,3 +122,62 @@ function _agentV3RenderVerdict(data, bubble) {
 }
 // (구) plan 이벤트 — M2 ReAct 루프에선 사용 안 함. 호환용 no-op.
 function _agentV3RenderPlan(data, bubble)   { /* M2 ReAct 루프 미사용 */ }
+
+// ── clarify 되묻기 (HITL) — 질문 카드 + 답변 입력 → Promise<string|null> ──
+// 백엔드 clarify 노드의 interrupt({type:'clarify', question, options})에 대응.
+// 보기(options)가 있으면 버튼, 없으면 자유 입력. '건너뛰기'(빈 답)면 취소로 진행.
+function _agentV3AwaitClarify(data, bubble) {
+  return new Promise(resolve => {
+    const q = (data && data.question) || '진행에 필요한 정보를 알려주세요.';
+    const opts = (data && Array.isArray(data.options)) ? data.options : [];
+    const esc = (typeof _agentV3Esc === 'function') ? _agentV3Esc : (s => String(s == null ? '' : s));
+    const card = document.createElement('div');
+    card.className = 'agent-clarify';
+    card.setAttribute('style', 'margin:4px 0;padding:8px 10px;border:1px solid var(--surface2,#585b70);'
+      + 'border-radius:8px;background:rgba(203,166,247,.08);font-size:12px');
+    const optHtml = opts.map(o =>
+      '<button class="agent-btn agent-clarify-opt" data-v="' + esc(String(o)) + '" '
+      + 'style="margin:0 4px 4px 0">' + esc(String(o)) + '</button>').join('');
+    card.innerHTML =
+      '<div style="margin-bottom:6px"><span style="color:var(--mauve,#cba6f7)">❓</span> '
+      + esc(q) + '</div>'
+      + (optHtml ? '<div class="agent-clarify-opts" style="display:flex;flex-wrap:wrap;margin-bottom:4px">'
+          + optHtml + '</div>' : '')
+      + '<div style="display:flex;gap:4px">'
+      + '<input class="agent-clarify-input" type="text" placeholder="답변을 입력하세요…" '
+      + 'style="flex:1;padding:4px 8px;border:1px solid var(--surface2,#585b70);border-radius:6px;'
+      + 'background:var(--base,#1e1e2e);color:inherit;font-size:12px">'
+      + '<button class="agent-btn agent-btn-ok agent-clarify-send">보내기</button>'
+      + '<button class="agent-btn agent-btn-cancel agent-clarify-skip">건너뛰기</button>'
+      + '</div>';
+    // 추적/응답 영역을 보장(타이핑 인디케이터 제거)하고 그 위에 질문 카드를 끼운다
+    if (typeof _agentV3Trace === 'function') _agentV3Trace(bubble);
+    const reply = bubble ? bubble.querySelector('.agent-reply') : null;
+    if (reply && reply.parentNode) reply.parentNode.insertBefore(card, reply);
+    else if (bubble) bubble.appendChild(card);
+    if (typeof _agentV3ScrollBottom === 'function') _agentV3ScrollBottom();
+    const input = card.querySelector('.agent-clarify-input');
+    if (input) input.focus();
+
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      // 카드를 컴팩트 기록으로 동결(중복 입력 방지)
+      card.innerHTML =
+        '<div style="opacity:.85"><span style="color:var(--mauve,#cba6f7)">❓</span> ' + esc(q) + '</div>'
+        + (val ? '<div style="opacity:.7;margin-top:2px">↳ ' + esc(val) + '</div>'
+               : '<div style="opacity:.6;margin-top:2px">↳ (건너뜀)</div>');
+      resolve(val);
+    };
+    card.querySelectorAll('.agent-clarify-opt').forEach(b =>
+      b.addEventListener('click', () => done(b.getAttribute('data-v') || '')));
+    const send = card.querySelector('.agent-clarify-send');
+    const skip = card.querySelector('.agent-clarify-skip');
+    if (send) send.addEventListener('click', () => done((input && input.value.trim()) || ''));
+    if (skip) skip.addEventListener('click', () => done(''));
+    if (input) input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); done(input.value.trim()); }
+    });
+  });
+}

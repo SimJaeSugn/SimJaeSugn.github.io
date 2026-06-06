@@ -67,3 +67,6 @@ class AgentState(TypedDict, total=False):
     # verify 노드 — react 의 finish 가 의도를 충족했는지 구조적 판정
     verdict: Optional[dict]               # V3Verdict.model_dump()
     verify_count: int                     # verify→react 보완 횟수(무한 검증 가드)
+    # clarify 노드 — 의도 불명확(analyze) 또는 ReAct 루프 중(ask_user) 사용자 되묻기
+    clarify_count: int                    # 되묻기 횟수(무한 되묻기 가드, MAX_CLARIFY)
+    clarify_cancelled: Optional[bool]     # 사용자가 답을 건너뜀 → respond(취소)로 분기

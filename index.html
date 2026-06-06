@@ -238,10 +238,10 @@
 <div id="diagramPanel" class="collapsed">
   <div id="panelWidthHandle"></div>
 
-  <!-- 패널 탭 (속성 / Agent) — 다이어그램·엔티티 목록은 좌측 탐색기로 이동 -->
+  <!-- 패널 탭 (속성) — Agent 진입은 우하단 플로팅 🧠 버튼(v3)으로 이동, 도크 탭 제거(오너 결정 2026-06-06).
+       v1 #panelViewAgent·agent_panel.js·백엔드(/agent/*)는 보존(롤백 = data-ptab="agent" 탭 버튼 복원). -->
   <div id="panelTabs">
     <button class="panel-tab active" data-ptab="list"  onclick="switchPanelTab('list')"><span>📋</span>속성</button>
-    <button class="panel-tab"        data-ptab="agent" onclick="switchPanelTab('agent')"><span>🤖</span>Agent</button>
     <button class="panel-collapse-btn" style="margin-left:auto" onclick="toggleDiagramPanel()" title="패널 닫기 (Ctrl+Alt+B)">▶</button>
   </div>
 

@@ -20,7 +20,8 @@ SSE 이벤트
     thought     {thought,tool,args}       react 노드 — 이번 스텝 추론·다음 행동
     observation {tool,observation}        meta/proxy/client 실행 결과 관찰
     token       {t}            answer/respond 노드의 토큰
-    interrupt   {type, calls}  클라이언트 툴 실행 위임 (이후 /resume 필요)
+    interrupt   {type, ...}    type별 HITL — tool_calls(클라 툴 실행 위임)·plan_approval(쓰기/위험 승인)·
+                               clarify(의도불명·정보부족 시 사용자 되묻기 {question, options}). 이후 /resume 필요
     done        {}             그래프 종료
     error       {error}
 """

@@ -20,4 +20,6 @@ def prep_node(state: AgentState) -> dict:
         "react_approved": None,
         "verify_count": 0,
         "verdict": None,
+        "clarify_count": 0,
+        "clarify_cancelled": None,
     }

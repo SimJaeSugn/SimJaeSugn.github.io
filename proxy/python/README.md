@@ -84,8 +84,8 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | GET | /agent/v2/config | v2 Agent 설정 조회 (공유 키스토어) |
 | POST | /agent/v2/config | v2 Agent 설정 저장 (공유 키스토어) |
 | POST | /agent/v2/eval | v2 검증 오라클 — 픽스처 일괄 채점(analyze→plan dry-run, 실행 없음) → 스코어카드. body: path·reps·split(all/golden/holdout) |
-| POST | /agent/v3/stream | v3(ReAct 하이브리드) 자연어 질의 → 그래프 실행 SSE (intent·thought·observation·token·interrupt 포함, 독립 인스턴스). react⇄act⇄observe 루프 |
-| POST | /agent/v3/resume | v3 interrupt 결과 회신 → 그래프 재개 SSE |
+| POST | /agent/v3/stream | v3(ReAct 하이브리드) 자연어 질의 → 그래프 실행 SSE (intent·thought·observation·verdict·token·interrupt 포함, 독립 인스턴스). react⇄act⇄observe 루프. interrupt type: tool_calls(클라 툴)·plan_approval(승인)·clarify(의도불명·정보부족 시 사용자 되묻기 {question,options}) |
+| POST | /agent/v3/resume | v3 interrupt 결과 회신 → 그래프 재개 SSE (clarify는 {text}로 답을 회신) |
 | GET | /agent/v3/key | v3 OpenAI 키 설정 여부 확인 (공유 키스토어) |
 | POST | /agent/v3/key | v3 OpenAI 키 저장 (공유 키스토어) |
 | GET | /agent/v3/config | v3 Agent 설정 조회 (공유 키스토어) |
@@ -146,10 +146,10 @@ proxy/python/
 │   │   ├── common/        ← schemas(IntentSpec·Goal·StepV2·PlanV2·Verdict) · state(AgentStateV2) · prompts(ANALYZE_SYSTEM·PLAN_V2_SYSTEM)
 │   │   ├── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
 │   │   └── eval/          ← 검증 오라클(P1)+자동최적화 게이트(P3) — fixtures.jsonl(골든11+홀드아웃6) · scorer(§7.1 지표) · runner(analyze→plan dry-run) · gate(v1무손상·테스트자산 동결 검사) · README.md(구동법·픽스처 규칙·P3 자동최적화 런북)
-│   └── v3/                ← v3 에이전트 서브패키지 (ReAct 하이브리드 — V3-M2, v1 노드 읽기 재사용)
-│       ├── graph.py       ← build_graph() — prep→analyze→fetch_tools→react⇄{meta_exec|proxy_exec|client_exec}→respond
-│       ├── common/        ← state(AgentState — v1 필드+scratchpad·loop_count·react_*) · schemas(ReActStep·META_TOOL_CATALOG·MAX_LOOP) · prompts(REACT_SYSTEM·plan/reflect·render_scratchpad)
-│       └── nodes/         ← prep(턴 리셋) · react(추론+라우팅) · meta(plan/reflect 메타툴) · act(proxy_exec·client_exec)
+│   └── v3/                ← v3 에이전트 서브패키지 (ReAct 하이브리드 — V3-M3, v1 노드 읽기 재사용)
+│       ├── graph.py       ← build_graph() — prep→analyze→{answer|clarify⇄analyze|fetch_tools→react⇄{meta_exec|approve→exec|proxy_exec|client_exec|clarify}→verify→respond}
+│       ├── common/        ← state(AgentState — v1 필드+scratchpad·loop_count·react_*·verify_count·clarify_count) · schemas(ReActStep·META_TOOL_CATALOG·ASK_USER·V3Verdict·MAX_LOOP·MAX_VERIFY·MAX_CLARIFY) · prompts(REACT_SYSTEM·plan/reflect·VERIFY_SYSTEM·render_scratchpad)
+│       └── nodes/         ← prep(턴 리셋) · react(추론+라우팅) · meta(plan/reflect 메타툴) · act(proxy_exec·client_exec) · approve(쓰기/위험 승인) · verify(준수 검증) · clarify(되묻기 interrupt — 의도불명/정보부족)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB)
 │   ├── system_db.py       ← 내부 시스템 DB(aerm_storage) 고정 접속·레거시 정리 — 프로파일 미노출

@@ -41,11 +41,25 @@ META_TOOL_CATALOG = [
 ]
 META_TOOL_NAMES = {t["name"] for t in META_TOOL_CATALOG}
 
+# ── 되묻기 툴 (location='ask') — 정보/방향이 부족할 때 사용자에게 질문 ──────
+# 부수효과 0(승인 면제). react 가 고르면 clarify 노드가 interrupt 로 사용자 답을 받아
+# scratchpad(관찰)에 기록하고 react 로 되돌린다. ReAct 루프 중 HITL 되묻기.
+ASK_USER = "ask_user"
+ASK_USER_TOOL = {
+    "name": ASK_USER, "kind": "ask", "location": "ask", "danger": False,
+    "desc": "정보가 부족하거나 방향(여러 선택지 중 무엇)을 사용자가 정해야 진행 가능할 때, "
+            "추측하지 말고 사용자에게 되묻는다. 읽기 툴로 확인 가능한 것은 먼저 읽고, 정말 막혔을 때만 사용.",
+    "params": "question(필수: 사용자에게 할 질문), options(선택: 보기 목록 string[])",
+}
+
 # 루프 종료 신호 토큰
 FINISH = "finish"
 
 # 무한루프 가드 — 한 턴의 ReAct 반복 상한
 MAX_LOOP = 16
+
+# analyze↔clarify 되묻기 상한(무한 되묻기 방지) — 도달 시 가용 정보로 최선 응답
+MAX_CLARIFY = 3
 
 
 # ── 준수 검증 (verify 노드 출력) — react 의 finish 가 진짜 충족인지 판정 ──

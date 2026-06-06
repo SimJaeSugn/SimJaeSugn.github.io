@@ -2,12 +2,14 @@
 
 토폴로지:
   START → prep → analyze ─answer──→ answer → END
-                        ─clarify──→ respond → END
-                        ─act/mixed→ fetch_tools → react ⇄ {meta_exec | approve→(proxy_exec|client_exec) | proxy_exec | client_exec}
+                        ─clarify──→ clarify ⇄ analyze (되묻기→재분류, MAX_CLARIFY 상한)
+                        ─act/mixed→ fetch_tools → react ⇄ {meta_exec | approve→(proxy_exec|client_exec) | proxy_exec | client_exec | clarify}
                                                     ─finish→ verify ─pass→ respond → END
                                                                       ─보완→ react (MAX_VERIFY 상한)
   · 쓰기/위험(write·external·danger) 툴은 approve(승인 interrupt)를 먼저 거친다. 거부 시 respond(취소).
   · finish 는 곧장 종료하지 않고 verify(준수 검증)를 거친다 — 목표 미충족이면 react 로 되돌려 보완.
+  · clarify: 의도 불명확(analyze)·정보부족(react의 ask_user) 시 interrupt 로 사용자에게 되묻는다.
+    답을 받으면 analyze 재분류(선행)·react 관찰 보강(루프 중)으로 질의를 완성한다. 건너뛰면 respond(취소).
 
 핵심:
 - react: [관찰 기록]을 보고 한 번에 툴 1개를 동적 선택(ReAct). loop_count 상한으로 발산 가드.
@@ -33,14 +35,19 @@ from agent.v3.nodes.meta import meta_exec_node
 from agent.v3.nodes.act import proxy_exec_node, client_exec_node
 from agent.v3.nodes.approve import approve_node, approve_route
 from agent.v3.nodes.verify import verify_node, verify_route
+from agent.v3.nodes.clarify import clarify_node, clarify_route
+from agent.v3.common.schemas import MAX_CLARIFY
 
 
 def _analyze_route(state: AgentState) -> str:
-    """analyze 노드의 4분기 라우팅 (v1과 동일). act/mixed 는 ReAct 루프로."""
+    """analyze 노드의 4분기 라우팅. act/mixed 는 ReAct 루프, clarify 는 되묻기로."""
     route = state.get("route") or "answer"
     if route in ("act", "mixed"):
         return "act"
     if route == "clarify":
+        # 되묻기 상한 도달 시 더 묻지 않고 가용 정보로 최선 응답(answer)
+        if int(state.get("clarify_count") or 0) >= MAX_CLARIFY:
+            return "answer"
         return "clarify"
     return "answer"
 
@@ -58,13 +65,14 @@ def build_graph():
     g.add_node("proxy_exec", proxy_exec_node)
     g.add_node("client_exec", client_exec_node)
     g.add_node("verify", verify_node)
+    g.add_node("clarify", clarify_node)
     g.add_node("respond", respond_node)
 
     g.add_edge(START, "prep")
     g.add_edge("prep", "analyze")
     g.add_conditional_edges(
         "analyze", _analyze_route,
-        {"answer": "answer", "act": "fetch_tools", "clarify": "respond"},
+        {"answer": "answer", "act": "fetch_tools", "clarify": "clarify"},
     )
     g.add_edge("answer", END)
     g.add_edge("fetch_tools", "react")
@@ -75,7 +83,7 @@ def build_graph():
     g.add_conditional_edges(
         "react", react_route,
         {"finish": "verify", "meta": "meta_exec", "approve": "approve",
-         "proxy": "proxy_exec", "client": "client_exec"},
+         "proxy": "proxy_exec", "client": "client_exec", "clarify": "clarify"},
     )
     # approve: 승인 시 해당 location 실행, 거부 시 respond(취소)
     g.add_conditional_edges(
@@ -86,6 +94,11 @@ def build_graph():
     g.add_conditional_edges(
         "verify", verify_route,
         {"respond": "respond", "continue": "react"},
+    )
+    # clarify: 답 받음 → 진입원으로 복귀(analyze 재분류 / react 보강), 건너뜀 → respond(취소)
+    g.add_conditional_edges(
+        "clarify", clarify_route,
+        {"analyze": "analyze", "react": "react", "respond": "respond"},
     )
     g.add_edge("meta_exec", "react")
     g.add_edge("proxy_exec", "react")

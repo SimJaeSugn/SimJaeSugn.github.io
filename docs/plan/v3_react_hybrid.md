@@ -1,6 +1,6 @@
 # Agent v3 — Plan-and-Execute + ReAct 하이브리드 (도구형)
 
-> 상태: **V3-M1·M2 완료**(main 머지 b9f7523) · **M3 완료**(승인 게이트+verify, 2026-06-06) — 다음 M4(eval) · 작성일 2026-06-05
+> 상태: **V3-M1·M2 완료**(main 머지 b9f7523) · **M3 완료**(승인 게이트+verify, 2026-06-06) · **clarify 강화**(interrupt 기반 되묻기 — 의도불명+ReAct 루프 중 정보부족, 2026-06-06) — 다음 M4(eval) · 작성일 2026-06-05
 > 격리 근거: `docs/AI_ERD_v2_의도분석_계획준수_구현계획서.html` §9.1 격리 계약의 **진화형**
 > (v3는 v1 베이스 위에 세운 독립 실험 레인이며, v2와도 분리한다.)
 
@@ -22,6 +22,11 @@ v3는 실행을 **한 스텝씩 적응적**으로 바꾸고, 계획조차 루프
 | `client` | 브라우저/Electron (interrupt 위임) | create_entity·create_relation·auto_layout | 위험 툴 게이트 |
 | `proxy`  | Python 서버 (그래프 내 직접 실행) | fetch_db_schema·run_sql·db_doc_* | run_sql 등 위험 시 |
 | `meta`   | Python 서버 (LLM 추론 호출, 부수효과 0) | **plan·reflect** (v3 신규) | **면제** |
+| `ask`    | 사용자 (clarify interrupt 위임) | **ask_user** (v3 신규) | **면제**(부수효과 0) |
+
+- `ask_user`(location="ask")는 ReAct 루프 중 정보·방향이 부족할 때 모델이 고르는 **되묻기 툴**이다.
+  `clarify` 노드가 interrupt 로 사용자 답을 받아 scratchpad(관찰)에 남기고 react 로 되돌린다.
+  읽기 툴로 자가 해소 가능한 것은 먼저 읽고, 정말 사람만 답할 수 있을 때만 쓰도록 프롬프트로 유도한다.
 
 - 프록시 툴(`agent/tools_proxy.py`)·클라 툴(`js/agent_tools.js`)은 **버전 무관 공유**로 그대로 재사용한다.
 - v3가 새로 만드는 것은 ① `plan`/`reflect` **메타툴** ② **ReAct 루프 컨트롤러**뿐이다.
@@ -36,6 +41,13 @@ v3는 토폴로지가 v1과 다르므로 v2→v1식 기계적 승급(`promote_v2
 - 백엔드는 `/agent/*`(v1)·`/agent/v3/*`(v3) 병렬 유지 → 무위험 롤백.
 - 전제: **기능 패리티 + eval 검증** 충족 후에만 플립.
 
+**컷오버 1단계 적용(2026-06-06, 오너 결정) — 최종 형태:** v3 진입을 **우하단 플로팅 🧠 버튼**으로 단일화하고, 우측 도크의 **"🤖 Agent" 탭은 제거**했다(`index.html`).
+- 경위: ① 먼저 도크 'Agent' 탭 `onclick` 을 v3(`toggleAgentV3Panel()`)로 컷오버 → ② 도크 탭이 플로팅 패널을 여는 형태가 어색해, 오너 결정으로 **도크 'Agent' 탭 자체를 삭제**. 이제 v3는 플로팅 패널(드래그 이동·자유 리사이즈·위치 기억 지원)로만 접근한다.
+- **보존(무위험 롤백)**: v1 `#panelViewAgent`·`agent_panel.js`·백엔드 `/agent/*` 그대로. 롤백 = `data-ptab="agent"` 탭 버튼을 `#panelTabs` 에 복원.
+- **유지**: v2(🤖)·v3(🧠) 플로팅 버튼·백엔드 `/agent/v2/*`·`/agent/v3/*` 병렬 그대로.
+- **미전환**: 단축키 `toggleAgentPanel()`(Ctrl+Shift+A)은 여전히 v1 도크 채팅(`#panelViewAgent`)을 연다(탭은 없지만 뷰는 존재 — 필요 시 후속 전환/비활성).
+- 전제(eval M4·M5)는 미충족 상태에서 오너 결정으로 선적용 — 완전 컷오버(M6)와는 별개의 부분 단계.
+
 ## 4. 로드맵
 
 | 마일스톤 | 내용 | 상태 |
@@ -45,7 +57,7 @@ v3는 토폴로지가 v1과 다르므로 v2→v1식 기계적 승급(`promote_v2
 | **V3-M3** | 준수 검증(verify) + ReAct 관찰 기반 종료조건 + **행동별 승인 모델** | **✅ 완료** (2026-06-06) — 승인 게이트 + verify 노드 |
 | V3-M4 | eval 오라클(ReAct는 실행레벨 → 샌드박스 필요) | 예정 |
 | V3-M5 | A/B/C 비교 + 진입점 컷오버 준비 | 예정 |
-| V3-M6 | 진입점 교체(v3→기본) — 별도 오너 결정 | 선택 |
+| V3-M6 | 진입점 교체(v3→기본) — 별도 오너 결정 | **부분 적용**(2026-06-06) — 우측 도크 'Agent' 탭 제거, v3 진입을 플로팅 🧠 버튼으로 단일화(§3). 단축키(Ctrl+Shift+A→v1)·완전 전환은 미정 |
 
 ### V3-M1 완료 내역 (2026-06-05)
 - 격리 레인 골격: `agent/v3/`(graph·common/state·nodes) · `routers/v3/agent.py`(`/agent/v3/*`) · `js/agent_v3/`(panel·client·observe)
@@ -69,6 +81,9 @@ v3는 토폴로지가 v1과 다르므로 v2→v1식 기계적 승급(`promote_v2
 - 검증 통과: 그래프 빌드(노드 11, ReAct 노드 전부) · diff 화이트리스트 비어있음 · v1·v2↔v3 상호 참조 0건.
 - **승인 게이트(2026-06-06)**: ReAct 루프에 `approve` 노드 — write/external/danger 툴은 실행 전 `plan_approval` interrupt 로 승인(read/meta 면제). 승인 시 proxy_exec/client_exec, 거부 시 respond(취소). 운영 DB 쓰기(run_sql·apply_erd_to_db)·ERD 파괴(delete_* 등)가 확인 없이 실행되던 갭을 닫음. 프론트는 기존 `_agentV3AwaitApproval` 재사용 — 백엔드만 변경.
 - **준수 검증 verify(2026-06-06)**: `react`의 `finish`가 곧장 종료하지 않고 `verify` 노드를 거친다 — `[분석된 의도]`의 goal 이 `[관찰 기록]`으로 충족됐는지 `V3Verdict`(adherence pass/partial/fail, missing, next)로 구조 판정. 충족(pass)/판정불가 → respond, 보완 가능(partial+continue) → 미충족 내용을 관찰에 남기고 `react`로 되돌림(무한 검증은 `MAX_VERIFY=2`로 차단). 모델의 성급한 finish·목표 누락을 잡는다. SSE `verdict` 이벤트로 관측 노출(observe_v3 렌더). **이로써 M3 완료** — verify·관찰 기반 종료조건·승인 모델 모두 구현.
+- **쓰기 후 자가검증(2026-06-06)**: 운영 DB 쓰기(`run_sql` INSERT/UPDATE/DELETE) 직후 드라이버 보고 영향행수만 믿고 finish 하지 않고, 다음 스텝에서 `SELECT`(예: COUNT(*))로 **실제 반영을 1회 확인**한 뒤 그 결과로 보고하도록 `REACT_SYSTEM`에 규칙 추가. `act.py`의 DML 관찰을 "드라이버 보고값(미확정) — SELECT로 확인 요망"으로 표기. (배경: MySQL multi-statement 미반영 버그 — 공유 어댑터 `db/adapters/mysql.py`·`mssql.py`에서 모든 결과셋 소진 후 1회 커밋으로 수정. rowcount 맹신·"이미 완료" 뒷북도 차단.)
+- **INSERT 중복 누적 가드 ③(2026-06-06)**: 어댑터 커밋 수정으로 쓰기가 실제 반영되자, react 가 INSERT 를 반복 선택해 **100행씩 무한 누적**되는 문제가 드러남(임의 데이터라 매 스텝 args가 달라 '동일 행동 반복' 가드①을 빠져나감). `react.py`에 가드 ③ 추가 — 이번 턴에 **INSERT/REPLACE 가 한 번 성공했으면 다음 INSERT는 강제 finish**(검증 SELECT·DELETE/UPDATE는 허용, ERD create_entity 등 클라 툴 무관). `REACT_SYSTEM`에 "쓰기는 한 번만 · 검증은 SELECT로만, 확인하겠다고 INSERT 재실행 금지" 규칙 명시. 단위검증(INSERT 판별·성공/실패/SELECT 구분) 통과.
+- **clarify 강화 — interrupt 기반 되묻기(2026-06-06)**: 기존 clarify(의도불명)는 `analyze→respond`로 "되묻고 턴 종료"였다(같은 질의 재개 불가). 이를 **interrupt 기반 HITL**로 바꿔, 답을 받아 질의를 그 자리에서 완성한다. 새 `clarify` 노드(`nodes/clarify.py`)가 `interrupt({type:'clarify', question, options})`로 일시정지하고 `{text}` 로 재개한다. **두 진입 경로**: ① **analyze(선행)** — 의도 불명확(`kind=clarify`) 시 `IntentSpec.ambiguities`를 질문으로 되묻고, 답을 새 user 메시지로 붙여 `analyze` 재분류(`MAX_CLARIFY=3` 상한, 초과 시 가용 정보로 answer). ② **react(루프 중)** — 정보·방향 부족 시 모델이 `ask_user`(location="ask") 툴을 골라 되묻고, 답을 scratchpad(관찰)에 남겨 루프를 이어간다. 건너뛰면(빈 답) `respond`(취소). 토폴로지: `analyze ─clarify→ clarify ⇄ analyze`, `react ─ask_user→ clarify → react`. SSE는 기존 `interrupt` 이벤트 재사용(type=clarify, 라우터 무변경). 프론트(`client_v3.js`·`observe_v3.js`)는 질문 카드(보기 버튼+자유 입력)로 답을 받아 `resume({text})`. v1 `analyze_node` 무수정(격리 — v3 그래프 라우팅으로만 처리). 라우팅·interrupt/resume 단위검증 통과(react/analyze/skip 3경로).
 
 ## 5. 격리 불변식 (요약 — 강제 규칙은 CLAUDE.md "하네스: Agent v3 격리")
 

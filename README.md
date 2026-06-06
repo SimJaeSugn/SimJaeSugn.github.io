@@ -913,7 +913,7 @@ SimJaeSugn.github.io/
 │   ├── explorer.js                ← 좌측 Explorer 패널 (다이어그램·엔티티 목록)
 │   ├── bottom_panel.js            ← 하단 패널 (서브탭 · 연결 DB SQL 실행)
 │   ├── icons.js                   ← Lucide 아이콘 초기화 (data-lucide → SVG)
-│   ├── agent_panel.js             ← 우측 패널 Agent 탭·채팅 UI·스트림/interrupt 루프
+│   ├── agent_panel.js             ← v1 에이전트 채팅 UI·스트림/interrupt 루프 (우측 도크 #panelViewAgent — Agent 탭은 제거, v3 플로팅 진입으로 대체·코드는 보존)
 │   ├── agent_tools.js             ← Agent 클라이언트 툴(엔티티·관계·레이아웃) + 드래프트 커밋
 │   ├── agent_settings.js          ← Agent 설정 모달
 │   ├── agent_v2/                  ← v2 격리 채널 (panel_v2 · client_v2 · observe_v2)

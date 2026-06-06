@@ -65,9 +65,10 @@ def _summarize_sql(result: dict) -> str:
     rows = result.get("rows") or []
     rc = result.get("rowCount")
     if not rows:
-        if rc:   # 결과행 없는데 rowCount>0 → DML(영향받은 행)
-            return f"성공: 실행 완료 — {rc}행 반영됨(INSERT/UPDATE/DELETE 등, DB에 적용)"
-        return "성공: 실행 완료 (조회 결과 행 없음)"
+        if rc:   # 결과행 없는데 rowCount>0 → DML(영향받은 행) — '드라이버 보고값'이라 명시
+            return (f"실행 완료 — 드라이버 보고 {rc}행 영향(INSERT/UPDATE/DELETE). "
+                    f"※ 보고값이며 실제 반영은 미확정 — 다음 스텝에서 SELECT(예: COUNT(*))로 실제 반영을 1회 확인할 것.")
+        return "실행 완료 (조회 결과 행 없음 — DML이었다면 영향 0행일 수 있으니 SELECT로 실제 반영 확인 권장)"
     head = f"성공: {len(rows)}행 조회"
     shown = rows[:12]
     try:

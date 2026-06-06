@@ -151,7 +151,11 @@
       "PowerShell(try { $proc = Get-Process -Id 5168 -ErrorAction Stop; \"PID 5168 = $\\($proc.ProcessName\\)\"; \"경로: $\\($proc.Path\\)\" } catch { \"PID 5168 프로세스 없음 \\(이미 종료, TIME_WAIT 잔여일 수 있음\\)\" })",
       "Bash(Get-ChildItem -Path \"E:\\\\03.프로젝트\\\\SimJaeSugn.github.io\\\\js\" -Filter \"*.js\")",
       "Bash(Select-Object Name)",
-      "Bash(Sort-Object Name)"
+      "Bash(Sort-Object Name)",
+      "Bash(python -m py_compile db/adapters/mysql.py db/adapters/mssql.py agent/v3/nodes/act.py agent/v3/common/prompts.py)",
+      "Bash(python -W ignore -c ' *)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(python -W ignore -X utf8 -c ' *)"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"
