@@ -1134,13 +1134,18 @@ function _agentToolCopyEntitiesToDiagram(draft, args) {
     }
   });
 
-  if (typeof activeDiagramId !== 'undefined' && d.id === activeDiagramId && typeof loadDiagramIntoWorkspace === 'function')
-    loadDiagramIntoWorkspace(d);   // 대상이 현재 활성 다이어그램이면 워크스페이스 갱신
+  // 복사 후 대상으로 전환(기본) — "만들고 복사" 의도상 채워진 대상을 사용자가 바로 보게 한다.
+  // 위치(x,y)를 그대로 복사하므로 재정렬(auto_layout) 불필요. activate:false 면 현재 다이어그램 유지.
+  const activate = args.activate !== false;
+  if (typeof activeDiagramId !== 'undefined' && typeof loadDiagramIntoWorkspace === 'function') {
+    if (activate) { activeDiagramId = d.id; loadDiagramIntoWorkspace(d); }
+    else if (d.id === activeDiagramId) loadDiagramIntoWorkspace(d);   // 대상이 이미 활성이면 갱신
+  }
   if (typeof renderDiagramPanel === 'function') renderDiagramPanel();
   if (typeof render === 'function') render();
   if (typeof saveState === 'function') saveState();
   if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
-  return { ok: true, copied: srcEnts.length, relations: relCount, target: d.name, diagramId: d.id, created };
+  return { ok: true, copied: srcEnts.length, relations: relCount, target: d.name, diagramId: d.id, created, activated: activate };
 }
 
 // 사용 가능한 테마 목록 — read. 테마 변경(set_theme) 전에 어떤 테마가 있는지 모를 때 조회.
@@ -1554,8 +1559,10 @@ const AGENT_TOOL_DEFS = [
     desc: '데이터 사전 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
     detail: '대상(또는 전체) 테이블의 전 컬럼을 엑셀 데이터 사전으로 생성·다운로드한다(사이드카 openpyxl, /export/data-dictionary). 데스크탑 전용.' },
   { name: 'copy_entities_to_diagram', kind: 'write', danger: false, run: _agentToolCopyEntitiesToDiagram,
-    desc: '엔티티를 다른 다이어그램으로 복사(없으면 생성)', params: 'target(대상 다이어그램명), ids?|keyword?|all?, createIfMissing?',
-    detail: '선택(또는 전체) 엔티티를 target 다이어그램으로 복사한다. ids/keyword 지정 시 그 대상만, 아무 대상도 없으면(또는 all:true) 전체 엔티티를 복사한다("모든 엔티티를 AAA로 복사"). 대상이 없으면 생성(createIfMissing 기본 true). 복사 집합 내부 관계·FK 참조도 새 id로 이식. 원본은 유지(복사).' },
+    desc: '다이어그램 생성+엔티티 복사를 한 번에', params: 'target(대상 다이어그램명), ids?|keyword?|all?, createIfMissing?, activate?',
+    detail: '"AA 다이어그램 만들고 (모든) 엔티티 복사" 류는 이 툴 하나로 끝낸다. 대상 다이어그램이 없으면 생성하고(createIfMissing 기본 true), 현재 엔티티를 거기로 복사한 뒤 그 다이어그램으로 전환한다(activate 기본 true). '
+            + '중요: create_diagram 을 먼저 부르지 말 것 — 그러면 빈 다이어그램으로 전환돼 복사할 원본 엔티티를 잃는다(이 툴이 생성까지 한다). 또 엔티티 위치(x,y)를 그대로 복사하므로 복사 후 auto_layout(정렬)을 호출하지 말 것 — 재정렬 불필요. '
+            + 'ids/keyword 지정 시 그 대상만, 없거나 all:true 면 전체 복사. 복사 집합 내부 관계·FK 참조도 새 id로 이식하며 원본은 유지된다.' },
   { name: 'list_themes', kind: 'read', danger: false, run: _agentToolListThemes,
     desc: '사용 가능한 테마 목록 조회', params: '(없음)',
     detail: '앱이 제공하는 모든 테마(key·이름·활성여부)를 반환한다. set_theme 로 변경하기 전에 어떤 테마가 있는지 모를 때 먼저 조회한다.' },

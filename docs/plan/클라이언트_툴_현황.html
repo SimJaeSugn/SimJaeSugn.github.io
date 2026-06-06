@@ -139,7 +139,7 @@
     <tr><td><code>batch_rename_attributes</code></td><td><span class="tag write">write</span></td><td>컬럼명 패턴 치환 또는 네이밍 컨벤션 일괄 변환.</td><td>"모든 컬럼명 snake_case로 통일해줘"</td></tr>
     <tr><td><code>auto_detect_relationships</code></td><td><span class="tag write">write</span></td><td><code>*_ID</code> 패턴으로 FK 관계 자동 생성(기존 관계 보존).</td><td>"FK 패턴으로 관계 자동 연결해줘"</td></tr>
     <tr><td><code>duplicate_entity</code></td><td><span class="tag write">write</span></td><td>테이블 복제(컬럼 포함, 관계 제외).</td><td>"회원 테이블 복제해줘"</td></tr>
-    <tr><td><code>copy_entities_to_diagram</code></td><td><span class="tag write">write</span></td><td>선택(또는 전체) 엔티티를 다른 다이어그램으로 복사 — 없으면 생성, 복사 집합 내부 관계·FK 참조도 새 id로 이식. 원본 유지.</td><td>"모든 엔티티를 AAA다이어그램으로 복사"</td></tr>
+    <tr><td><code>copy_entities_to_diagram</code></td><td><span class="tag write">write</span></td><td><b>다이어그램 생성 + 복사 + 전환을 한 번에.</b> 선택(또는 전체) 엔티티를 target 으로 복사 — 없으면 생성, 복사 후 대상으로 전환(activate). 위치(x,y) 보존이라 <b>재정렬 불필요</b>, 관계·FK 참조도 새 id로 이식, 원본 유지. ※ create_diagram 선행·auto_layout 후행 금지(빈 전환·불필요 정렬 방지).</td><td>"AA 다이어그램 만들고 모든 엔티티 복사"</td></tr>
   </table>
 
   <h3 id="c-read">3.2 조회·검색·구조 분석 <span class="cnt">12 · <span class="tag read">read</span></span></h3>
