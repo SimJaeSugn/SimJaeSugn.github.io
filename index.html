@@ -109,7 +109,6 @@
         <div class="mb-item" onclick="mbClose();openTemplateModal()"><span class="mb-ico"><i data-lucide="paperclip"></i></span><span class="mb-text">컬럼 탬플릿 관리</span></div>
         <div class="mb-sep"></div>
         <div class="mb-grp">SQL</div>
-        <div class="mb-item" onclick="mbClose();openSqlRunner()"><span class="mb-ico"><i data-lucide="database"></i></span><span class="mb-text">SQL 실행기</span></div>
         <div class="mb-item" onclick="mbClose();openJoinExplorer()"><span class="mb-ico"><i data-lucide="link"></i></span><span class="mb-text">JOIN 경로 탐색기</span></div>
         <div class="mb-item" onclick="mbClose();runNormalizeDiagnosis()"><span class="mb-ico"><i data-lucide="triangle-alert"></i></span><span class="mb-text">정규화 진단</span></div>
         <div class="mb-item" onclick="mbClose();clearNormDiagnosis()"><span class="mb-ico"><i data-lucide="check"></i></span><span class="mb-text">진단 배지 제거</span></div>
@@ -365,7 +364,10 @@
   <!-- 헤더 -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border,#313244);flex-shrink:0">
     <span style="font-size:13px;font-weight:600;color:var(--tx,#cdd6f4)">🧠 Agent v3 <span style="font-size:10px;opacity:.5;font-weight:400">V3-M1 · ReAct</span></span>
-    <button class="btn" style="font-size:16px;padding:2px 8px;line-height:1;background:transparent;border:none;cursor:pointer;color:var(--tx-sub,#a6adc8)" onclick="closeAgentV3Panel()" title="닫기">×</button>
+    <span style="display:flex;align-items:center;gap:2px">
+      <button class="btn" style="font-size:14px;padding:2px 8px;line-height:1;background:transparent;border:none;cursor:pointer;color:var(--tx-sub,#a6adc8)" onclick="agentV3ResetContext()" title="새 대화 · 컨텍스트 초기화">🗑</button>
+      <button class="btn" style="font-size:16px;padding:2px 8px;line-height:1;background:transparent;border:none;cursor:pointer;color:var(--tx-sub,#a6adc8)" onclick="closeAgentV3Panel()" title="닫기">×</button>
+    </span>
   </div>
   <!-- 메시지 영역 -->
   <div id="agentV3Messages" class="agent-messages" style="flex:1;overflow-y:auto;padding:12px 12px 4px">

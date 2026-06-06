@@ -6,8 +6,9 @@ DB 미설정/오류 시 예외 대신 {ok:False, error} 를 반환해 그래프�
 """
 import asyncio
 
-from db.connector import get_adapter
-from routers.config import load_config
+from db.connector import get_adapter, close_all_pools
+from routers.config import load_config, _load_raw_store, _save_store, _get_default_port
+from utils.crypto import encrypt
 from agent.db_docs import DB_DOC_CATALOG, DOC_TOOLS, get_db_doc
 
 # 플래너에 노출되는 프록시 툴 카탈로그 (클라 카탈로그와 합쳐 사용)
@@ -24,6 +25,13 @@ PROXY_TOOL_CATALOG = [
      "desc": "현재 연결된 DB 접속 프로파일 정보(비밀번호 제외)", "params": "(없음)",
      "detail": "현재 설정된 DB 접속 정보(유형·host·port·database·사용자·스키마, Oracle은 clientLibDir)를 반환한다. "
                "비밀번호는 보안상 절대 포함하지 않는다. '어느 DB에 붙어 있어?'·접속 환경 확인·SQL 작성 전 대상 DB 유형 파악용. DB 쿼리 없이 설정만 읽는다."},
+    {"name": "list_db_profiles", "kind": "read", "location": "proxy", "danger": False,
+     "desc": "저장된 DB 접속 프로파일 목록(활성 표시, 비밀번호 제외)", "params": "(없음)",
+     "detail": "등록된 모든 DB 접속 프로파일(이름·유형·host·database·사용자·활성여부)과 현재 활성 프로파일을 반환한다. 비밀번호는 제외. 추가·수정·삭제·전환은 manage_db_profile."},
+    {"name": "manage_db_profile", "kind": "write", "location": "proxy", "danger": True,
+     "desc": "DB 접속 프로파일 추가·수정·삭제·활성화", "params": "action(add|update|delete|activate), name, [dbType,host,port,database,username,password,schema,clientLibDir]",
+     "detail": "DB 접속 프로파일을 관리한다. action=add(신규 등록 — dbType·host·database·username·password 필요), update(부분 수정), delete(활성·마지막 프로파일은 불가), activate(활성 전환 — 연결 풀 재설정). "
+               "접속정보를 바꾸는 작업이라 사용자 승인(approve)을 거친다. 어느 프로파일이 있는지 모르면 먼저 list_db_profiles."},
     {"name": "list_db_tables", "kind": "read", "location": "proxy", "danger": False,
      "desc": "연결된 DB의 테이블·뷰 이름 목록(경량)", "params": "(없음)",
      "detail": "테이블/뷰 이름과 컬럼 수만 반환한다. 대상을 모를 때 먼저 호출해 좁힌 뒤 describe_db_table 로 상세를 본다."},
@@ -154,10 +162,105 @@ def _first_scalar(rows):
     return r0
 
 
+async def _handle_profile_tool(name: str, args: dict) -> dict:
+    """DB 접속 프로파일 CRUD·활성화 — routers.config 저장소 헬퍼 직접 사용(활성 연결 불요).
+
+    비밀번호는 목록 응답에 절대 포함하지 않으며, 저장 시 encrypt() 한다.
+    """
+    store = _load_raw_store() or {"profiles": [], "active": None}
+    profiles = store.get("profiles", [])
+
+    if name == "list_db_profiles":
+        active = store.get("active")
+        return {"ok": True, "active": active, "count": len(profiles),
+                "profiles": [{"name": p.get("name"), "dbType": p.get("dbType"), "host": p.get("host"),
+                              "port": p.get("port"), "database": p.get("database"),
+                              "username": p.get("username"), "schema": p.get("schema", ""),
+                              "active": p.get("name") == active} for p in profiles]}
+
+    # manage_db_profile
+    action = str(args.get("action") or "").strip().lower()
+    pname = str(args.get("name") or "").strip()
+    if action not in ("add", "update", "delete", "activate"):
+        return {"ok": False, "error": "action 은 add·update·delete·activate 중 하나여야 합니다."}
+    if not pname:
+        return {"ok": False, "error": "name(프로파일 이름)이 필요합니다."}
+
+    def _idx(n):
+        return next((i for i, p in enumerate(profiles) if p.get("name") == n), -1)
+
+    if action == "add":
+        if _idx(pname) != -1:
+            return {"ok": False, "error": f"'{pname}' 프로파일이 이미 존재합니다."}
+        db_type = str(args.get("dbType") or "").strip()
+        if not (db_type and args.get("host") and args.get("database") and args.get("username")):
+            return {"ok": False, "error": "add 에는 dbType·host·database·username(과 password)이 필요합니다."}
+        profiles.append({
+            "name": pname, "dbType": db_type, "host": args.get("host"),
+            "port": args.get("port") or _get_default_port(db_type),
+            "database": args.get("database"), "username": args.get("username"),
+            "password": encrypt(str(args.get("password") or "")),
+            "schema": args.get("schema") or "",
+            "clientLibDir": (args.get("clientLibDir") if db_type == "oracle" and args.get("clientLibDir") else ""),
+        })
+        if not store.get("active"):
+            store["active"] = pname
+        store["profiles"] = profiles
+        _save_store(store)
+        return {"ok": True, "note": f"프로파일 '{pname}' 추가됨." + ("" if store.get("active") != pname else " (활성)")}
+
+    if action == "update":
+        i = _idx(pname)
+        if i == -1:
+            return {"ok": False, "error": f"'{pname}' 프로파일을 찾을 수 없습니다."}
+        ex = profiles[i]
+        db_type = str(args.get("dbType") or ex.get("dbType"))
+        upd = {**ex, "dbType": db_type,
+               "host": args.get("host", ex.get("host")),
+               "port": args.get("port") or ex.get("port") or _get_default_port(db_type),
+               "database": args.get("database", ex.get("database")),
+               "username": args.get("username", ex.get("username")),
+               "schema": args.get("schema") if args.get("schema") is not None else ex.get("schema", "")}
+        if args.get("password"):
+            upd["password"] = encrypt(str(args.get("password")))
+        if args.get("clientLibDir") is not None:
+            upd["clientLibDir"] = args.get("clientLibDir") if db_type == "oracle" and args.get("clientLibDir") else ""
+        profiles[i] = upd
+        store["profiles"] = profiles
+        _save_store(store)
+        if store.get("active") == pname:
+            await close_all_pools()
+        return {"ok": True, "note": f"프로파일 '{pname}' 수정됨."}
+
+    if action == "delete":
+        i = _idx(pname)
+        if i == -1:
+            return {"ok": False, "error": f"'{pname}' 프로파일을 찾을 수 없습니다."}
+        if store.get("active") == pname:
+            return {"ok": False, "error": "활성 프로파일은 삭제할 수 없습니다(먼저 다른 프로파일을 활성화하세요)."}
+        if len(profiles) <= 1:
+            return {"ok": False, "error": "마지막 프로파일은 삭제할 수 없습니다."}
+        profiles.pop(i)
+        store["profiles"] = profiles
+        _save_store(store)
+        return {"ok": True, "note": f"프로파일 '{pname}' 삭제됨."}
+
+    # activate
+    if _idx(pname) == -1:
+        return {"ok": False, "error": f"'{pname}' 프로파일을 찾을 수 없습니다."}
+    store["active"] = pname
+    _save_store(store)
+    await close_all_pools()
+    return {"ok": True, "note": f"'{pname}' 프로파일로 전환됨(연결 풀 재설정)."}
+
+
 async def run_proxy_tool(name: str, args: dict) -> dict:
     # DB 유형별 참고 문서 — DB 연결 불필요 (config 체크보다 먼저)
     if name in DOC_TOOLS:
         return get_db_doc(name)
+    # 프로파일 관리 — 활성 연결과 무관(첫 프로파일 추가도 가능)하므로 config 체크 이전에 처리
+    if name in ("list_db_profiles", "manage_db_profile"):
+        return await _handle_profile_tool(name, args or {})
     config = load_config()
     if not config:
         return {"ok": False, "error": "DB 접속정보가 설정되지 않았습니다. (DB 연결 후 사용하세요)"}

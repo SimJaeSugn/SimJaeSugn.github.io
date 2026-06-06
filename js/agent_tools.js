@@ -442,6 +442,10 @@ async function _agentToolRegisterStdTerm(draft, args) {
 // 대상 id 목록 해소: args.ids/entityIds(배열) → keyword 매칭 → 현재 선택
 function _agentLiveIds(view, args) {
   const out = [];
+  // 전체 선택: all:true / scope:'all' / keyword:'*' → 모든 엔티티 ("모든 엔티티 선택/복사" 류)
+  if (args && (args.all === true || args.scope === 'all' || args.keyword === '*' || args.name === '*')) {
+    return view.entities.map(e => e.id);
+  }
   const raw = args && (args.ids || args.entityIds || args.entities);
   if (Array.isArray(raw) && raw.length) {
     raw.forEach(x => { const id = _agentResolveEntityId(view, x, {}); if (id) out.push(id); });
@@ -1076,6 +1080,149 @@ function _agentToolSaveContent(draft, args) {
            note: '"' + fileName + '" 파일로 저장(다운로드)했습니다.' };
 }
 
+// 선택(또는 전체) 엔티티를 다른 다이어그램으로 복사. 없으면 생성(createIfMissing 기본 true).
+// "모든 엔티티를 AAA다이어그램으로 복사" → ids/keyword 없으면 전체 복사. 복사 집합 내부 관계도 이식.
+function _agentToolCopyEntitiesToDiagram(draft, args) {
+  if (typeof diagrams === 'undefined') throw new Error('다이어그램 기능을 사용할 수 없습니다.');
+  args = args || {};
+  // 펜딩 드래프트·현재 워크스페이스를 먼저 반영(유실 방지)
+  if (draft && draft.entities) _agentCommitDraft(draft);
+  if (typeof flushCurrentState === 'function') flushCurrentState();
+
+  const live = { entities: (typeof ENTITIES !== 'undefined' ? ENTITIES : []) || [],
+                 relations: (typeof RELATIONS !== 'undefined' ? RELATIONS : []) || [] };
+  let ids = _agentLiveIds(live, args);
+  // 명시 대상(ids/keyword/selection)이 전혀 없으면 전체 복사로 간주
+  const hadSelector = !!(args.ids || args.entityIds || args.entities || args.keyword || args.name || args.query || args.all || args.scope);
+  if (!ids.length && !hadSelector) ids = live.entities.map(e => e.id);
+  if (!ids.length) return { ok: false, error: '복사할 엔티티가 없습니다.' };
+
+  const target = String(args.target || args.toDiagram || args.diagram || args.diagramName || args.name || '').trim();
+  if (!target) return { ok: false, error: 'target(대상 다이어그램 이름)이 필요합니다.' };
+  let d = _agentDiagFind(target);
+  const createIfMissing = args.createIfMissing !== false;
+  let created = false;
+  if (!d) {
+    if (!createIfMissing || typeof createEmptyDiagram !== 'function')
+      return { ok: false, error: "대상 다이어그램 '" + target + "' 을 찾을 수 없습니다." };
+    d = createEmptyDiagram(target);
+    diagrams.push(d);
+    created = true;
+  }
+  d.entities = d.entities || []; d.relations = d.relations || [];
+
+  // 엔티티 복제(새 id) + id 매핑
+  const idMap = {};
+  const srcEnts = ids.map(id => live.entities.find(e => e.id === id)).filter(Boolean);
+  srcEnts.forEach(e => {
+    const copy = JSON.parse(JSON.stringify(e));
+    const nid = 'entity_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    idMap[e.id] = nid; copy.id = nid;
+    d.entities.push(copy);
+  });
+  // FK ref.entity 재매핑(복사 집합 내부 참조만)
+  d.entities.forEach(c => (c.attrs || []).forEach(a => {
+    if (a && a.ref && a.ref.entity && idMap[a.ref.entity]) a.ref = { ...a.ref, entity: idMap[a.ref.entity] };
+  }));
+  // 복사 집합 내부 관계만 이식(from·to 둘 다 복사 대상일 때) — id 재매핑
+  let relCount = 0;
+  const idset = new Set(ids);
+  live.relations.forEach(r => {
+    if (idset.has(r.from) && idset.has(r.to)) {
+      d.relations.push({ ...r, from: idMap[r.from], to: idMap[r.to] });
+      relCount++;
+    }
+  });
+
+  if (typeof activeDiagramId !== 'undefined' && d.id === activeDiagramId && typeof loadDiagramIntoWorkspace === 'function')
+    loadDiagramIntoWorkspace(d);   // 대상이 현재 활성 다이어그램이면 워크스페이스 갱신
+  if (typeof renderDiagramPanel === 'function') renderDiagramPanel();
+  if (typeof render === 'function') render();
+  if (typeof saveState === 'function') saveState();
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+  return { ok: true, copied: srcEnts.length, relations: relCount, target: d.name, diagramId: d.id, created };
+}
+
+// 사용 가능한 테마 목록 — read. 테마 변경(set_theme) 전에 어떤 테마가 있는지 모를 때 조회.
+function _agentToolListThemes() {
+  if (typeof THEMES === 'undefined') return { ok: false, error: '테마 정보를 사용할 수 없습니다.' };
+  const cur = (typeof currentTheme !== 'undefined') ? currentTheme : null;
+  const themes = Object.entries(THEMES).map(([key, t]) => ({ key, name: (t && t.name) || key, active: key === cur }));
+  return { ok: true, count: themes.length, current: cur, themes };
+}
+
+// 키보드 단축키 목록 — read. "단축키 알려줘".
+function _agentToolListShortcuts() {
+  const defs = (typeof _scMap !== 'undefined' && _scMap && Object.keys(_scMap).length)
+    ? _scMap : (typeof SC_DEFAULTS !== 'undefined' ? SC_DEFAULTS : null);
+  if (!defs) return { ok: false, error: '단축키 정보를 사용할 수 없습니다.' };
+  const fmt = (typeof _scParts === 'function')
+    ? (id => _scParts(id).join('+'))
+    : (id => { const s = defs[id]; const p = []; if (s.ctrl) p.push('Ctrl'); if (s.alt) p.push('Alt'); if (s.shift) p.push('Shift'); p.push(s.key.length === 1 ? s.key.toUpperCase() : s.key); return p.join('+'); });
+  const shortcuts = Object.keys(defs).map(id => ({ id, action: defs[id].label || id, keys: fmt(id) }));
+  return { ok: true, count: shortcuts.length, shortcuts };
+}
+
+// 메뉴/명령 정보(사이트맵) — read. "메뉴 어디 있어?"·자연어 메뉴 탐색. CMD_LIST(명령 팔레트 레지스트리) 기반.
+function _agentToolListMenus(draft, args) {
+  if (typeof CMD_LIST === 'undefined') return { ok: false, error: '메뉴 정보를 사용할 수 없습니다.' };
+  const kw = String((args && (args.keyword || args.query || args.name)) || '').toLowerCase().trim();
+  const scKeys = (id) => (id && typeof _scParts === 'function') ? _scParts(id).join('+') : '';
+  let items = CMD_LIST.map(c => ({ label: c.label, category: c.category, shortcut: scKeys(c.scId) }));
+  if (kw) items = items.filter(c => c.label.toLowerCase().includes(kw) || c.category.toLowerCase().includes(kw));
+  // 카테고리별 사이트맵 그룹화
+  const sitemap = {};
+  items.forEach(c => { (sitemap[c.category] = sitemap[c.category] || []).push(c.label); });
+  return { ok: true, count: items.length, query: kw || null, sitemap, items };
+}
+
+// 컬럼 템플릿 관리 — live(localStorage). list/add/delete. "사용자ID,사용자이름,사용자나이를 컬럼 템플릿에 추가".
+function _agentToolManageColumnTemplate(draft, args) {
+  if (typeof loadTemplates !== 'function' || typeof saveTemplates !== 'function')
+    return { ok: false, error: '컬럼 템플릿 기능을 사용할 수 없습니다.' };
+  args = args || {};
+  const action = String(args.action || (args.attrs || args.columns ? 'add' : 'list')).toLowerCase();
+  const templates = loadTemplates();
+
+  if (action === 'list') {
+    return { ok: true, count: templates.length,
+             templates: templates.map(t => ({ id: t.id, name: t.name, columnCount: (t.attrs || []).length,
+               columns: (t.attrs || []).map(a => a.logicalName || a.physicalName) })) };
+  }
+
+  if (action === 'delete') {
+    const key = String(args.id || args.name || '').toLowerCase();
+    const idx = templates.findIndex(t => (t.id || '').toLowerCase() === key || (t.name || '').toLowerCase() === key);
+    if (idx === -1) return { ok: false, error: "템플릿 '" + (args.id || args.name || '') + "' 을 찾을 수 없습니다." };
+    const removed = templates.splice(idx, 1)[0];
+    saveTemplates(templates);
+    return { ok: true, deleted: removed.name || removed.id, note: "컬럼 템플릿 '" + (removed.name || removed.id) + "' 삭제됨." };
+  }
+
+  // add — attrs(또는 columns) 를 받아 새 템플릿 등록(이름 중복 시 attrs 병합)
+  const name = String(args.name || args.templateName || '').trim();
+  if (!name) return { ok: false, error: 'add 에는 name(템플릿 이름)이 필요합니다.' };
+  let rawCols = args.attrs || args.columns || args.cols || [];
+  if (!Array.isArray(rawCols) || !rawCols.length)
+    return { ok: false, error: 'attrs(컬럼 목록)가 필요합니다. 예: attrs:[{logicalName,physicalName,type}]' };
+  const norm = rawCols.map(c => {
+    if (typeof c === 'string') return { logicalName: c, physicalName: '', type: 'VARCHAR(50)', kind: 'normal', notNull: false, unique: false, autoIncrement: false, defaultValue: '', description: '', ref: null };
+    return { logicalName: c.logicalName || c.name || '', physicalName: c.physicalName || '', type: c.type || 'VARCHAR(50)',
+      kind: c.kind || 'normal', notNull: !!c.notNull, unique: !!c.unique, autoIncrement: !!c.autoIncrement,
+      defaultValue: c.defaultValue || '', description: c.description || '', ref: c.ref || null };
+  });
+  const existing = templates.find(t => (t.name || '').toLowerCase() === name.toLowerCase());
+  if (existing) {
+    existing.attrs = (existing.attrs || []).concat(norm);
+    saveTemplates(templates);
+    return { ok: true, templateId: existing.id, added: norm.length, note: "기존 템플릿 '" + name + "'에 컬럼 " + norm.length + "개 추가됨." };
+  }
+  const id = 'tmpl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  templates.push({ id, name, attrs: norm });
+  saveTemplates(templates);
+  return { ok: true, templateId: id, added: norm.length, note: "컬럼 템플릿 '" + name + "' 생성(컬럼 " + norm.length + "개)." };
+}
+
 // ERD 구조 메트릭(허브·결합도·fan-in/out) — read
 function _agentToolAnalyzeErdMetrics(draft) {
   const v = _agentReadView(draft);
@@ -1406,6 +1553,21 @@ const AGENT_TOOL_DEFS = [
   { name: 'export_data_dictionary_xlsx', kind: 'read', danger: false, run: _agentToolExportDataDictionaryXlsx,
     desc: '데이터 사전 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
     detail: '대상(또는 전체) 테이블의 전 컬럼을 엑셀 데이터 사전으로 생성·다운로드한다(사이드카 openpyxl, /export/data-dictionary). 데스크탑 전용.' },
+  { name: 'copy_entities_to_diagram', kind: 'write', danger: false, run: _agentToolCopyEntitiesToDiagram,
+    desc: '엔티티를 다른 다이어그램으로 복사(없으면 생성)', params: 'target(대상 다이어그램명), ids?|keyword?|all?, createIfMissing?',
+    detail: '선택(또는 전체) 엔티티를 target 다이어그램으로 복사한다. ids/keyword 지정 시 그 대상만, 아무 대상도 없으면(또는 all:true) 전체 엔티티를 복사한다("모든 엔티티를 AAA로 복사"). 대상이 없으면 생성(createIfMissing 기본 true). 복사 집합 내부 관계·FK 참조도 새 id로 이식. 원본은 유지(복사).' },
+  { name: 'list_themes', kind: 'read', danger: false, run: _agentToolListThemes,
+    desc: '사용 가능한 테마 목록 조회', params: '(없음)',
+    detail: '앱이 제공하는 모든 테마(key·이름·활성여부)를 반환한다. set_theme 로 변경하기 전에 어떤 테마가 있는지 모를 때 먼저 조회한다.' },
+  { name: 'list_shortcuts', kind: 'read', danger: false, run: _agentToolListShortcuts,
+    desc: '키보드 단축키 목록 조회', params: '(없음)',
+    detail: '현재 설정된 모든 키보드 단축키(동작 라벨·키 조합)를 반환한다. "단축키 알려줘"·"저장 단축키 뭐야".' },
+  { name: 'list_menus', kind: 'read', danger: false, run: _agentToolListMenus,
+    desc: '메뉴/기능 정보·사이트맵 조회', params: 'keyword?',
+    detail: '앱의 메뉴·명령 목록(라벨·분류·단축키)과 카테고리별 사이트맵을 반환한다(명령 팔레트 레지스트리 기반). keyword 로 좁힌다. "내보내기 메뉴 어디 있어?"·"정규화 기능 있어?" 류 자연어 메뉴 탐색용.' },
+  { name: 'manage_column_template', kind: 'write', danger: false, run: _agentToolManageColumnTemplate,
+    desc: '컬럼 템플릿 관리(목록·추가·삭제)', params: 'action(list|add|delete), name?, attrs?[{logicalName,physicalName,type}], id?',
+    detail: '재사용 컬럼 묶음(감사컬럼 등)을 관리한다. action=add(name+attrs 로 새 템플릿; 같은 이름이면 컬럼 병합), list(전체 조회), delete(id|name). "사용자ID·사용자이름·사용자나이를 \'사용자\' 컬럼 템플릿에 추가" 류. localStorage 저장.' },
   { name: 'save_content', kind: 'read', danger: false, run: _agentToolSaveContent,
     desc: 'LLM 생성 콘텐츠를 파일로 저장(다운로드)', params: 'content(필수), format?(html|md|csv|json|txt|svg|xml|sql), fileName?, title?',
     detail: '모델(너)이 직접 작성한 본문을 그대로 파일로 저장(다운로드)한다. "위 내용을 HTML 보고서로 만들어 저장해줘"처럼 산출물을 파일로 떨궈야 할 때 쓴다 — 완성된 HTML/Markdown/CSV/JSON/텍스트 본문 전체를 content 인자에 담아 전달하면 된다(본문은 네가 만든다, 이 툴은 저장만 한다). 포맷은 format 또는 fileName 확장자로 결정(기본 txt), HTML 단편은 인쇄용 문서로 자동 래핑. 클라 전용(웹·데스크탑 공통). 다른 산출물 툴(generate_table_spec 등)이 다루지 못하는 자유형 문서에 사용.' },
@@ -1471,9 +1633,16 @@ function _agentToolLabel(tool, args) {
     case 'export_data_dictionary_xlsx': return '데이터 사전 엑셀 다운로드';
     case 'generate_erd_report': return 'ERD 종합 명세서 생성(문서)';
     case 'generate_term_compliance': return '표준용어 준수 점검';
+    case 'copy_entities_to_diagram': return '엔티티 복사 → ' + (a.target || a.toDiagram || a.diagram || a.name || '다이어그램');
+    case 'list_themes': return '테마 목록 조회';
+    case 'list_shortcuts': return '단축키 목록 조회';
+    case 'list_menus': return '메뉴 정보 조회' + (a.keyword ? ': ' + a.keyword : '');
+    case 'manage_column_template': return '컬럼 템플릿 ' + (a.action === 'delete' ? '삭제' : a.action === 'list' ? '목록' : '추가') + (a.name ? ': ' + a.name : '');
     case 'save_content': return '파일로 저장' + (a.fileName ? ': ' + a.fileName : (a.format ? ' (' + a.format + ')' : ''));
     // 프록시 DB (서버)
     case 'get_db_connection_info': return 'DB 접속 정보(서버)';
+    case 'list_db_profiles': return 'DB 프로파일 목록(서버)';
+    case 'manage_db_profile': return 'DB 프로파일 ' + (a.action === 'delete' ? '삭제' : a.action === 'activate' ? '전환' : a.action === 'update' ? '수정' : '추가') + (a.name ? ': ' + a.name : '') + '(서버)';
     case 'list_db_tables': return 'DB 테이블 목록(서버)';
     case 'describe_db_table': return 'DB 테이블 구조(서버): ' + tbl;
     case 'count_db_rows': return 'DB 행 수 조회(서버): ' + tbl;

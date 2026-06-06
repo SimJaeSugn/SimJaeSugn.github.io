@@ -2421,7 +2421,6 @@ const CMD_LIST = [
   // 도구
   { label: '엔티티 검색',     category: '도구', icon: '🔍', scId: 'search', action: () => openSearch() },
   { label: '컬럼 템플릿 관리', category: '도구', icon: '📎', action: () => openTemplateModal() },
-  { label: 'SQL 실행기',       category: '도구', icon: '🗄', action: () => openSqlRunner() },
   { label: 'JOIN 경로 탐색기', category: '도구', icon: '🔗', action: () => openJoinExplorer() },
   { label: '정규화 진단',      category: '도구', icon: '⚠', action: () => runNormalizeDiagnosis() },
   { label: '진단 배지 제거',   category: '도구', icon: '✓', action: () => clearNormDiagnosis() },

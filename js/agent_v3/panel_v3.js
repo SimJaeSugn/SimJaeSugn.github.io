@@ -30,6 +30,22 @@ function closeAgentV3Panel() {
   }
 }
 
+// 최초 빈 화면(환영+추천 칩) HTML — 초기화 시 복원용(init 때 1회 캡처해 칩 변경에도 동기화)
+let _agentV3EmptyHTML = '';
+
+// 컨텍스트 초기화 — 진행 중 요청 중단 + 백엔드 thread 재시작 + 메시지/환영 화면 복원.
+// 새 대화를 시작해 이전 턴 맥락(체크포인터 thread)을 끊는다. v3 전용 자원만 건드림(불변식 ③).
+function agentV3ResetContext() {
+  if (typeof _agentV3Abort !== 'undefined' && _agentV3Abort) { try { _agentV3Abort.abort(); } catch (e) {} }
+  if (typeof _agentV3ThreadId !== 'undefined') _agentV3ThreadId = null;   // 새 thread → 백엔드 컨텍스트 리셋
+  const wrap = document.getElementById('agentV3Messages');
+  if (wrap) wrap.innerHTML = _agentV3EmptyHTML || '';
+  const key = document.getElementById('agentV3KeyCard');
+  if (key) key.remove();
+  const input = document.getElementById('agentV3Input');
+  if (input) { input.value = ''; agentV3AutoGrow(input); input.focus(); }
+}
+
 // ── 입력창 자동 높이 ──────────────────────────────────────────────
 function agentV3AutoGrow(el) {
   el.style.height = 'auto';
@@ -161,6 +177,10 @@ function _agentV3InitDragResize() {
   if (!panel || panel._dragResizeInit) return;
   panel._dragResizeInit = true;
 
+  // 환영 화면 HTML 캡처(초기화 복원용) — 메시지가 쌓이기 전 1회
+  const _emptyEl = document.getElementById('agentV3Empty');
+  if (_emptyEl) _agentV3EmptyHTML = _emptyEl.outerHTML;
+
   _agentV3ApplySavedBox(panel);   // 지난 세션 위치·크기 복원
 
   const header = panel.querySelector(':scope > div');   // 첫 자식 div = 헤더
@@ -173,21 +193,13 @@ function _agentV3InitDragResize() {
     _agentV3PinBox(panel, { left: r.left, top: r.top, width: r.width, height: r.height });
   }
 
-  // ── 리사이즈 그립(우하단 코너) ──
-  const grip = document.createElement('div');
-  grip.title = '크기 조절';
-  grip.setAttribute('style',
-    'position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:3;'
-    + 'background:linear-gradient(135deg,transparent 0 45%,var(--border,#585b70) 45% 55%,'
-    + 'transparent 55% 65%,var(--border,#585b70) 65% 75%,transparent 75%)');
-  panel.appendChild(grip);
-
   let mode = null;          // 'drag' | 'resize'
+  let dir = '';             // 리사이즈 방향(n/s/e/w 조합)
   let ox = 0, oy = 0, ol = 0, ot = 0, ow = 0, oh = 0;
 
-  function onDown(e, m) {
+  function onDown(e, m, d) {
     ensurePinned();
-    mode = m;
+    mode = m; dir = d || '';
     const r = panel.getBoundingClientRect();
     ox = e.clientX; oy = e.clientY;
     ol = r.left; ot = r.top; ow = r.width; oh = r.height;
@@ -196,11 +208,34 @@ function _agentV3InitDragResize() {
     e.stopPropagation();
   }
 
+  // ── 8방향 리사이즈 핸들(가장자리 4 + 코너 4) ──
+  // 모든 방향에서 크기 조절. 코너 우하단에는 그립 무늬 표시.
+  const HANDLES = [
+    ['n',  'top:-3px;left:10px;right:10px;height:8px;cursor:ns-resize'],
+    ['s',  'bottom:-3px;left:10px;right:10px;height:8px;cursor:ns-resize'],
+    ['e',  'right:-3px;top:10px;bottom:10px;width:8px;cursor:ew-resize'],
+    ['w',  'left:-3px;top:10px;bottom:10px;width:8px;cursor:ew-resize'],
+    ['nw', 'top:-3px;left:-3px;width:14px;height:14px;cursor:nwse-resize'],
+    ['ne', 'top:-3px;right:-3px;width:14px;height:14px;cursor:nesw-resize'],
+    ['sw', 'bottom:-3px;left:-3px;width:14px;height:14px;cursor:nesw-resize'],
+    ['se', 'bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize'],
+  ];
+  HANDLES.forEach(([d, css]) => {
+    const h = document.createElement('div');
+    h.setAttribute('style', 'position:absolute;z-index:4;' + css);
+    if (d === 'se') {   // 우하단 코너에 시각적 그립 무늬
+      h.title = '크기 조절';
+      h.style.background = 'linear-gradient(135deg,transparent 0 45%,var(--border,#585b70) 45% 55%,'
+        + 'transparent 55% 65%,var(--border,#585b70) 65% 75%,transparent 75%)';
+    }
+    h.addEventListener('mousedown', e => onDown(e, 'resize', d));
+    panel.appendChild(h);
+  });
+
   if (header) header.addEventListener('mousedown', e => {
     if (e.target.closest('button')) return;   // 헤더의 닫기(×) 버튼 등은 드래그 제외
     onDown(e, 'drag');
   });
-  grip.addEventListener('mousedown', e => onDown(e, 'resize'));
 
   document.addEventListener('mousemove', e => {
     if (!mode) return;
@@ -211,8 +246,17 @@ function _agentV3InitDragResize() {
       panel.style.left = nl + 'px';
       panel.style.top = nt + 'px';
     } else {
-      const nw = Math.max(_AGENT_V3_MIN_W, ow + (e.clientX - ox));
-      const nh = Math.max(_AGENT_V3_MIN_H, oh + (e.clientY - oy));
+      const dx = e.clientX - ox, dy = e.clientY - oy;
+      let nl = ol, nt = ot, nw = ow, nh = oh;
+      if (dir.includes('e')) nw = ow + dx;
+      if (dir.includes('s')) nh = oh + dy;
+      if (dir.includes('w')) { nw = ow - dx; nl = ol + dx; }
+      if (dir.includes('n')) { nh = oh - dy; nt = ot + dy; }
+      // 최소 크기 보장 — 좌/상 방향은 left/top 보정해 반대편 모서리 고정
+      if (nw < _AGENT_V3_MIN_W) { if (dir.includes('w')) nl = ol + (ow - _AGENT_V3_MIN_W); nw = _AGENT_V3_MIN_W; }
+      if (nh < _AGENT_V3_MIN_H) { if (dir.includes('n')) nt = ot + (oh - _AGENT_V3_MIN_H); nh = _AGENT_V3_MIN_H; }
+      panel.style.left = nl + 'px';
+      panel.style.top = nt + 'px';
       panel.style.width = nw + 'px';
       panel.style.height = nh + 'px';
     }
