@@ -37,7 +37,7 @@ analyst가 수립한 계획(`_workspace/01_analyst_plan.html`)에 따라 UXERMan
 
 구현 완료 후 변경 내역을 **HTML 문서**로 `_workspace/02_implementer_changes.html`에 저장한다.
 
-**양식:** `docs/계획서_샘플양식.html`의 디자인을 따른다. 공용 템플릿
+**양식:** `docs/ref/계획서_샘플양식.html`의 디자인을 따른다. 공용 템플릿
 `.claude/skills/feature-dev/assets/report_template.html`을 Read로 읽어 그 `<style>` 블록 전체를
 산출물 `<head>`에 그대로 인라인 복사하고(단독 열람 가능해야 함), 템플릿 구조에 맞춰 작성한다.
 코드·경로 본문은 `<`, `>`, `&`를 이스케이프한다.

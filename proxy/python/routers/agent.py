@@ -26,7 +26,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from agent.common.keys import get_agent_config, has_openai_key, set_agent_config, set_openai_key
-from agent.common.llm import OpenAIKeyMissing
+from agent.common.llm import OpenAIKeyMissing, diagnose_model, test_connection
 from agent.graph import graph
 from utils.audit_logger import write_audit_log
 
@@ -163,6 +163,7 @@ class AgentConfigBody(BaseModel):
     provider: Optional[str] = None
     modelMain: Optional[str] = None
     modelFast: Optional[str] = None
+    baseUrl: Optional[str] = None
 
 
 @router.get("/config")
@@ -172,6 +173,7 @@ def get_config():
         "provider": cfg["provider"],
         "modelMain": cfg["modelMain"],
         "modelFast": cfg["modelFast"],
+        "baseUrl": cfg.get("baseUrl", ""),
         "keyConfigured": has_openai_key(),
     }
 
@@ -182,5 +184,56 @@ def post_config(body: AgentConfigBody):
         provider=body.provider or "",
         model_main=body.modelMain or "",
         model_fast=body.modelFast or "",
+        base_url=body.baseUrl,   # None=미변경, ""=공식 OpenAI 복귀
     )
     return {"ok": True}
+
+
+# ── /agent/test ────────────────────────────────────────────────────────────────
+
+class AgentTestBody(BaseModel):
+    baseUrl: Optional[str] = None    # None=저장값, ""=공식 OpenAI
+    modelMain: Optional[str] = None  # 빈 값이면 config 의 MAIN 모델
+    apiKey: Optional[str] = None     # 빈 값이면 저장된 키
+
+
+@router.post("/test")
+def post_test(body: AgentTestBody):
+    """연결 테스트 — 입력(또는 저장) 설정으로 최소 호출을 보내 검증한다.
+    성공: {ok:True, model, baseUrl}. 실패: {ok:False, detail} (200) —
+    프론트가 메시지를 그대로 표시. 키 미설정만 400."""
+    try:
+        return test_connection(
+            base_url=body.baseUrl,
+            model=body.modelMain,
+            api_key=body.apiKey,
+        )
+    except OpenAIKeyMissing as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001 — 인증/모델/네트워크 등 모든 실패를 메시지로
+        return {"ok": False, "detail": str(e)[:300]}
+
+
+# ── /agent/diagnose ────────────────────────────────────────────────────────────
+
+class AgentDiagnoseBody(BaseModel):
+    baseUrl: Optional[str] = None
+    modelMain: Optional[str] = None
+    apiKey: Optional[str] = None
+
+
+@router.post("/diagnose")
+def post_diagnose(body: AgentDiagnoseBody):
+    """모델 호환성 검사 — 4단계 배터리(content·tool_calls·구조화·정확도)로
+    에이전트 사용 적합성을 판정해 {stages, verdict, summary} 반환. 키 미설정만 400."""
+    try:
+        return diagnose_model(
+            base_url=body.baseUrl,
+            model=body.modelMain,
+            api_key=body.apiKey,
+        )
+    except OpenAIKeyMissing as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        return {"verdict": "unfit", "summary": "진단 실패: " + str(e)[:200],
+                "stages": [], "model": body.modelMain or "", "baseUrl": body.baseUrl or ""}

@@ -1,7 +1,7 @@
 # Agent v3 — Plan-and-Execute + ReAct 하이브리드 (도구형)
 
 > 상태: **V3-M1·M2 완료**(main 머지 b9f7523) · **M3 완료**(승인 게이트+verify, 2026-06-06) · **clarify 강화**(interrupt 기반 되묻기 — 의도불명+ReAct 루프 중 정보부족, 2026-06-06) — 다음 M4(eval) · 작성일 2026-06-05
-> 격리 근거: `docs/AI_ERD_v2_의도분석_계획준수_구현계획서.html` §9.1 격리 계약의 **진화형**
+> 격리 근거: `docs/ref/AI_ERD_v2_의도분석_계획준수_구현계획서.html` §9.1 격리 계약의 **진화형**
 > (v3는 v1 베이스 위에 세운 독립 실험 레인이며, v2와도 분리한다.)
 
 ## 1. 목표 / 전략
@@ -84,6 +84,8 @@ v3는 토폴로지가 v1과 다르므로 v2→v1식 기계적 승급(`promote_v2
 - **쓰기 후 자가검증(2026-06-06)**: 운영 DB 쓰기(`run_sql` INSERT/UPDATE/DELETE) 직후 드라이버 보고 영향행수만 믿고 finish 하지 않고, 다음 스텝에서 `SELECT`(예: COUNT(*))로 **실제 반영을 1회 확인**한 뒤 그 결과로 보고하도록 `REACT_SYSTEM`에 규칙 추가. `act.py`의 DML 관찰을 "드라이버 보고값(미확정) — SELECT로 확인 요망"으로 표기. (배경: MySQL multi-statement 미반영 버그 — 공유 어댑터 `db/adapters/mysql.py`·`mssql.py`에서 모든 결과셋 소진 후 1회 커밋으로 수정. rowcount 맹신·"이미 완료" 뒷북도 차단.)
 - **INSERT 중복 누적 가드 ③(2026-06-06)**: 어댑터 커밋 수정으로 쓰기가 실제 반영되자, react 가 INSERT 를 반복 선택해 **100행씩 무한 누적**되는 문제가 드러남(임의 데이터라 매 스텝 args가 달라 '동일 행동 반복' 가드①을 빠져나감). `react.py`에 가드 ③ 추가 — 이번 턴에 **INSERT/REPLACE 가 한 번 성공했으면 다음 INSERT는 강제 finish**(검증 SELECT·DELETE/UPDATE는 허용, ERD create_entity 등 클라 툴 무관). `REACT_SYSTEM`에 "쓰기는 한 번만 · 검증은 SELECT로만, 확인하겠다고 INSERT 재실행 금지" 규칙 명시. 단위검증(INSERT 판별·성공/실패/SELECT 구분) 통과.
 - **clarify 강화 — interrupt 기반 되묻기(2026-06-06)**: 기존 clarify(의도불명)는 `analyze→respond`로 "되묻고 턴 종료"였다(같은 질의 재개 불가). 이를 **interrupt 기반 HITL**로 바꿔, 답을 받아 질의를 그 자리에서 완성한다. 새 `clarify` 노드(`nodes/clarify.py`)가 `interrupt({type:'clarify', question, options})`로 일시정지하고 `{text}` 로 재개한다. **두 진입 경로**: ① **analyze(선행)** — 의도 불명확(`kind=clarify`) 시 `IntentSpec.ambiguities`를 질문으로 되묻고, 답을 새 user 메시지로 붙여 `analyze` 재분류(`MAX_CLARIFY=3` 상한, 초과 시 가용 정보로 answer). ② **react(루프 중)** — 정보·방향 부족 시 모델이 `ask_user`(location="ask") 툴을 골라 되묻고, 답을 scratchpad(관찰)에 남겨 루프를 이어간다. 건너뛰면(빈 답) `respond`(취소). 토폴로지: `analyze ─clarify→ clarify ⇄ analyze`, `react ─ask_user→ clarify → react`. SSE는 기존 `interrupt` 이벤트 재사용(type=clarify, 라우터 무변경). 프론트(`client_v3.js`·`observe_v3.js`)는 질문 카드(보기 버튼+자유 입력)로 답을 받아 `resume({text})`. v1 `analyze_node` 무수정(격리 — v3 그래프 라우팅으로만 처리). 라우팅·interrupt/resume 단위검증 통과(react/analyze/skip 3경로).
+
+- **약한 모델 가드 — 산출물 질의 narration 방지(2026-06-07)**: 로컬 소형 모델(LM Studio Qwen3.5-9b 등)이 `ReActStep` 메타함수 패턴에서 특정 산출물 질의('ERD 종합 명세서 만들어줘' 등)에 **빈 args(`{}`)·잘못된 args**를 내며 `tool`을 비우는 문제. 그러면 react가 '알 수 없는 툴 → finish'로 처리하고 respond가 `generate_erd_report: …하겠습니다` 식 **narration만 생성**(툴 미실행, 새 창 안 열림)했다. ① `REACT_SYSTEM`에 "산출물 생성('명세서/보고서/데이터 사전/DDL/문서 만들어줘')은 `generate_*`·`export_*`·`save_content` **생성 툴을 직접 호출**해 만든다 — describe_table로 먼저 읽지 말고 곧장 호출, finish로 떠넘기지 말 것" 규칙 추가. ② `react.py`에 **강제 툴 1회 재시도 가드**(`_retry_force_tool`) — act/mixed 의도인데 첫 행동 자리에서 tool이 비었거나(파싱 실패) 성급히 finish하면, 유효 툴 이름을 명시하고 빈 tool·finish를 금지한 교정 메시지로 한 번 더 invoke. 유효 툴이 나오면 채택, 아니면 기존대로 finish(무한루프 없음). 라이브 LM Studio 재현: 1차 빈 출력 → 재시도 시 `generate_erd_report` 정확 선택 확인. v3 전용(`agent/v3/common/prompts.py`·`nodes/react.py`)·격리 유지. **사이드카 재빌드 필요**.
 
 ## 5. 격리 불변식 (요약 — 강제 규칙은 CLAUDE.md "하네스: Agent v3 격리")
 

@@ -41,6 +41,34 @@ def _finish(loop: int, thought: str) -> dict:
             "react_needs_approval": False}
 
 
+def _retry_force_tool(reactor, system: str, state: AgentState, known: set):
+    """약한 모델 가드 — react 가 빈/무효 tool 또는 성급한 finish 를 냈을 때 1회 강제 교정 재시도.
+
+    배경: 로컬 소형 모델(예: LM Studio Qwen3.5-9b)은 ReActStep 메타함수 패턴에서
+    특정 산출물 질의('ERD 종합 명세서 만들어줘' 등)에 빈 args(`{}`)·잘못된 args 를 내며
+    tool 을 비운다. 그러면 react 가 '알 수 없는 툴 → finish' 로 처리하고, respond 가
+    'generate_erd_report: …하겠습니다' 식 narration 만 생성한다(툴 미실행).
+    유효 툴 이름을 명시하고 빈 tool·finish 를 금지한 교정 메시지로 한 번 더 시도한다.
+    실패하면 None.
+    """
+    names = ", ".join(sorted(n for n in known if n))
+    corrective = (
+        "[중요·재지시] 직전 출력에서 실행할 tool 을 제대로 지정하지 못했다(빈 값 또는 finish). "
+        "하지만 아직 아무 행동도 하지 않았고 사용자 요청은 실제 작업이 필요하다. "
+        "지금은 finish·빈 tool 이 허용되지 않는다 — [사용 가능한 툴] 중 의도를 달성할 실제 툴 하나를 골라 "
+        "tool 에 정확한 이름을 넣어 ReActStep(thought, tool, args)을 출력하라. "
+        f"유효한 tool 이름: {names}. "
+        "'명세서/보고서/데이터 사전/DDL 만들어줘'면 describe_table 로 먼저 읽지 말고 "
+        "generate_erd_report·generate_data_dictionary·generate_ddl 같은 생성 툴을 바로 호출하라."
+    )
+    try:
+        return reactor.invoke(
+            [("system", system)] + recent_messages(state) + [("user", corrective)]
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _tail_meta_streak(scratchpad: list) -> int:
     """scratchpad 끝에서 연속된 메타툴 호출 수 (행동/관찰이 끼면 0으로 리셋)."""
     n = 0
@@ -97,6 +125,21 @@ def react_node(state: AgentState) -> dict:
     tool = (step.tool or "").strip()
     args = step.args or {}
     thought = step.thought or ""
+
+    # ── 약한 모델 가드(강제 툴 1회 재시도) ──────────────────────────────
+    # act/mixed 의도인데 첫 행동 자리에서 tool 을 비우거나(파싱 실패) 성급히 finish 하면
+    # respond 가 'X 하겠습니다' narration 만 낸다(툴 미실행). 한 번 강제 교정해 구제한다.
+    intent_kind = (state.get("intent") or {}).get("kind")
+    actionable = intent_kind in ("act", "mixed")
+    scratch_now = state.get("scratchpad") or []
+    malformed = tool != FINISH and (not tool or tool not in known)
+    premature_finish = tool == FINISH and actionable and not scratch_now
+    if (malformed and actionable) or premature_finish:
+        retried = _retry_force_tool(reactor, system, state, known)
+        if retried is not None:
+            t2 = (retried.tool or "").strip()
+            if t2 and t2 != FINISH and t2 in known:
+                tool, args, thought = t2, (retried.args or {}), (retried.thought or thought)
 
     if tool == FINISH:
         return _finish(loop, thought)

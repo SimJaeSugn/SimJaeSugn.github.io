@@ -75,8 +75,10 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /agent/resume | interrupt 결과 회신 → 그래프 재개 SSE (툴 실행 위임 루프) |
 | GET | /agent/key | OpenAI 키 설정 여부 |
 | POST | /agent/key | OpenAI 키 저장 (AES-256-GCM 암호화) |
-| GET | /agent/config | Agent 설정 조회 (provider/modelMain/modelFast/keyConfigured) |
-| POST | /agent/config | Agent 설정 저장 (provider/modelMain/modelFast) |
+| GET | /agent/config | Agent 설정 조회 (provider/modelMain/modelFast/baseUrl/keyConfigured) |
+| POST | /agent/config | Agent 설정 저장 (provider/modelMain/modelFast/baseUrl) — baseUrl 설정 시 자체 서빙 등 OpenAI 호환 엔드포인트로 동작 |
+| POST | /agent/test | 연결 테스트 — 입력(또는 저장) 설정(baseUrl/modelMain/apiKey)으로 최소 호출을 보내 검증. 성공 {ok:true, model, baseUrl} / 실패 {ok:false, detail} |
+| POST | /agent/diagnose | 모델 호환성 검사 — 4단계 배터리(① content 채널 ② tool_calls ③ 구조화 출력 ④ 툴 인자 정확도)를 실제 실행해 에이전트 적합성 판정. {model, baseUrl, stages:[{key,label,ok,detail}], verdict:'ok\|limited\|unfit', summary} 반환 |
 | POST | /agent/v2/stream | v2 자연어 질의 → 그래프 실행 SSE (analyze→4분기→plan SSE 포함, 독립 인스턴스) |
 | POST | /agent/v2/resume | v2 interrupt 결과 회신 → 그래프 재개 SSE |
 | GET | /agent/v2/key | v2 OpenAI 키 설정 여부 확인 (공유 키스토어) |
@@ -107,6 +109,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 > `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
 > `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.
 > OpenAI 키는 DB 비밀번호와 동일한 마스터 키로 암호화되어 `~/.uxermanager/config.json` 의 `aiKey` 필드에 저장된다.
+> **자체 서빙 모델(LM Studio·vLLM·Ollama 등) 연결**은 `aiBaseUrl`(설정 > Agent 설정의 Base URL)로 OpenAI 호환 엔드포인트를 지정한다. 연결·tool calling이 깨질 때(빈 응답·툴 미실행 등) 진단은 **`docs/로컬LLM_서빙_트러블슈팅.md`** 참고.
 
 > `/stddict/*` 는 표준사전(word·domain·term)을 사이드카가 sqlite 로 직접 소유·CRUD하는 엔드포인트로 **Python 프록시 전용**이다(Electron 데스크탑 환경 전용). 엑셀 파싱에 `openpyxl` 의존성이 필요하며 `requirements.txt`에 포함된다.
 > 데이터는 **시스템 DB `aerm_storage`**(`~/.uxermanager/aerm_storage.db`)의 테이블로 저장된다. 이 시스템 DB는 내부 sqlite 기능이 공유하는 고정 DB로, 접속정보가 하드코딩(`db/system_db.py`)되어 있으며 외부 DB 접속 프로파일(`/config/profiles`)에 노출되지 않는다. `restore`·`import-excel`은 시스템 DB의 다른 테이블을 보존한 채 표준사전 테이블만 교체한다.

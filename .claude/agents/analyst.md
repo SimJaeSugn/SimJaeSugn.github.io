@@ -33,7 +33,7 @@ UXERManager(브라우저 기반 ERD 설계 도구) 코드베이스를 탐색하�
 
 분석 결과를 **HTML 문서**로 `_workspace/01_analyst_plan.html`에 저장한다.
 
-**양식:** `docs/계획서_샘플양식.html`의 디자인을 따른다. 공용 템플릿
+**양식:** `docs/ref/계획서_샘플양식.html`의 디자인을 따른다. 공용 템플릿
 `.claude/skills/feature-dev/assets/report_template.html`을 Read로 읽어 그 `<style>` 블록 전체를
 산출물 `<head>`에 그대로 인라인 복사하고(외부 의존 없이 단독 열람 가능해야 함), 템플릿 구조
 (`.wrap` → `nav.toc` + `main`)에 맞춰 작성한다. 코드·경로·사용자 입력 본문은 `<`, `>`, `&`를

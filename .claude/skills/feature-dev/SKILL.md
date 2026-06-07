@@ -20,7 +20,7 @@ analyst → implementer → integration-checker → reviewer 순서로 각 에�
 
 ## 산출물 형식: HTML (공용 양식)
 
-모든 `_workspace/` 산출물은 **HTML 문서**로 작성한다. 디자인은 `docs/계획서_샘플양식.html`의
+모든 `_workspace/` 산출물은 **HTML 문서**로 작성한다. 디자인은 `docs/ref/계획서_샘플양식.html`의
 양식을 따르며, 그 스타일을 추출한 공용 템플릿 `.claude/skills/feature-dev/assets/report_template.html`을
 기준으로 한다. 각 에이전트는 이 템플릿의 `<style>` 블록을 그대로 인라인 복사해 **외부 의존 없이
 단독으로 열리는 자기완결형 HTML**을 생성한다.

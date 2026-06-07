@@ -155,7 +155,9 @@
       "Bash(python -m py_compile db/adapters/mysql.py db/adapters/mssql.py agent/v3/nodes/act.py agent/v3/common/prompts.py)",
       "Bash(python -W ignore -c ' *)",
       "Bash(set PYTHONIOENCODING=utf-8)",
-      "Bash(python -W ignore -X utf8 -c ' *)"
+      "Bash(python -W ignore -X utf8 -c ' *)",
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f,encoding='utf-8'\\).read\\(\\)\\) for f in ['proxy/python/agent/common/llm.py','proxy/python/agent/common/keys.py','proxy/python/routers/agent.py']]; print\\('py OK'\\)\")",
+      "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:1234/v1/models\" -TimeoutSec 5 -ErrorAction Stop; $r.data | Select-Object id | ConvertTo-Json -Depth 4 } catch { \"LM Studio 서버 응답 없음 \\(포트 1234\\): $\\($_.Exception.Message\\)\" })"
     ],
     "additionalDirectories": [
       "e:\\04.개발환경\\python\\98.ETC\\SimJaeSugn.github.io\\.claude\\skills\\feature-dev\\_workspace"

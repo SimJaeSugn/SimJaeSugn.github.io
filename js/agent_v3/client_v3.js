@@ -8,6 +8,7 @@
 const _AGENT_V3_URL = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
 let _agentV3ThreadId = null;
 let _agentV3Abort = null;
+let _agentV3Busy = false;       // 질의 진행 중 여부(전송↔중단 토글·재진입 방지)
 let _agentV3Draft = null;       // ACT 턴의 드래프트 ({entities,relations,layout})
 let _agentV3IdRemap = {};       // 계획상 엔티티 id → 실제 생성 id 매핑
 
@@ -128,8 +129,41 @@ async function _agentV3ExecTools(calls, bubble) {
   return results;
 }
 
+// ── 전송 버튼 모드(전송 ↔ 중단) ───────────────────────────────────
+function _agentV3SetSendBtnMode(mode) {
+  const btn = document.getElementById('agentV3SendBtn');
+  if (!btn) return;
+  btn.disabled = false;
+  if (mode === 'stop') {
+    btn.textContent = '■';
+    btn.title = '중단 (응답 멈추기)';
+    btn.style.background = 'var(--danger,#e03e3e)';
+    btn.style.color = '#fff';
+  } else {
+    btn.textContent = '➤';
+    btn.title = '전송';
+    btn.style.background = '';
+    btn.style.color = '';
+  }
+}
+
+// 전송 버튼 클릭 디스패처 — 진행 중이면 중단, 아니면 전송
+function agentV3SendOrStop() {
+  if (_agentV3Busy) agentV3Stop();
+  else agentV3Send();
+}
+
+// 진행 중인 질의 중단(응답이 늦을 때) — fetch 를 abort 한다.
+// 실제 정리(버블 '(중단됨)' 표기·버튼 복원)는 agentV3Send 의 catch/finally 가 처리한다.
+function agentV3Stop() {
+  if (_agentV3Abort) {
+    try { _agentV3Abort.abort(); } catch (e) { /* noop */ }
+  }
+}
+
 // ── agentV3Send — 메인 전송 함수 ─────────────────────────────────
 async function agentV3Send() {
+  if (_agentV3Busy) return;   // 진행 중 재진입 방지(Enter 연타 등)
   const input = document.getElementById('agentV3Input');
   if (!input) return;
   const text = (input.value || '').trim();
@@ -139,8 +173,8 @@ async function agentV3Send() {
   input.value = '';
   agentV3AutoGrow(input);
 
-  const sendBtn = document.getElementById('agentV3SendBtn');
-  if (sendBtn) sendBtn.disabled = true;
+  _agentV3Busy = true;
+  _agentV3SetSendBtnMode('stop');   // 전송 버튼 → 중단(■) 버튼으로 전환
   const thinking = _agentV3AppendMsg('agent', '<span class="agent-typing"><i></i><i></i><i></i></span>');
   const bubble = thinking ? thinking.querySelector('.agent-msg-bubble') : null;
   let acc = '';
@@ -258,7 +292,8 @@ async function agentV3Send() {
     _agentV3Draft = null;
     _agentV3IdRemap = {};
     _agentV3Abort = null;
-    if (sendBtn) sendBtn.disabled = false;
+    _agentV3Busy = false;
+    _agentV3SetSendBtnMode('send');   // 중단 버튼 → 전송(➤) 버튼으로 복원
     const _plan = bubble ? bubble.querySelector('.agent-plan') : null;
     if (_plan) _plan.classList.add('collapsed');
     if (typeof _agentV3CollapseTrace === 'function') _agentV3CollapseTrace(bubble);  // 처리 단계 접기

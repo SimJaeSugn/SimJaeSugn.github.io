@@ -36,28 +36,35 @@ def has_openai_key() -> bool:
 _DEFAULT_PROVIDER = "openai"
 _DEFAULT_MODEL_MAIN = "gpt-4o"
 _DEFAULT_MODEL_FAST = "gpt-4o-mini"
+_DEFAULT_BASE_URL = ""   # 빈 값 = OpenAI 공식 엔드포인트
 
 
 def get_agent_config() -> dict:
-    """config.json 최상위에서 aiProvider/aiModelMain/aiModelFast 읽기.
-    미설정 시 기본값으로 폴백."""
+    """config.json 최상위에서 aiProvider/aiModelMain/aiModelFast/aiBaseUrl 읽기.
+    미설정 시 기본값으로 폴백. baseUrl 이 채워져 있으면 자체 서빙 등
+    OpenAI 호환 엔드포인트로 동작한다."""
     store = _load_raw_store()
     if not store:
         return {
             "provider": _DEFAULT_PROVIDER,
             "modelMain": _DEFAULT_MODEL_MAIN,
             "modelFast": _DEFAULT_MODEL_FAST,
+            "baseUrl": _DEFAULT_BASE_URL,
         }
     return {
         "provider": store.get("aiProvider") or _DEFAULT_PROVIDER,
         "modelMain": store.get("aiModelMain") or _DEFAULT_MODEL_MAIN,
         "modelFast": store.get("aiModelFast") or _DEFAULT_MODEL_FAST,
+        "baseUrl": store.get("aiBaseUrl") or _DEFAULT_BASE_URL,
     }
 
 
-def set_agent_config(provider: str, model_main: str, model_fast: str) -> None:
-    """config.json 최상위에 aiProvider/aiModelMain/aiModelFast 저장.
-    빈 값은 무시하고 기존 값을 유지한다.
+def set_agent_config(provider: str, model_main: str, model_fast: str,
+                     base_url: Optional[str] = None) -> None:
+    """config.json 최상위에 aiProvider/aiModelMain/aiModelFast/aiBaseUrl 저장.
+    빈 문자열 모델·provider 는 무시하고 기존 값을 유지한다.
+    base_url 은 None 이면 미변경, 빈 문자열("")이면 명시적으로 비워(공식 OpenAI 복귀)
+    저장한다 — 사용자가 자체 서버 → 공식 엔드포인트로 되돌릴 수 있도록.
     _save_store 가 내부적으로 _invalidate_cache 를 호출한다."""
     store = _load_raw_store() or {"profiles": [], "active": None}
     if provider and provider.strip():
@@ -66,4 +73,6 @@ def set_agent_config(provider: str, model_main: str, model_fast: str) -> None:
         store["aiModelMain"] = model_main.strip()
     if model_fast and model_fast.strip():
         store["aiModelFast"] = model_fast.strip()
+    if base_url is not None:
+        store["aiBaseUrl"] = base_url.strip()
     _save_store(store)
