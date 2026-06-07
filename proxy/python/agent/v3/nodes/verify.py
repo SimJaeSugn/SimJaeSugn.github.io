@@ -35,7 +35,8 @@ def verify_node(state: AgentState) -> dict:
                 "verdict": {"adherence": "partial", "fulfilled": False, "missing": [], "next": "respond", "note": f"검증 상한({MAX_VERIFY}) 도달 — 현재까지 결과로 보고"}}
 
     llm = get_main_llm()
-    verifier = llm.with_structured_output(V3Verdict, method="function_calling")
+    # json_schema: 강제 tool_choice 미사용 → 로컬 서버(LM Studio) 호환 (function_calling 은 400)
+    verifier = llm.with_structured_output(V3Verdict, method="json_schema")
     system = (
         VERIFY_SYSTEM
         + f"\n\n[분석된 의도]\n{json.dumps(intent, ensure_ascii=False)}"

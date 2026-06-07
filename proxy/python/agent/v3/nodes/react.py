@@ -119,7 +119,8 @@ def react_node(state: AgentState) -> dict:
         + "\n\n[관찰 기록]\n" + render_scratchpad(state.get("scratchpad"))
     )
     llm = get_main_llm()
-    reactor = llm.with_structured_output(ReActStep, method="function_calling")
+    # json_schema: 강제 tool_choice 미사용 → 로컬 서버(LM Studio) 호환 (function_calling 은 400)
+    reactor = llm.with_structured_output(ReActStep, method="json_schema")
     step: ReActStep = reactor.invoke([("system", system)] + recent_messages(state))
 
     tool = (step.tool or "").strip()

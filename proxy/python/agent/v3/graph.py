@@ -15,7 +15,8 @@
 - react: [관찰 기록]을 보고 한 번에 툴 1개를 동적 선택(ReAct). loop_count 상한으로 발산 가드.
 - 메타툴 plan/reflect(location="meta")는 부수효과 없는 '생각 도구' — meta_exec 가 LLM 추론으로 처리(승인·interrupt 면제).
 - proxy 툴(fetch_db_schema·run_sql)은 서버 직접 실행, client 툴(create_entity 등)은 interrupt 위임.
-- analyze/answer/fetch_tools/respond 는 v1 노드 읽기 재사용(수정 없음).
+- answer/fetch_tools/respond 는 v1 노드 읽기 재사용(수정 없음).
+- analyze 는 v3 격리 복제(agent.v3.nodes.analyze) — json_schema 로 로컬 LLM(LM Studio) 호환. v1 analyze 무손상.
 
 격리: agent.* (v1) 와 agent.v3.* 만 import. agent.v2.* 참조 금지.
 """
@@ -24,10 +25,11 @@ from langgraph.graph import END, START, StateGraph
 
 from agent.v3.common.state import AgentState
 # v1 노드 — 읽기 재사용 (수정 없음)
-from agent.nodes.analyze import analyze_node
 from agent.nodes.answer import answer_node
 from agent.nodes.respond import respond_node
 from agent.nodes.tools import fetch_tools_node
+# v3 analyze — v1 격리 복제(json_schema, 로컬 LLM 호환). v1 analyze 무손상.
+from agent.v3.nodes.analyze import analyze_node
 # v3 전용 노드 (ReAct 루프)
 from agent.v3.nodes.prep import prep_node
 from agent.v3.nodes.react import react_node, react_route

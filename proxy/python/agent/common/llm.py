@@ -125,9 +125,12 @@ def _diag_err(e: Exception) -> str:
                 "프롬프트 템플릿을 tool 지원판으로 교체하거나 다른 런타임 사용 필요.")
     if "model_not_found" in low or "invalid model" in low:
         return "모델 식별자 오류 — 서버에 로드된 정확한 모델명(/v1/models)을 입력하세요."
+    if "json_schema" in low or "response_format" in low:
+        return ("서버가 json_schema 구조화 출력을 지원하지 않음 — 에이전트(v3)의 분류·검증 노드가 "
+                "이 방식을 쓰므로 동작 불가. 최신 LM Studio·vLLM 등 json_schema 지원 서버가 필요.")
     if "tool_choice" in low:
         return ("서버가 강제 tool_choice(특정 함수 지정)를 거부함 — LM Studio 등은 "
-                "none/auto/required 만 지원. 에이전트의 구조화 출력이 이 때문에 실패할 수 있음.")
+                "none/auto/required 만 지원.")
     if "tool" in low and ("not support" in low or "template" in low):
         return "서버/모델이 tool calling 을 지원하지 않거나 템플릿이 처리 못 함."
     return "오류: " + msg[:160]
@@ -201,13 +204,14 @@ def diagnose_model(base_url=None, model=None, api_key=None) -> dict:
     except Exception as e:  # noqa: BLE001
         stages.append({"key": "toolcall", "label": "툴 호출(tool_calls)", "ok": False, "detail": _diag_err(e)})
 
-    # ③ 구조화 출력(다중필드 스키마 = 의도 분류) — 에이전트 analyze·plan·react·verify 가
-    #    실제로 쓰는 with_structured_output(method="function_calling") 그대로 검사한다.
-    #    이 방식은 강제 tool_choice 를 보내므로, 서버가 그걸 거부하면(LM Studio) 여기서 걸린다.
+    # ③ 구조화 출력(다중필드 스키마 = 의도 분류) — 에이전트(v3)가 실제로 쓰는
+    #    with_structured_output(method="json_schema") 그대로 검사한다.
+    #    (function_calling 은 강제 tool_choice 를 보내 LM Studio 등이 거부하므로 v3 는 json_schema 사용.
+    #     서버가 json_schema response_format 을 지원 못 하면 여기서 걸린다.)
     struct_ok = False
     struct_blocked = False
     try:
-        out = _llm(max_tokens=200).with_structured_output(_ProbeIntent, method="function_calling").invoke(
+        out = _llm(max_tokens=200).with_structured_output(_ProbeIntent, method="json_schema").invoke(
             [("system", "질의 의도를 분류하라. kind 는 answer/act/mixed/clarify 중 하나."),
              ("user", "주문 테이블 만들어줘")])
         kind = getattr(out, "kind", None)
@@ -215,7 +219,8 @@ def diagnose_model(base_url=None, model=None, api_key=None) -> dict:
         stages.append({"key": "structured", "label": "구조화 출력(분류)", "ok": struct_ok,
                        "detail": ("kind=" + str(kind)) if struct_ok else "구조화 출력 실패(스키마를 못 채움)."})
     except Exception as e:  # noqa: BLE001
-        if "tool_choice" in str(e).lower():
+        low = str(e).lower()
+        if "json_schema" in low or "response_format" in low or "tool_choice" in low:
             struct_blocked = True
         stages.append({"key": "structured", "label": "구조화 출력(분류)", "ok": False, "detail": _diag_err(e)})
 
@@ -228,10 +233,10 @@ def diagnose_model(base_url=None, model=None, api_key=None) -> dict:
     if not content_ok:
         verdict, summary = "unfit", "응답이 비어 있습니다(thinking 누수 등) — 에이전트 사용 불가. thinking 을 끄세요."
     elif struct_blocked:
-        # 서버가 강제 tool_choice 거부 → 에이전트 구조화 노드 전부 실패 → answer 폴백·narration
-        verdict, summary = "unfit", ("서버가 에이전트의 구조화 출력(강제 tool_choice)을 거부합니다(LM Studio 한계). "
-                                     "이 때문에 의도분류·계획 노드가 실패해 답변이 곧장 생성되고 툴 실행이 안 됩니다. "
-                                     "모델 자체는 괜찮을 수 있으나 현 서버 구성으론 에이전트 동작 불가.")
+        # 서버가 json_schema 구조화 출력 미지원 → 에이전트(v3) 분류·검증 노드 실패 → narration
+        verdict, summary = "unfit", ("서버가 json_schema 구조화 출력을 지원하지 않습니다. "
+                                     "에이전트(v3)의 의도분류·검증 노드가 이 방식을 쓰므로, 분류가 실패해 답변이 곧장 "
+                                     "생성되고 툴 실행이 안 됩니다. json_schema 지원 서버(최신 LM Studio·vLLM 등)가 필요합니다.")
     elif not tool_ok:
         verdict, summary = "unfit", ("툴 호출이 안 됩니다 — 서버 tool 파싱·모델 템플릿 문제이거나 tool calling 미지원. "
                                      "에이전트 사용 불가.")
