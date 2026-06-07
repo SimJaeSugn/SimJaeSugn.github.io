@@ -1,0 +1,25 @@
+directories:
+  output: dist
+  buildResources: build
+appId: kr.co.uxis.agenticerm
+productName: AgenticERM
+files:
+  - filter:
+      - main.js
+      - preload.js
+extraFiles:
+  - from: ../index.html
+    to: index.html
+  - from: ../js
+    to: js
+  - from: ../css
+    to: css
+  - from: ../vendor
+    to: vendor
+extraResources:
+  - from: ../proxy/python/dist/uxer-sidecar.exe
+    to: python-sidecar.exe
+win:
+  target: dir
+  icon: resources/icon.ico
+electronVersion: 30.5.1
