@@ -296,6 +296,39 @@ async def update_profile(name: str, body: ProfileUpdateBody):
     return {"ok": True, "message": f"프로파일 '{name}'이 수정되었습니다."}
 
 
+# ── POST /config/profiles/{name}/reveal ──────────────────────────────────────
+
+@router.post("/profiles/{name}/reveal")
+def reveal_profile_password(name: str):
+    """저장된 프로파일의 비밀번호를 복호화해 평문으로 반환한다(확인용).
+    레거시 키로 암호화돼 있으면 현재 키로 재암호화 마이그레이션도 수행한다."""
+    store = _load_raw_store()
+    if not store:
+        raise HTTPException(status_code=404, detail="프로파일이 없습니다.")
+    profile = next((p for p in store["profiles"] if p["name"] == name), None)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"'{name}' 프로파일을 찾을 수 없습니다.")
+    enc = profile.get("password")
+    if not enc:
+        return {"ok": True, "password": ""}
+    try:
+        password = decrypt(enc)
+    except Exception:
+        try:
+            password = decrypt_legacy(enc)
+            idx = next((i for i, p in enumerate(store["profiles"]) if p["name"] == name), -1)
+            if idx != -1:
+                store["profiles"][idx] = {
+                    **store["profiles"][idx],
+                    "password": encrypt(password),
+                    "updatedAt": datetime.now(timezone.utc).isoformat(),
+                }
+                _save_store(store)
+        except Exception:
+            raise HTTPException(status_code=500, detail="비밀번호 복호화에 실패했습니다.")
+    return {"ok": True, "password": password}
+
+
 # ── POST /config/profiles/{name}/activate ────────────────────────────────────
 
 @router.post("/profiles/{name}/activate")

@@ -291,5 +291,39 @@ router.post('/profiles/:name/activate', async (req, res) => {
   res.json({ ok: true, message: `'${name}' 프로파일로 전환되었습니다.` });
 });
 
+// ---- POST /config/profiles/:name/reveal — 저장된 비밀번호 복호화 확인 ----
+router.post('/profiles/:name/reveal', (req, res) => {
+  const { name } = req.params;
+  const store = loadRawStore();
+  if (!store) return res.status(404).json({ error: '프로파일이 없습니다.' });
+
+  const profile = store.profiles.find(p => p.name === name);
+  if (!profile) return res.status(404).json({ error: `'${name}' 프로파일을 찾을 수 없습니다.` });
+
+  if (!profile.password) return res.json({ ok: true, password: '' });
+
+  let password;
+  try {
+    password = decrypt(profile.password);
+  } catch (_) {
+    try {
+      password = decryptLegacy(profile.password);
+      // 레거시 키 마이그레이션: 현재 키로 재암호화
+      const idx = store.profiles.findIndex(p => p.name === name);
+      if (idx !== -1) {
+        store.profiles[idx] = {
+          ...store.profiles[idx],
+          password: encrypt(password),
+          updatedAt: new Date().toISOString()
+        };
+        saveStore(store);
+      }
+    } catch (_2) {
+      return res.status(500).json({ error: '비밀번호 복호화에 실패했습니다.' });
+    }
+  }
+  res.json({ ok: true, password });
+});
+
 module.exports = router;
 module.exports.loadConfig = loadConfig;

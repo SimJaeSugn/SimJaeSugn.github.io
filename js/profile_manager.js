@@ -63,6 +63,36 @@ async function _refreshProfileList() {
   _renderProfileList(data);
 }
 
+// 저장된 비밀번호를 복호화해 확인(토글). 표시 중이면 다시 가린다.
+async function _pmRevealPassword(name) {
+  const valEl = document.getElementById('pmPwValue');
+  const btn = document.getElementById('pmRevealBtn');
+  if (!valEl || !btn) return;
+
+  if (valEl.dataset.shown === '1') {
+    valEl.textContent = '••••••••';
+    valEl.dataset.shown = '';
+    btn.textContent = '확인';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+  try {
+    const res = await fetch(`${MW_URL}/config/profiles/${encodeURIComponent(name)}/reveal`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '복호화 실패');
+    valEl.textContent = data.password ? data.password : '(비어 있음)';
+    valEl.dataset.shown = '1';
+    btn.textContent = '가리기';
+  } catch (e) {
+    showToast(e.message, 'error');
+    btn.textContent = '확인';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ── 추가 폼 ───────────────────────────────────────────────────────
 
 async function _submitAddProfile() {
@@ -396,6 +426,7 @@ function _renderRightPanel(mode, data) {
 
   if (mode === 'detail') {
     const p = data;
+    const jName = _pmEscJsAttr(p.name);
     panel.innerHTML = `
       <div class="pm-section-title">접속 정보</div>
       <div class="pm-detail-section">
@@ -417,6 +448,14 @@ function _renderRightPanel(mode, data) {
       <div class="pm-detail-section">
         <span class="pm-detail-label">사용자명</span>
         <div class="pm-detail-value">${_pmEsc(p.username)}</div>
+      </div>
+      <div class="pm-detail-section">
+        <span class="pm-detail-label">비밀번호</span>
+        <div class="pm-detail-value" style="display:flex;align-items:center;gap:8px">
+          <span id="pmPwValue" style="flex:1;font-family:monospace;word-break:break-all">••••••••</span>
+          <button class="btn" style="font-size:11px;padding:2px 8px;flex-shrink:0" id="pmRevealBtn"
+            onclick="_pmRevealPassword('${jName}')">확인</button>
+        </div>
       </div>
       ${p.clientLibDir ? `
       <div class="pm-detail-section">

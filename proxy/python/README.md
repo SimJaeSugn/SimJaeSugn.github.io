@@ -67,6 +67,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | PUT | /config/profiles/:name | 프로파일 수정 |
 | DELETE | /config/profiles/:name | 프로파일 삭제 |
 | POST | /config/profiles/:name/activate | 프로파일 전환 |
+| POST | /config/profiles/:name/reveal | 저장된 비밀번호 복호화 확인 |
 | POST | /execute | SQL 실행 |
 | POST | /execute/stream | SQL SSE 스트림 |
 | GET | /schema/tables | 테이블·뷰 목록 |
