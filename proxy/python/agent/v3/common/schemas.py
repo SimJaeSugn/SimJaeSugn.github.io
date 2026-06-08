@@ -19,9 +19,9 @@ class ReActStep(BaseModel):
     tool: str = Field(
         description="다음 행동으로 호출할 툴 이름 1개. 모든 목표가 끝났으면 'finish'."
     )
-    args: dict = Field(
-        default_factory=dict,
-        description="그 툴의 호출 인자(JSON 객체). finish면 비운다.",
+    args_json: str = Field(
+        default="{}",
+        description="그 툴의 호출 인자를 담은 JSON 객체 **문자열**. 예: '{\"name\": \"주문\"}'. 인자가 없거나 finish면 '{}'.",
     )
 
 

@@ -36,6 +36,26 @@ from agent.v3.common.schemas import (
 from agent.v3.common.state import AgentState
 
 
+def _parse_args(step) -> dict:
+    """ReActStep.args_json(JSON 객체 문자열) → dict. 빈 값·파싱 실패는 {}로 폴백.
+
+    args 를 자유형 dict 가 아닌 JSON 문자열로 받는 이유: langchain-openai 가
+    json_schema 구조화 출력에 strict=True 를 강제하는데, strict 모드는 모든 object 에
+    additionalProperties:false 를 요구해 자유형 args dict 가 거부(400)되기 때문이다.
+    OpenAI 함수호출이 args 를 JSON 문자열로 직렬화하는 방식과 동일 — strict 서버·LM Studio 모두 호환.
+    """
+    raw = getattr(step, "args_json", None)
+    if isinstance(raw, dict):   # 관대한 서버가 객체를 그대로 채운 경우 방어
+        return raw
+    if not raw:
+        return {}
+    try:
+        v = json.loads(raw)
+        return v if isinstance(v, dict) else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def _finish(loop: int, thought: str) -> dict:
     return {"loop_count": loop, "react_tool": FINISH, "react_args": {}, "react_thought": thought,
             "react_needs_approval": False}
@@ -56,7 +76,7 @@ def _retry_force_tool(reactor, system: str, state: AgentState, known: set):
         "[중요·재지시] 직전 출력에서 실행할 tool 을 제대로 지정하지 못했다(빈 값 또는 finish). "
         "하지만 아직 아무 행동도 하지 않았고 사용자 요청은 실제 작업이 필요하다. "
         "지금은 finish·빈 tool 이 허용되지 않는다 — [사용 가능한 툴] 중 의도를 달성할 실제 툴 하나를 골라 "
-        "tool 에 정확한 이름을 넣어 ReActStep(thought, tool, args)을 출력하라. "
+        "tool 에 정확한 이름을 넣고 args_json 에 인자 JSON 문자열(예: '{}')을 담아 ReActStep(thought, tool, args_json)을 출력하라. "
         f"유효한 tool 이름: {names}. "
         "'명세서/보고서/데이터 사전/DDL 만들어줘'면 describe_table 로 먼저 읽지 말고 "
         "generate_erd_report·generate_data_dictionary·generate_ddl 같은 생성 툴을 바로 호출하라."
@@ -124,7 +144,7 @@ def react_node(state: AgentState) -> dict:
     step: ReActStep = reactor.invoke([("system", system)] + recent_messages(state))
 
     tool = (step.tool or "").strip()
-    args = step.args or {}
+    args = _parse_args(step)
     thought = step.thought or ""
 
     # ── 약한 모델 가드(강제 툴 1회 재시도) ──────────────────────────────
@@ -140,7 +160,7 @@ def react_node(state: AgentState) -> dict:
         if retried is not None:
             t2 = (retried.tool or "").strip()
             if t2 and t2 != FINISH and t2 in known:
-                tool, args, thought = t2, (retried.args or {}), (retried.thought or thought)
+                tool, args, thought = t2, _parse_args(retried), (retried.thought or thought)
 
     if tool == FINISH:
         return _finish(loop, thought)
