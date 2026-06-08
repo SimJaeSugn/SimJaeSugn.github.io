@@ -65,7 +65,7 @@
   <h2>목차</h2>
   <a href="#overview">1. 개요</a>
   <a href="#class">2. 실행 분류(kind)</a>
-  <a href="#client">3. 클라이언트 툴 (63)</a>
+  <a href="#client">3. 클라이언트 툴 (65)</a>
   <a class="sub" href="#c-edit">3.1 편집</a>
   <a class="sub" href="#c-read">3.2 조회·분석</a>
   <a class="sub" href="#c-view">3.3 선택·뷰</a>
@@ -81,7 +81,7 @@
   <h1>에이전트 툴 카탈로그</h1>
   <div class="sub">UXERManager 에이전트(v1·v2·v3 공유)가 호출하는 전체 툴 — 기능 유형별 정리 · 대상 <code>js/agent_tools.js</code> · <code>proxy/python/agent/tools_proxy.py</code></div>
   <div class="meta">
-    <span><b>클라이언트 툴</b> 63 (<code>AGENT_TOOL_DEFS</code>)</span>
+    <span><b>클라이언트 툴</b> 65 (<code>AGENT_TOOL_DEFS</code>)</span>
     <span><b>프록시 툴</b> 24 (<code>PROXY_TOOL_CATALOG</code>)</span>
     <span><b>적용 범위</b> v1·v2·v3 공유 (frozen 모듈)</span>
   </div>
@@ -91,20 +91,20 @@
   <p>에이전트 툴은 <b>클라이언트 툴</b>(브라우저에서 ERD·UI 조작, <code>js/agent_tools.js</code>)과 <b>프록시 툴</b>(Python 사이드카에서 운영 DB 접근, <code>tools_proxy.py</code>) 두 레인으로 나뉜다. 둘 다 단일 소스(SSOT) 배열이라 <code>AGENT_TOOL_CATALOG</code>(플래너 노출)·실행 매핑·<code>describe_tool</code>이 자동 파생되며, <b>v1·v2·v3 에이전트가 동일 카탈로그를 공유</b>한다.</p>
   <table>
     <tr><th>레인</th><th>유형</th><th>수</th><th>비고</th></tr>
-    <tr><td rowspan="7"><b>클라이언트</b><br><span class="small">63</span></td><td>편집(엔티티·관계·속성)</td><td>15</td><td>CRUD·일괄·관계 자동화·복사 — <span class="tag write">write</span> 드래프트</td></tr>
+    <tr><td rowspan="7"><b>클라이언트</b><br><span class="small">65</span></td><td>편집(엔티티·관계·속성)</td><td>15</td><td>CRUD·일괄·관계 자동화·복사 — <span class="tag write">write</span> 드래프트</td></tr>
     <tr><td>조회·구조 분석</td><td>12</td><td>검색·구조·통계·정규화·메트릭 — <span class="tag read">read</span></td></tr>
     <tr><td>선택·하이라이트·뷰</td><td>5</td><td>순수 UI 제어 — <span class="tag read">read</span></td></tr>
     <tr><td>섹션·메모·정렬·테마</td><td>5</td><td>라이브 전역 — <span class="tag live">live</span></td></tr>
-    <tr><td>다이어그램·버전</td><td>6</td><td>워크스페이스 교체·스냅샷 — <span class="tag live">live/replace</span></td></tr>
+    <tr><td>다이어그램·버전</td><td>7</td><td>워크스페이스 교체·스냅샷·리버스 엔지니어링 — <span class="tag live">live/replace</span></td></tr>
     <tr><td>산출물·문서·입출력</td><td>11</td><td>DDL·정의서·사전·명세서·내보내기·파일저장</td></tr>
-    <tr><td>정보·표준사전·메타</td><td>9</td><td>툴/메뉴/단축키/테마/템플릿/표준용어 조회</td></tr>
+    <tr><td>정보·표준사전·메타</td><td>10</td><td>툴/메뉴/단축키/테마/템플릿/표준용어 조회·준수수정</td></tr>
     <tr><td rowspan="5"><b>프록시</b><br><span class="small">24</span></td><td>접속·프로파일</td><td>3</td><td>접속정보 조회·프로파일 관리</td></tr>
     <tr><td>스키마 introspection</td><td>6</td><td>테이블·컬럼·제약·드리프트 — <span class="tag read">read</span></td></tr>
     <tr><td>데이터 조회·품질 분석</td><td>9</td><td>샘플·프로파일·무결성·카디널리티 — <span class="tag read">read</span></td></tr>
     <tr><td>실행·반영</td><td>2</td><td>SQL 실행·DDL 반영 — <span class="tag draft">external</span> <span class="tag danger">승인</span></td></tr>
     <tr><td>참고 문서</td><td>4</td><td>DB 유형별 문법·자료형(정적, 연결 불요)</td></tr>
   </table>
-  <p class="small">전 툴 구현·등록 완료. 검증: <code>node --check js/agent_tools.js</code> 통과 · <code>run:</code> 참조 ↔ 함수 정의 63개 전부 매칭 · <code>AGENT_TOOL_DEFS.length === 63</code> · <code>PROXY_TOOL_CATALOG</code> 24. 인앱 자연어 호출 E2E는 사용자 검증 영역.</p>
+  <p class="small">전 툴 구현·등록 완료. 검증: <code>node --check js/agent_tools.js</code> 통과 · <code>run:</code> 참조 ↔ 함수 정의 65개 전부 매칭 · <code>AGENT_TOOL_DEFS.length === 65</code> · <code>PROXY_TOOL_CATALOG</code> 24. 인앱 자연어 호출 E2E는 사용자 검증 영역.</p>
 
   <!-- 2 -->
   <h2 id="class"><span class="n">2.</span>실행 분류(kind) — 호출 시 무엇이 일어나는가</h2>
@@ -120,7 +120,7 @@
   </table>
 
   <!-- 3 -->
-  <h2 id="client"><span class="n">3.</span>클라이언트 툴 <span class="small" style="font-weight:400">(63 · <code>js/agent_tools.js</code>)</span></h2>
+  <h2 id="client"><span class="n">3.</span>클라이언트 툴 <span class="small" style="font-weight:400">(65 · <code>js/agent_tools.js</code>)</span></h2>
 
   <h3 id="c-edit">3.1 엔티티·관계·속성 편집 <span class="cnt">15 · <span class="tag write">write</span></span></h3>
   <table>
@@ -179,9 +179,10 @@
     <tr><td><code>set_theme</code></td><td><span class="tag live">live</span></td><td>테마 변경(<code>applyTheme</code>). 선택지는 <code>list_themes</code>로 확인.</td><td>"라이트 테마로 바꿔줘"</td></tr>
   </table>
 
-  <h3 id="c-diagram">3.5 다이어그램·버전 <span class="cnt">6 · <span class="tag live">live/replace</span></span></h3>
+  <h3 id="c-diagram">3.5 다이어그램·버전 <span class="cnt">7 · <span class="tag live">live/replace</span></span></h3>
   <table>
     <tr><th>툴</th><th>종류</th><th>설명</th><th>검증 질의문</th></tr>
+    <tr><td><code>reverse_engineer_db</code></td><td><span class="tag write">write</span></td><td><b>리버스 엔지니어링 — 연결 DB 스키마로 ERD 자동 생성을 한 번에.</b> 운영 DB의 전체 스키마(테이블·뷰·FK)를 읽어 엔티티·관계·뷰메모를 빌드(메뉴 리버스 엔지니어링과 동일 결과). mode=new(기본)면 name 으로 새 다이어그램 생성·채움(같은 이름이면 그 다이어그램을 채움), append 면 현재에 추가. tables·keyword 로 일부만, toUpper 로 대문자. ※ create_diagram·fetch_db_schema·copy_entities·auto_layout 따로 호출 금지(이 툴이 조회→생성→배치까지). 사이드카 /schema — 데스크탑 전용.</td><td>"'HR' 다이어그램 만들고 리버스 엔지니어링 진행"</td></tr>
     <tr><td><code>create_diagram</code></td><td><span class="tag live">replace</span></td><td>새 다이어그램 생성 + 전환(초기 엔티티 옵션).</td><td>"'쇼핑몰' 다이어그램 만들어줘"</td></tr>
     <tr><td><code>switch_diagram</code></td><td><span class="tag live">replace</span></td><td>활성 다이어그램 전환.</td><td>"'회원관리' 다이어그램으로 전환해줘"</td></tr>
     <tr><td><code>rename_diagram</code></td><td><span class="tag live">live</span></td><td>다이어그램 이름 변경.</td><td>"현재 다이어그램 이름을 '주문시스템'으로 바꿔줘"</td></tr>
@@ -207,12 +208,13 @@
     <tr><td><code>import_json</code> <span class="tag danger">위험</span></td><td><span class="tag live">replace</span></td><td>JSON 스키마 가져오기(add/replace, <code>applyAISchema</code>).</td><td>"이 JSON 스키마 가져와줘"</td></tr>
   </table>
 
-  <h3 id="c-info">3.7 정보·표준사전·메타 <span class="cnt">9</span></h3>
+  <h3 id="c-info">3.7 정보·표준사전·메타 <span class="cnt">10</span></h3>
   <table>
     <tr><th>툴</th><th>종류</th><th>설명</th><th>검증 질의문</th></tr>
     <tr><td><code>describe_tool</code></td><td><span class="tag read">read</span></td><td>툴 자체 설명·파라미터 조회(특정 툴 또는 전체).</td><td>"create_entity 툴 설명해줘"</td></tr>
     <tr><td><code>lookup_std_term</code></td><td><span class="tag read">read</span></td><td>표준용어 조회(논리명 → 표준 abbr). 데스크탑 전용.</td><td>"'회원' 표준용어 찾아줘"</td></tr>
-    <tr><td><code>register_std_term</code></td><td><span class="tag write">write</span></td><td>표준용어 등록(논리명·abbr). 데스크탑 전용.</td><td>"'회원번호' 표준용어 등록해줘(abbr MBR_SN)"</td></tr>
+    <tr><td><code>register_std_term</code></td><td><span class="tag write">write</span></td><td>표준용어 <b>사전에 새 용어 등록</b>(논리명·abbr). <b>사전(DB)을 바꾼다 — ERD 컬럼 수정이 아님.</b> 점검 결과 미등록 컬럼을 자동 대량 등록 금지(사용자 명시 요청 시만). 데스크탑 전용.</td><td>"'회원번호' 표준용어 등록해줘(abbr MBR_SN)"</td></tr>
+    <tr><td><code>standardize_attribute_names</code></td><td><span class="tag write">write</span></td><td><b>표준용어 어긋난 컬럼 물리명을 표준 abbr로 직접 수정(한 번에).</b> 대상(또는 전체) 엔티티 컬럼 논리명을 표준사전에서 찾아 물리명≠abbr 이면 물리명을 abbr 로 고침. <code>generate_term_compliance</code>(점검)의 violations 를 1회 호출로 반영 — 컬럼마다 update_attribute 반복 불필요. 미등록 컬럼은 손대지 않고 보고만(자동 등록 안 함). 데스크탑 전용.</td><td>"표준용어 점검하고 어긋난 부분 직접 수정해줘"</td></tr>
     <tr><td><code>list_notes</code></td><td><span class="tag read">read</span></td><td>메모(V1·V2) 목록.</td><td>"메모 목록 보여줘"</td></tr>
     <tr><td><code>list_snapshots</code></td><td><span class="tag read">read</span></td><td>스냅샷 목록.</td><td>"스냅샷 목록 보여줘"</td></tr>
     <tr><td><code>list_themes</code></td><td><span class="tag read">read</span></td><td>사용 가능한 테마(key·이름·활성여부) 목록 — set_theme 전 선택지 파악.</td><td>"테마 종류 알려줘"</td></tr>

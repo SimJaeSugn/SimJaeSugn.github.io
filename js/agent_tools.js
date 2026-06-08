@@ -432,6 +432,55 @@ async function _agentToolRegisterStdTerm(draft, args) {
   return { ok: true, registered: { name, abbr }, id };
 }
 
+// 표준용어 준수 '직접 수정'(write·async) — 각 컬럼 논리명의 표준용어 abbr 과 물리명이 다르면
+// 물리명을 표준 abbr 로 바로 고친다. generate_term_compliance(점검)의 violations 를 한 번에 반영하는
+// 결정적 실행 툴이다. register_std_term(표준사전에 새 용어 추가)과 다르다 — 이 툴은 사전을 바꾸지 않고
+// ERD 컬럼 물리명만 표준에 맞춘다. 사전에 없는(미등록) 컬럼은 손대지 않고 보고만 한다(자동 등록 금지).
+// 데스크탑(사이드카) 전용.
+async function _agentToolStandardizeAttributeNames(draft, args) {
+  if (typeof stdLookupTerm !== 'function') return { ok: false, error: '표준용어사전을 사용할 수 없습니다(데스크탑 전용).' };
+  args = args || {};
+  const view = (draft && draft.entities) ? draft : _agentReadView(draft);
+  const ids = _agentLiveIds(view, args);
+  const hadSelector = !!(args.ids || args.entityIds || args.keyword || args.name || args.query || args.all || args.scope);
+  const targets = ids.length ? view.entities.filter(e => ids.includes(e.id)) : (hadSelector ? [] : view.entities);
+  if (!targets.length) return { ok: false, error: '대상 테이블이 없습니다(전체 또는 ids/keyword 지정).' };
+
+  const cap = Number(args.limit) || 300;
+  const updated = [], unregistered = [];
+  let checked = 0, alreadyOk = 0;
+  const cache = {};   // 논리명 → abbr|null (중복 조회 방지)
+  for (const e of targets) {
+    const tn = _agentNameOf(e);
+    for (const a of (e.attrs || [])) {
+      if (checked >= cap) break;
+      const logical = a.logicalName; if (!logical) continue;
+      checked++;
+      let abbr = cache[logical];
+      if (abbr === undefined) {
+        let term;
+        try { term = await stdLookupTerm(logical); } catch (err) { return { ok: false, error: '표준사전 조회 실패: ' + err.message }; }
+        abbr = (term && term.abbr) ? term.abbr : null;
+        cache[logical] = abbr;
+      }
+      if (!abbr) { unregistered.push({ table: tn, column: logical }); continue; }   // 미등록 — 손대지 않음
+      if (String(a.physicalName || '').toUpperCase() === String(abbr).toUpperCase()) { alreadyOk++; continue; }
+      const before = a.physicalName || '';
+      a.physicalName = abbr;   // 드래프트 직접 수정 → 프레임워크가 커밋
+      updated.push({ table: tn, column: logical, before, after: abbr });
+    }
+    if (checked >= cap) break;
+  }
+  return {
+    ok: true, checked, alreadyCompliant: alreadyOk,
+    updated: updated.length, changes: updated.slice(0, 60),
+    unregisteredCount: unregistered.length, unregistered: unregistered.slice(0, 30),
+    note: unregistered.length
+      ? ('미등록(unregistered) ' + unregistered.length + '개는 표준사전에 없는 컬럼이라 수정하지 않음(보고만). 사용자가 명시 요청할 때만 register_std_term 으로 등록.')
+      : undefined,
+  };
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 추가 클라이언트 툴 — 선택·하이라이트·뷰·일괄·분석·내보내기·다이어그램·섹션·메모·버전
 //   분류: read(상태변경 없음) · write-draft(엔티티/관계 드래프트) ·
@@ -1148,6 +1197,98 @@ function _agentToolCopyEntitiesToDiagram(draft, args) {
   return { ok: true, copied: srcEnts.length, relations: relCount, target: d.name, diagramId: d.id, created, activated: activate };
 }
 
+// 리버스 엔지니어링 — 연결된 운영 DB의 스키마를 읽어 ERD(엔티티·관계·뷰)를 한 번에 생성한다.
+// "리버스 엔지니어링"·"DB에서 ERD 만들어줘" 류는 이 툴 하나로 끝낸다(create_diagram·fetch_db_schema·
+// copy_entities 조합 불필요). UI 리버스 엔지니어링(reverse_engineer.js)의 빌더를 그대로 재사용하므로
+// 결과가 메뉴 기능과 동일하다. 사이드카 /schema 사용 — 데스크탑(Electron) 전용. async.
+async function _agentToolReverseEngineerDb(draft, args) {
+  args = args || {};
+  if (typeof diagrams === 'undefined' || typeof createEmptyDiagram !== 'function')
+    throw new Error('다이어그램 기능을 사용할 수 없습니다.');
+  if (typeof _buildEntitiesFromSchema !== 'function' || typeof _buildRelationsFromFks !== 'function')
+    throw new Error('리버스 엔지니어링 기능을 사용할 수 없습니다(reverse_engineer.js 미로드).');
+
+  // 1) 전체 스키마 조회(사이드카)
+  const base = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
+  let payload;
+  try {
+    const res = await fetch(base + '/schema', { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) {
+      let d = {}; try { d = await res.json(); } catch (e2) {}
+      return { ok: false, error: 'DB 스키마 조회 실패: ' + (d.error || ('HTTP ' + res.status)) + ' — DB 연결 설정을 먼저 확인하세요.' };
+    }
+    payload = await res.json();
+  } catch (e) {
+    return { ok: false, error: '사이드카에 연결할 수 없습니다(리버스 엔지니어링은 데스크탑 전용). ' + e.message };
+  }
+  let tables = (payload && payload.tables) || [];
+  let views  = (payload && payload.views)  || [];
+  let fks    = (payload && payload.fks)    || [];
+
+  // 2) 대상 필터(선택) — tables(배열) 또는 keyword. 없으면 전체.
+  const wanted = args.tables || args.tableNames || args.only;
+  if (Array.isArray(wanted) && wanted.length) {
+    const set = new Set(wanted.map(s => String(s).toLowerCase()));
+    tables = tables.filter(t => set.has(String(t.tableName).toLowerCase()));
+    views  = views.filter(v => set.has(String(v.viewName).toLowerCase()));
+  } else if (args.keyword) {
+    const kw = String(args.keyword).toLowerCase();
+    tables = tables.filter(t => String(t.tableName).toLowerCase().includes(kw));
+    views  = views.filter(v => String(v.viewName).toLowerCase().includes(kw));
+  }
+  const selSet = new Set([...tables.map(t => t.tableName), ...views.map(v => v.viewName)]);
+  fks = fks.filter(fk => selSet.has(fk.fromTable) && selSet.has(fk.toTable));
+  if (!tables.length && !views.length)
+    return { ok: false, error: '리버스 엔지니어링 대상 테이블이 없습니다(연결 DB에 테이블이 없거나 필터에 일치하는 것이 없음).' };
+
+  // 3) 엔티티·관계·뷰메모 빌드(UI 빌더 재사용)
+  const toUpper = !!(args.toUpper || args.uppercase);
+  const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views, toUpper);
+  const relations = _buildRelationsFromFks(fks, entityIdMap);
+  const viewNotes = (typeof _buildViewNotes === 'function') ? _buildViewNotes(views, entities, entityIdMap) : [];
+
+  // 4) 펜딩 드래프트·현재 워크스페이스 먼저 반영(유실 방지)
+  if (draft && draft.entities) _agentCommitDraft(draft);
+  if (typeof flushCurrentState === 'function') flushCurrentState();
+
+  // 5) 대상 다이어그램 결정 — mode: new(기본, 새 다이어그램) | append(현재에 추가)
+  const mode = String(args.mode || 'new').toLowerCase();
+  const wantName = String(args.name || args.diagramName || args.target || '').trim();
+  let d, created = false;
+
+  if (mode === 'append') {
+    d = (typeof getActiveDiagram === 'function') ? getActiveDiagram() : null;
+    if (!d) return { ok: false, error: '현재 다이어그램을 찾을 수 없습니다.' };
+    d.entities = d.entities || []; d.relations = d.relations || []; d.notesV2 = d.notesV2 || [];
+    // 위치 충돌 회피 — 기존 엔티티 최하단 아래로 신규 전체 오프셋
+    const baseY = d.entities.length
+      ? Math.max(...d.entities.map(e => e.y + (typeof entityHeight === 'function' ? entityHeight(e) : 120))) + 80 : 0;
+    if (baseY) { entities.forEach(e => { e.y += baseY; }); viewNotes.forEach(n => { n.y += baseY; }); }
+    d.entities.push(...entities);
+    relations.forEach(r => { if (!d.relations.find(x => x.from === r.from && x.to === r.to)) d.relations.push(r); });
+    d.notesV2.push(...viewNotes);
+  } else {
+    // new — name 이 기존 다이어그램과 일치하면 그 다이어그램을 채운다(에이전트가 미리 만든 빈 다이어그램
+    // 중복 생성 방지), 아니면 새로 만든다.
+    const existing = wantName ? _agentDiagFind(wantName) : null;
+    if (existing) { d = existing; }
+    else { d = createEmptyDiagram(wantName || 'DB 스키마 ERD'); diagrams.push(d); created = true; }
+    d.entities = entities; d.relations = relations; d.notesV2 = viewNotes;
+    d.sections = d.sections || []; d.notes = d.notes || []; d.collapsed = [];
+    activeDiagramId = d.id;
+  }
+
+  if (typeof loadDiagramIntoWorkspace === 'function') loadDiagramIntoWorkspace(d);
+  if (typeof renderDiagramPanel === 'function') renderDiagramPanel();
+  if (typeof updateZoomLabel === 'function') updateZoomLabel();
+  if (typeof render === 'function') render();
+  if (typeof saveState === 'function') saveState();
+  if (draft) { const cur = _agentCloneState(); draft.entities = cur.entities; draft.relations = cur.relations; draft.layout = null; }
+
+  return { ok: true, mode, diagram: d.name, diagramId: d.id, created,
+           tables: tables.length, views: views.length, relations: relations.length };
+}
+
 // 사용 가능한 테마 목록 — read. 테마 변경(set_theme) 전에 어떤 테마가 있는지 모를 때 조회.
 function _agentToolListThemes() {
   if (typeof THEMES === 'undefined') return { ok: false, error: '테마 정보를 사용할 수 없습니다.' };
@@ -1440,8 +1581,16 @@ const AGENT_TOOL_DEFS = [
     desc: '표준용어사전 조회', params: 'name(표준용어명/키워드)',
     detail: '표준용어사전(term)에서 name 과 정확 일치하는 표준용어({name, abbr, descr})와 유사 후보를 반환한다(읽기 전용). 속성/테이블 명명 전 표준 영문약어 확인용. 데스크탑(사이드카) 전용.' },
   { name: 'register_std_term', kind: 'write', danger: false, run: _agentToolRegisterStdTerm,
-    desc: '표준용어사전 등록', params: 'name(표준용어명), abbr(영문약어), descr?, domain_name?',
-    detail: '표준용어사전(term)에 새 용어를 등록한다(name·abbr 필수). 이미 있으면 중복 등록하지 않는다. 데스크탑(사이드카) 전용.' },
+    desc: '표준용어사전에 새 용어 등록(사전 자체 변경 — ERD 수정 아님)', params: 'name(표준용어명), abbr(영문약어), descr?, domain_name?',
+    detail: '표준용어사전(term)에 새 용어를 등록한다(name·abbr 필수). 이미 있으면 중복 등록하지 않는다. 데스크탑(사이드카) 전용. '
+            + '주의: 이 툴은 표준사전(DB)을 바꾼다 — ERD 컬럼명을 표준에 맞추는 "수정"이 아니다. 점검 결과의 미등록 컬럼을 자동으로 대량 등록하지 말 것. '
+            + 'ERD 컬럼 물리명을 표준 약어로 고치려면 standardize_attribute_names 를 쓴다. 사전 등록은 사용자가 "표준사전에 등록/추가"를 명시할 때만.' },
+  { name: 'standardize_attribute_names', kind: 'write', danger: false, run: _agentToolStandardizeAttributeNames,
+    desc: '표준용어 어긋난 컬럼 물리명을 표준 abbr로 직접 수정(한 번에)', params: 'ids?|keyword?|all?(대상 엔티티, 없으면 전체), limit?',
+    detail: '"표준용어 점검하고 어긋난 부분 직접 수정"·"표준에 맞춰줘" 류의 수정 단계를 이 툴 하나로 끝낸다. 대상(또는 전체) 엔티티의 각 컬럼 논리명을 표준용어사전에서 찾아, '
+            + '표준 영문약어(abbr)와 물리명이 다르면 물리명을 abbr 로 바로 고친다(컬럼마다 update_attribute 를 반복하지 말 것). '
+            + '사전에 없는 미등록 컬럼은 손대지 않고 보고만 한다(register_std_term 으로 자동 등록하지 않음). '
+            + '점검(generate_term_compliance) 후 이 툴을 한 번 호출하면 수정 완료 — 반복 호출·재점검 루프 불필요. 데스크탑(사이드카) 전용.' },
 
   // ── 추가 툴 (선택·일괄·분석·내보내기·다이어그램·섹션·메모·버전) ──
   { name: 'get_statistics', kind: 'read', danger: false, run: _agentToolGetStatistics,
@@ -1553,7 +1702,7 @@ const AGENT_TOOL_DEFS = [
     desc: 'ERD 종합 명세서 HTML 새 창', params: 'title?',
     detail: '요약 통계 + 엔티티 목록 + 관계 목록 + 정규화/이슈 진단을 묶은 종합 명세서를 새 창에 인쇄용 HTML로 연다. 클라 전용.' },
   { name: 'generate_term_compliance', kind: 'read', danger: false, run: _agentToolGenerateTermCompliance,
-    desc: '표준용어 준수 점검표', params: 'ids?|keyword?, limit?',
+    desc: '표준용어 준수 점검(위반은 standardize_attribute_names로 수정)', params: 'ids?|keyword?, limit?',
     detail: '각 컬럼 논리명의 표준용어 abbr 과 실제 물리명을 대조해 위반·미등록을 보고한다(표준사전 연동, 데스크탑 전용). "표준 안 지킨 컬럼 찾아줘".' },
   { name: 'export_data_dictionary_xlsx', kind: 'read', danger: false, run: _agentToolExportDataDictionaryXlsx,
     desc: '데이터 사전 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
@@ -1562,7 +1711,15 @@ const AGENT_TOOL_DEFS = [
     desc: '다이어그램 생성+엔티티 복사를 한 번에', params: 'target(대상 다이어그램명), ids?|keyword?|all?, createIfMissing?, activate?',
     detail: '"AA 다이어그램 만들고 (모든) 엔티티 복사" 류는 이 툴 하나로 끝낸다. 대상 다이어그램이 없으면 생성하고(createIfMissing 기본 true), 현재 엔티티를 거기로 복사한 뒤 그 다이어그램으로 전환한다(activate 기본 true). '
             + '중요: create_diagram 을 먼저 부르지 말 것 — 그러면 빈 다이어그램으로 전환돼 복사할 원본 엔티티를 잃는다(이 툴이 생성까지 한다). 또 엔티티 위치(x,y)를 그대로 복사하므로 복사 후 auto_layout(정렬)을 호출하지 말 것 — 재정렬 불필요. '
-            + 'ids/keyword 지정 시 그 대상만, 없거나 all:true 면 전체 복사. 복사 집합 내부 관계·FK 참조도 새 id로 이식하며 원본은 유지된다.' },
+            + 'ids/keyword 지정 시 그 대상만, 없거나 all:true 면 전체 복사. 복사 집합 내부 관계·FK 참조도 새 id로 이식하며 원본은 유지된다. '
+            + '주의: 이 툴은 ERD(다이어그램)끼리의 복사 전용이다. 연결된 운영 DB에서 ERD를 만들려면(리버스 엔지니어링) 이 툴이 아니라 reverse_engineer_db 를 쓴다.' },
+  { name: 'reverse_engineer_db', kind: 'write', danger: false, run: _agentToolReverseEngineerDb,
+    desc: '리버스 엔지니어링 — 연결 DB 스키마로 ERD 자동 생성', params: 'name?(새 다이어그램명), mode?(new|append), tables?[테이블명], keyword?, toUpper?',
+    detail: '"리버스 엔지니어링 해줘"·"연결된 DB에서 ERD 만들어줘"·"\'HR\' 다이어그램 만들고 리버스 엔지니어링" 류는 이 툴 하나로 끝낸다. '
+            + '운영 DB의 전체 스키마(테이블·뷰·FK)를 읽어 엔티티·관계·뷰메모를 만들어 다이어그램에 넣는다(메뉴의 리버스 엔지니어링과 동일 결과). '
+            + 'mode=new(기본)면 name 으로 새 다이어그램을 생성해 채우고(name 이 기존 다이어그램과 같으면 그 다이어그램을 채움), append 면 현재 다이어그램에 추가한다. '
+            + '중요: create_diagram·fetch_db_schema·copy_entities_to_diagram·create_entity 를 따로 부르지 말 것 — 이 툴이 스키마 조회부터 새 다이어그램 생성·엔티티/관계 생성·전환까지 한 번에 한다. 호출 후 auto_layout(정렬)도 부르지 말 것(빌더가 격자 배치). '
+            + 'tables(배열)·keyword 로 일부만, toUpper 로 명칭 대문자 변환. 사이드카 /schema 사용 — 데스크탑 전용.' },
   { name: 'list_themes', kind: 'read', danger: false, run: _agentToolListThemes,
     desc: '사용 가능한 테마 목록 조회', params: '(없음)',
     detail: '앱이 제공하는 모든 테마(key·이름·활성여부)를 반환한다. set_theme 로 변경하기 전에 어떤 테마가 있는지 모를 때 먼저 조회한다.' },
@@ -1640,7 +1797,9 @@ function _agentToolLabel(tool, args) {
     case 'export_data_dictionary_xlsx': return '데이터 사전 엑셀 다운로드';
     case 'generate_erd_report': return 'ERD 종합 명세서 생성(문서)';
     case 'generate_term_compliance': return '표준용어 준수 점검';
+    case 'standardize_attribute_names': return '표준용어 어긋난 컬럼 물리명 수정' + (sel ? ': ' + sel : '');
     case 'copy_entities_to_diagram': return '엔티티 복사 → ' + (a.target || a.toDiagram || a.diagram || a.name || '다이어그램');
+    case 'reverse_engineer_db': return '리버스 엔지니어링' + (a.name || a.diagramName ? ' → ' + (a.name || a.diagramName) : '') + (a.mode === 'append' ? '(현재에 추가)' : '');
     case 'list_themes': return '테마 목록 조회';
     case 'list_shortcuts': return '단축키 목록 조회';
     case 'list_menus': return '메뉴 정보 조회' + (a.keyword ? ': ' + a.keyword : '');

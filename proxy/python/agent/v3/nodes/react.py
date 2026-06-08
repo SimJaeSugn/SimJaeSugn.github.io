@@ -186,6 +186,12 @@ def react_node(state: AgentState) -> dict:
     if tool == "run_sql" and _INSERT_RE.match(args.get("sql") or "") and _prior_insert_succeeded(scratch):
         return _finish(loop, thought + " (이미 INSERT가 적용됨 — 중복 누적 삽입 방지로 종료. 검증은 SELECT로 수행)")
 
+    # 가드 ④: 표준용어 자동 대량 등록 방지 — register_std_term 은 매번 용어명이 달라
+    # 가드①(동일 args)을 빠져나간다. 점검 결과의 미등록 컬럼을 무차별 등록하는 루프를 막는다.
+    # (ERD 컬럼 표준화는 standardize_attribute_names 가 한다. 명시 요청한 소수 등록은 통과하도록 임계 2.)
+    if tool == "register_std_term" and sum(1 for e in scratch if e.get("tool") == "register_std_term") >= 2:
+        return _finish(loop, thought + " (표준용어 사전 등록 반복 감지 — 컬럼 표준화는 standardize_attribute_names 로 수행하며 사전 대량 등록은 중단)")
+
     # 승인 필요 판정: write/external/danger 툴은 실행 전 사용자 승인을 받는다(read/meta 면제)
     tdef = next((t for t in catalog if t.get("name") == tool), None)
     needs_approval = bool(tdef) and ((tdef.get("kind") in ("write", "external")) or bool(tdef.get("danger")))
