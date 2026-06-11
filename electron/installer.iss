@@ -1,5 +1,20 @@
 #define AppName      "AgenticERM"
-#define AppVersion   "1.0.0"
+; 버전 단일 원천: electron/package.json — build-desktop.ps1 이 /DAppVersion= 으로 주입.
+; /D 없이 직접 iscc 호출 시 빌드된 exe 메타데이터(ProductVersion)에서 파생(둘 다 package.json 유래).
+#ifndef AppVersion
+  #define ExeFile AddBackslash(SourcePath) + "dist\win-unpacked\AgenticERM.exe"
+  #if FileExists(ExeFile)
+    ; electron-builder 가 스탬프한 버전은 4자리(예: 1.2.0.0) — package.json 표기(1.2.0)에 맞춰 3자리로 트림
+    #define VerMajor
+    #define VerMinor
+    #define VerRev
+    #define VerBuild
+    #expr GetVersionComponents(ExeFile, VerMajor, VerMinor, VerRev, VerBuild)
+    #define AppVersion Str(VerMajor) + "." + Str(VerMinor) + "." + Str(VerRev)
+  #else
+    #pragma error "AppVersion 미지정 + win-unpacked 없음 — 2단계(npm run build:win) 먼저 실행하거나 /DAppVersion= 으로 호출"
+  #endif
+#endif
 #define AppPublisher "UXIS"
 #define ElectronDir  "dist\win-unpacked"
 

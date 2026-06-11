@@ -777,6 +777,11 @@ AgenticERM을 Windows 데스크탑 앱(.exe 설치파일)으로 빌드할 수 �
 > .\build-desktop.ps1
 > ```
 
+> **버전 관리(단일 원천)** — 버전은 `electron/package.json`의 `version` 한 곳에서만 관리합니다.
+> `build-desktop.ps1`이 이 값을 읽어 설치파일명에 주입(`iscc /DAppVersion=`)하고,
+> 사이드카 `/ping` 버전(`proxy/python/build.ps1`이 `_version.py` 생성)·exe 메타데이터(electron-builder)도 같은 원천에서 자동 파생됩니다.
+> `iscc`를 직접 호출하는 경우에는 2단계 산출물(`win-unpacked\AgenticERM.exe`)의 메타데이터에서 버전을 읽으므로 2단계 후에 실행하세요.
+
 **1단계 — Python 사이드카 빌드**
 
 ```powershell
@@ -799,7 +804,7 @@ npm run build:win
 
 ```powershell
 iscc electron\installer.iss
-# 결과: electron\dist\AgenticERM_Desktop_Setup_1.0.0.exe
+# 결과: electron\dist\AgenticERM_Desktop_Setup_{버전}.exe
 ```
 
 ### 포트
@@ -1107,8 +1112,12 @@ npm start           # 개발 모드 실행
 > **한 번에 빌드** — 프로젝트 루트에서 아래 스크립트를 실행하면 3단계가 순서대로 자동 실행됩니다.
 > ```powershell
 > .\build-desktop.ps1
-> # → electron\dist\AgenticERM_Desktop_Setup_1.0.0.exe
+> # → electron\dist\AgenticERM_Desktop_Setup_{버전}.exe
 > ```
+
+> **버전 관리(단일 원천)** — 버전은 `electron/package.json`의 `version` 한 곳에서만 관리합니다.
+> `build-desktop.ps1`이 설치파일명에 주입하고, 사이드카 `/ping` 버전·exe 메타데이터도 같은 원천에서 자동 파생됩니다.
+> 아래 3단계 `iscc` 직접 호출 시에는 2단계 산출물(win-unpacked exe)의 메타데이터에서 버전을 읽으므로 2단계 후에 실행하세요.
 
 **1단계 — Python 사이드카 빌드** (실행 위치: `proxy/python/`)
 
@@ -1137,7 +1146,7 @@ npm run build:win
 # electron/ 폴더로 이동했다면 루트로 돌아온 후 실행
 cd ..
 iscc electron\installer.iss
-# → electron\dist\AgenticERM_Desktop_Setup_1.0.0.exe
+# → electron\dist\AgenticERM_Desktop_Setup_{버전}.exe
 ```
 
 > **`iscc`를 찾지 못할 경우** — Inno Setup 설치 후 PATH에 등록되지 않았을 수 있다.
@@ -1159,7 +1168,7 @@ iscc electron\installer.iss
 |--------|------|
 | `proxy/python/dist/uxer-sidecar.exe` | Python 사이드카 (단일 exe, 55MB) |
 | `electron/dist/win-unpacked/` | 압축 해제형 앱 (테스트용) |
-| `electron/dist/AgenticERM_Desktop_Setup_1.0.0.exe` | 최종 설치파일 (126MB) |
+| `electron/dist/AgenticERM_Desktop_Setup_{버전}.exe` | 최종 설치파일 (126MB) |
 
 > 설치 시 UAC 관리자 권한 요청이 표시됩니다. 승인하면 `C:\Program Files\AgenticERM`에 설치되고 바탕화면 바로가기가 생성됩니다.
 

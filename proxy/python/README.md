@@ -37,6 +37,8 @@ python main.py --port 3737
 
 > Electron 빌드 시 `electron/package.json`의 `extraResources`가 이 파일을 자동으로 번들합니다.
 
+> `build.ps1`이 `electron/package.json`(버전 단일 원천)의 `version`으로 `_version.py`를 생성해 exe에 번들합니다 — `/ping` 응답의 `version`이 여기서 파생됩니다. 미생성 상태의 dev 실행(`python main.py`)에서는 `/ping`이 `"dev"`를 반환합니다.
+
 ---
 
 ## 지원 DB
@@ -125,8 +127,9 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 ```
 proxy/python/
 ├── main.py                ← FastAPI 앱 진입점 (포트 3737)
+├── _version.py            ← 빌드 시 build.ps1 이 생성(.gitignore) — /ping 버전 원천(electron/package.json 파생)
 ├── requirements.txt       ← 의존성 목록
-├── build.ps1              ← PyInstaller 빌드 스크립트
+├── build.ps1              ← PyInstaller 빌드 스크립트 (_version.py 생성 → onefile exe)
 ├── routers/
 │   ├── config.py          ← /config 라우터 (프로파일 CRUD)
 │   ├── execute.py         ← /execute, /execute/stream 라우터

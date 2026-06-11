@@ -45,6 +45,18 @@ if (Test-Path "venv\Scripts\Activate.ps1") {
     . "venv\Scripts\Activate.ps1"
 }
 
+# ── 버전 파생: electron/package.json(단일 원천) → _version.py (PyInstaller 번들 포함) ──
+# main.py 가 try-import 하므로 pyinstaller 호출 전에 생성해야 정적 분석으로 onefile 에 수집된다.
+# PS 5.1 의 Set-Content 기본 인코딩은 ANSI 가 아니라 환경 의존 — 파이썬 소스 보장 위해 Ascii 명시.
+$pkgPath = Join-Path $PSScriptRoot "..\..\electron\package.json"
+$sidecarVer = "dev"
+if (Test-Path $pkgPath) {
+    $sidecarVer = (Get-Content $pkgPath -Raw | ConvertFrom-Json).version
+}
+Set-Content -Path (Join-Path $PSScriptRoot "_version.py") `
+    -Value "VERSION = `"$sidecarVer`"" -Encoding Ascii
+Write-Host "[버전] _version.py 생성: VERSION = `"$sidecarVer`" (원천: electron/package.json)" -ForegroundColor Cyan
+
 # 갱신 검증용: 빌드 전 기존 exe 시각 기록
 $before = if (Test-Path $exe) { (Get-Item $exe).LastWriteTimeUtc } else { [datetime]::MinValue }
 

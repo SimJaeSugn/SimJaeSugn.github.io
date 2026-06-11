@@ -14,6 +14,7 @@ proxy/python/build/
 proxy/python/__pycache__/
 proxy/python/**/__pycache__/
 proxy/python/*.spec
+proxy/python/_version.py
 
 # Python 가상환경
 proxy/python/venv/

@@ -15,6 +15,13 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
 
+# 빌드 시 build.ps1 이 electron/package.json(버전 단일 원천)에서 생성하는 _version.py 로드.
+# dev 실행(생성 전)·파일 부재 시 "dev" 폴백 — 빌드 산출물만 실버전을 보고한다.
+try:
+    from _version import VERSION
+except ImportError:
+    VERSION = "dev"
+
 ALLOWED_ORIGINS = [
     "https://simjaesugn.github.io",
     "http://localhost",
@@ -66,7 +73,7 @@ except Exception as e:  # import 실패·반쪽 삭제 등
 
 @app.get("/ping")
 def ping():
-    return {"ok": True, "version": "1.0.0", "port": PORT}
+    return {"ok": True, "version": VERSION, "port": PORT}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=PORT)
