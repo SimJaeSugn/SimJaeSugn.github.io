@@ -65,7 +65,7 @@
   <h2>목차</h2>
   <a href="#overview">1. 개요</a>
   <a href="#class">2. 실행 분류(kind)</a>
-  <a href="#client">3. 클라이언트 툴 (65)</a>
+  <a href="#client">3. 클라이언트 툴 (66)</a>
   <a class="sub" href="#c-edit">3.1 편집</a>
   <a class="sub" href="#c-read">3.2 조회·분석</a>
   <a class="sub" href="#c-view">3.3 선택·뷰</a>
@@ -81,7 +81,7 @@
   <h1>에이전트 툴 카탈로그</h1>
   <div class="sub">UXERManager 에이전트(v1·v2·v3 공유)가 호출하는 전체 툴 — 기능 유형별 정리 · 대상 <code>js/agent_tools.js</code> · <code>proxy/python/agent/tools_proxy.py</code></div>
   <div class="meta">
-    <span><b>클라이언트 툴</b> 65 (<code>AGENT_TOOL_DEFS</code>)</span>
+    <span><b>클라이언트 툴</b> 66 (<code>AGENT_TOOL_DEFS</code>)</span>
     <span><b>프록시 툴</b> 24 (<code>PROXY_TOOL_CATALOG</code>)</span>
     <span><b>적용 범위</b> v1·v2·v3 공유 (frozen 모듈)</span>
   </div>
@@ -91,7 +91,7 @@
   <p>에이전트 툴은 <b>클라이언트 툴</b>(브라우저에서 ERD·UI 조작, <code>js/agent_tools.js</code>)과 <b>프록시 툴</b>(Python 사이드카에서 운영 DB 접근, <code>tools_proxy.py</code>) 두 레인으로 나뉜다. 둘 다 단일 소스(SSOT) 배열이라 <code>AGENT_TOOL_CATALOG</code>(플래너 노출)·실행 매핑·<code>describe_tool</code>이 자동 파생되며, <b>v1·v2·v3 에이전트가 동일 카탈로그를 공유</b>한다.</p>
   <table>
     <tr><th>레인</th><th>유형</th><th>수</th><th>비고</th></tr>
-    <tr><td rowspan="7"><b>클라이언트</b><br><span class="small">65</span></td><td>편집(엔티티·관계·속성)</td><td>15</td><td>CRUD·일괄·관계 자동화·복사 — <span class="tag write">write</span> 드래프트</td></tr>
+    <tr><td rowspan="7"><b>클라이언트</b><br><span class="small">66</span></td><td>편집(엔티티·관계·속성)</td><td>16</td><td>CRUD·일괄·관계 자동화·복사·DB코멘트 적용 — <span class="tag write">write</span> 드래프트</td></tr>
     <tr><td>조회·구조 분석</td><td>12</td><td>검색·구조·통계·정규화·메트릭 — <span class="tag read">read</span></td></tr>
     <tr><td>선택·하이라이트·뷰</td><td>5</td><td>순수 UI 제어 — <span class="tag read">read</span></td></tr>
     <tr><td>섹션·메모·정렬·테마</td><td>5</td><td>라이브 전역 — <span class="tag live">live</span></td></tr>
@@ -104,7 +104,7 @@
     <tr><td>실행·반영</td><td>2</td><td>SQL 실행·DDL 반영 — <span class="tag draft">external</span> <span class="tag danger">승인</span></td></tr>
     <tr><td>참고 문서</td><td>4</td><td>DB 유형별 문법·자료형(정적, 연결 불요)</td></tr>
   </table>
-  <p class="small">전 툴 구현·등록 완료. 검증: <code>node --check js/agent_tools.js</code> 통과 · <code>run:</code> 참조 ↔ 함수 정의 65개 전부 매칭 · <code>AGENT_TOOL_DEFS.length === 65</code> · <code>PROXY_TOOL_CATALOG</code> 24. 인앱 자연어 호출 E2E는 사용자 검증 영역.</p>
+  <p class="small">전 툴 구현·등록 완료. 검증: <code>node --check js/agent_tools.js</code> 통과 · <code>run:</code> 참조 ↔ 함수 정의 66개 전부 매칭 · <code>AGENT_TOOL_DEFS.length === 66</code> · <code>PROXY_TOOL_CATALOG</code> 24. 인앱 자연어 호출 E2E는 사용자 검증 영역.</p>
 
   <!-- 2 -->
   <h2 id="class"><span class="n">2.</span>실행 분류(kind) — 호출 시 무엇이 일어나는가</h2>
@@ -120,9 +120,9 @@
   </table>
 
   <!-- 3 -->
-  <h2 id="client"><span class="n">3.</span>클라이언트 툴 <span class="small" style="font-weight:400">(65 · <code>js/agent_tools.js</code>)</span></h2>
+  <h2 id="client"><span class="n">3.</span>클라이언트 툴 <span class="small" style="font-weight:400">(66 · <code>js/agent_tools.js</code>)</span></h2>
 
-  <h3 id="c-edit">3.1 엔티티·관계·속성 편집 <span class="cnt">15 · <span class="tag write">write</span></span></h3>
+  <h3 id="c-edit">3.1 엔티티·관계·속성 편집 <span class="cnt">16 · <span class="tag write">write</span></span></h3>
   <table>
     <tr><th>툴</th><th>종류</th><th>설명</th><th>검증 질의문</th></tr>
     <tr><td><code>create_entity</code></td><td><span class="tag write">write</span></td><td>새 엔티티(테이블) 생성. id(소문자 snake)·물리명(UPPER_SNAKE)·논리명(한글) 자동 정규화.</td><td>"회원 테이블 만들어줘"</td></tr>
@@ -140,6 +140,7 @@
     <tr><td><code>auto_detect_relationships</code></td><td><span class="tag write">write</span></td><td><code>*_ID</code> 패턴으로 FK 관계 자동 생성(기존 관계 보존).</td><td>"FK 패턴으로 관계 자동 연결해줘"</td></tr>
     <tr><td><code>duplicate_entity</code></td><td><span class="tag write">write</span></td><td>테이블 복제(컬럼 포함, 관계 제외).</td><td>"회원 테이블 복제해줘"</td></tr>
     <tr><td><code>copy_entities_to_diagram</code></td><td><span class="tag write">write</span></td><td><b>다이어그램 생성 + 복사 + 전환을 한 번에.</b> 선택(또는 전체) 엔티티를 target 으로 복사 — 없으면 생성, 복사 후 대상으로 전환(activate). 위치(x,y) 보존이라 <b>재정렬 불필요</b>, 관계·FK 참조도 새 id로 이식, 원본 유지. ※ create_diagram 선행·auto_layout 후행 금지(빈 전환·불필요 정렬 방지).</td><td>"AA 다이어그램 만들고 모든 엔티티 복사"</td></tr>
+    <tr><td><code>apply_db_comments</code></td><td><span class="tag write">write</span></td><td><b>DB 코멘트 → ERD 논리명·설명 일괄 적용을 한 번에(1회 호출 = 1회 승인).</b> 사이드카 <code>GET /schema/comments</code>로 연결 DB의 테이블·컬럼 코멘트를 일괄 조회해 대상(또는 선택/전체) 엔티티의 컬럼 logicalName(코멘트 첫 줄)·description(전문)과 테이블 논리명·설명을 갱신(물리명 대소문자 무시 매칭, 코멘트 없는 항목은 보존). onlyEmpty=true 면 빈 값만 채움, target(logical|description|both)으로 필드 제한. ※ run_select 로 information_schema 조회·컬럼별 update_attribute 반복 금지. 데스크탑 전용.</td><td>"선택한 엔티티의 DB 컬럼 코멘트를 논리명과 설명으로 적용해줘"</td></tr>
   </table>
 
   <h3 id="c-read">3.2 조회·검색·구조 분석 <span class="cnt">12 · <span class="tag read">read</span></span></h3>

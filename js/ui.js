@@ -2402,6 +2402,7 @@ const CMD_LIST = [
   { label: '테마 변경',      category: '설정', icon: '🎨', action: () => openThemeModal() },
   { label: '뷰 초기화',      category: '보기', icon: '↺',  action: () => resetView() },
   { label: '전체 맞춤',      category: '보기', icon: '⊟', scId: 'fitAll', action: () => fitAll() },
+  { label: '자동배치',       category: '보기', icon: '✨', action: () => autoArrange() },
   { label: '계층형 배치',    category: '보기', icon: '⋹', action: () => autoLayout('hierarchical') },
   { label: '격자형 배치',    category: '보기', icon: '⊞', action: () => autoLayout('grid') },
   { label: '원형 배치',      category: '보기', icon: '◯', action: () => autoLayout('circular') },

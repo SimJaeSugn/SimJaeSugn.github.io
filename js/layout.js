@@ -1082,3 +1082,462 @@ function alignEntities(type) {
   }
   render(); saveState();
 }
+
+// ── 자동배치 (스마트): FK 그래프 기반 계층 배치 + 고아 분리 + 선택 범위 ──
+let _arrangeRunning = false;
+let _arrangeDiagId = null;   // 진행 중 다이어그램 전환 감지용
+
+// 자동배치 시뮬레이션 상수 (결정적 — localStorage 미사용)
+const _ARRANGE_W = { crossE: 100, crossL: 30, len: 0.01, aspect: 400, waste: 150 };
+const _ARRANGE_DIRS    = ['LR', 'TB'];
+const _ARRANGE_SWEEPS  = [1, 3];
+const _ARRANGE_PADS    = [[80, 50], [60, 40], [100, 60]];
+const _ARRANGE_ASPECTS = [0, 16/9, 4/3];     // 0 = 캔버스 비율 사용
+const _ARRANGE_REFINE_MAX = 3;               // 국소 정련 라운드 상한
+const _ARRANGE_TIME_CAP   = 3000;            // ms 안전망 (1차 기준은 후보 수)
+const _ARRANGE_FRAME_MS   = 12;              // rAF 프레임당 평가 시간 예산
+
+function autoArrange() {
+  if (_arrangeRunning) { showToast('자동배치가 이미 진행 중입니다'); return; }
+  if (!ENTITIES.length) { showToast('배치할 엔티티가 없습니다'); return; }
+
+  // 범위: 2개 이상 다중 선택이면 선택분만, 아니면 전체
+  const selIds = selectedEntities.size >= 2 ? new Set(selectedEntities) : null;
+  const scopeEnts = selIds ? ENTITIES.filter(e => selIds.has(e.id)) : ENTITIES.slice();
+  const scopeRels = selIds
+    ? RELATIONS.filter(r => selIds.has(r.from) && selIds.has(r.to))
+    : RELATIONS.slice();
+
+  // 시뮬레이션은 비동기(rAF 청크)이므로 시작 전에 가드 선점 — 클론 평가라 화면 무변이
+  _arrangeRunning = true;
+  _arrangeDiagId = activeDiagramId;
+  showLayoutProgress('자동배치 — 배치 시뮬레이션 중...');
+
+  _arrangeSimulate(scopeEnts, scopeRels, selIds, best => {
+    hideLayoutProgress();
+    const targets = _arrangeBuildTargets(best, scopeEnts, selIds);
+
+    // 이동 엔티티에 접속된 관계선만 bend 초기화 (애니메이션 중 기본 라우팅 추종)
+    RELATIONS.forEach(r => {
+      if (!selIds || selIds.has(r.from) || selIds.has(r.to)) r.bend = null;
+    });
+
+    // 애니메이션 → 완료 시 관계선 최적화 (+fitAll 내부 saveState 1회)
+    _arrangeAnimate(targets, () => _arrangeOptimizeRelations());
+  });
+}
+
+// 시뮬레이션 클론 — entityHeight는 id(접힘 판정)·attrs.length만 읽으므로 클론에서 그대로 동작
+function _arrangeClone(scopeEnts) {
+  return scopeEnts.map(e => ({ id: e.id, attrs: e.attrs, x: 0, y: 0 }));
+}
+
+// 계층형 배치 (autoArrange 시뮬레이션 변형) — placeHierarchical 미러 + padX/padY·sweeps·dir 파라미터화
+function _arrangePlaceHier(ents, rels, ox, oy, opt) {
+  const padX = opt.padX, padY = opt.padY, sweeps = opt.sweeps || 1, dir = opt.dir || 'LR';
+  const children = {}, parents = {};
+  ents.forEach(e => { children[e.id] = []; parents[e.id] = []; });
+  rels.forEach(r => {
+    if (children[r.from]) children[r.from].push(r.to);
+    if (parents[r.to])    parents[r.to].push(r.from);
+  });
+  let roots = ents.filter(e => !parents[e.id].length).map(e => e.id);
+  if (!roots.length) roots = [ents[0].id];
+  const layer = {};
+  const q = [...roots];
+  roots.forEach(id => layer[id] = 0);
+  for (let qi = 0; qi < q.length; qi++) {
+    const id = q[qi];
+    (children[id]||[]).forEach(cid => {
+      if (layer[cid] === undefined) { layer[cid] = layer[id]+1; q.push(cid); }
+    });
+  }
+  ents.forEach(e => { if (layer[e.id] === undefined) layer[e.id] = 0; });
+  const groups = {};
+  ents.forEach(e => { const l = layer[e.id]; (groups[l]=groups[l]||[]).push(e); });
+  const layers = Object.keys(groups).map(Number).sort((a,b)=>a-b);
+
+  // 층 내 위치(pos): LR=세로 누적(entityHeight+padY), TB=가로 누적(W+padX)
+  const pos = {};
+  const stepOf = e => dir === 'TB' ? W + padX : entityHeight(e) + padY;
+  const relayout = l => { let t = 0; groups[l].forEach(e => { pos[e.id] = t; t += stepOf(e); }); };
+  const sortBy = (l, nbr) => {
+    groups[l].sort((a, b) => {
+      const avg = e => {
+        const ns = nbr[e.id].filter(id => pos[id] !== undefined);
+        return ns.length ? ns.reduce((s,id) => s+pos[id], 0)/ns.length : Infinity;
+      };
+      const va = avg(a), vb = avg(b);
+      return va === vb ? 0 : va - vb;   // 동률 0 — 안정 정렬로 현 순서 유지(결정적)
+    });
+  };
+
+  // Barycenter 하향 1회 (원본 미러: 이전 레이어 부모 평균 기준)
+  layers.forEach((l, li) => { if (li > 0) sortBy(l, parents); relayout(l); });
+
+  // 추가 스윕: 상향(children 평균)·하향(parents 평균) 교대
+  for (let s = 1; s < sweeps; s++) {
+    const down = (s % 2 === 0);
+    const seq = down ? layers : [...layers].reverse();
+    seq.forEach(l => { sortBy(l, down ? parents : children); relayout(l); });
+  }
+
+  if (dir === 'TB') {
+    // 전치: 레이어=가로 행(y 진행), 층 내 진행=x, 행 높이=층 내 최대 entityHeight
+    const rowW = l => groups[l].length * (W + padX) - padX;
+    const maxW = Math.max(...layers.map(rowW));
+    let curY = oy;
+    layers.forEach(l => {
+      const rw = rowW(l);
+      let curX = ox + Math.max(0, (maxW - rw) / 2);
+      let rh = 0;
+      groups[l].forEach(e => { e.x = curX; e.y = curY; curX += W + padX; rh = Math.max(rh, entityHeight(e)); });
+      curY += rh + padY;
+    });
+    return { w: maxW, h: curY - oy - padY };
+  }
+
+  // LR: 레이어=세로 컬럼(x 진행), 컬럼 높이 계산 후 세로 중앙 정렬
+  const colH = l => groups[l].reduce((s,e) => s+entityHeight(e)+padY, -padY);
+  const maxH = Math.max(...layers.map(colH));
+  let curX = ox;
+  layers.forEach(l => {
+    const ch = colH(l);
+    let curY = oy + Math.max(0, (maxH - ch) / 2);
+    groups[l].forEach(e => { e.x = curX; e.y = curY; curY += entityHeight(e) + padY; });
+    curX += W + padX;
+  });
+  return { w: curX - ox - padX, h: maxH };
+}
+
+// 셸프(행) 패킹 — 블록을 입력 순서(크기 내림차순)대로 좌→우 채우고 목표폭 초과 시 줄바꿈 (결정적)
+function _arrangeShelfPack(blocks, targetW) {
+  const COMP_PAD = 120;
+  let ox = 0, oy = 0, rowH = 0, packW = 0;
+  blocks.forEach(b => {
+    if (ox > 0 && ox + b.w > targetW) { oy += rowH + COMP_PAD; ox = 0; rowH = 0; }
+    b.x = ox; b.y = oy;
+    ox += b.w + COMP_PAD;
+    rowH = Math.max(rowH, b.h);
+    packW = Math.max(packW, b.x + b.w);
+  });
+  return { w: packW, h: blocks.length ? oy + rowH : 0 };
+}
+
+// 후보 1개의 전체 좌표 산출 (클론 mutate — 화면 무관) → posMap 캡처
+function _arrangePlaceCandidate(clones, rels, comps, opt) {
+  const COMP_PAD = 120;
+  const clusters = comps.filter(c => c.length >= 2);
+  const orphans  = comps.filter(c => c.length === 1).map(c => c[0]);
+
+  // 클러스터별 블록-로컬 배치 (comps 순서 = findComponents 크기 내림차순, 결정적)
+  const blocks = clusters.map(comp => {
+    const ids = new Set(comp.map(e => e.id));
+    const compRels = rels.filter(r => ids.has(r.from) && ids.has(r.to));
+    const { w, h } = _arrangePlaceHier(comp, compRels, 0, 0, opt);
+    return { ents: comp, w, h, x: 0, y: 0 };
+  });
+
+  // 목표폭 = max(√(총면적×aspect), 최대 블록폭) → 2D 균형 셸프 패킹
+  const aspect = opt.packAspect ||
+    (typeof canvas !== 'undefined' && canvas.width && canvas.height ? canvas.width / canvas.height : 0) || 16/9;
+  const area = blocks.reduce((s, b) => s + b.w * b.h, 0);
+  const targetW = Math.max(Math.sqrt(area * aspect), ...blocks.map(b => b.w), 0);
+  const pack = _arrangeShelfPack(blocks, targetW);
+  blocks.forEach(b => b.ents.forEach(e => { e.x += b.x; e.y += b.y; }));
+
+  // 고아 하단 격자 (전체 패킹 폭 기준 열 수, 배열 순서 그대로 — 결정적)
+  if (orphans.length) {
+    let gy = blocks.length ? pack.h + COMP_PAD + 60 : 0;
+    const cols = blocks.length
+      ? Math.max(1, Math.floor((pack.w + opt.padX) / (W + opt.padX)))
+      : Math.max(1, Math.ceil(Math.sqrt(orphans.length)));
+    let rowH = 0;
+    orphans.forEach((e, i) => {
+      const col = i % cols;
+      if (i > 0 && col === 0) { gy += rowH + opt.padY; rowH = 0; }
+      e.x = col * (W + opt.padX);
+      e.y = gy;
+      rowH = Math.max(rowH, entityHeight(e));
+    });
+  }
+
+  return { opt, posMap: new Map(clones.map(e => [e.id, { x: e.x, y: e.y }])) };
+}
+
+// 세그먼트(p1→p2) × 사각형 내부 통과 판정 — Liang-Barsky 클리핑 (순수 함수, 전역 무의존)
+function _arrangeSegHitsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1, dy = y2 - y1;
+  const p = [-dx, dx, -dy, dy], q = [x1 - rx, rx + rw - x1, y1 - ry, ry + rh - y1];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) { if (q[i] < 0) return false; continue; }
+    const r = q[i] / p[i];
+    if (p[i] < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+    else          { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return t0 < t1;   // 내부를 실제로 지나는 경우만 (접점 제외)
+}
+
+// 세그먼트 쌍 교차 판정 — orientation (proper crossing만, 순수 함수)
+function _arrangeSegsCross(a, b) {
+  const o = (px, py, qx, qy, rx, ry) => {
+    const v = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+    return v > 0 ? 1 : v < 0 ? -1 : 0;
+  };
+  const o1 = o(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1);
+  const o2 = o(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2);
+  const o3 = o(b.x1, b.y1, b.x2, b.y2, a.x1, a.y1);
+  const o4 = o(b.x1, b.y1, b.x2, b.y2, a.x2, a.y2);
+  return o1 !== o2 && o3 !== o4 && o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0;
+}
+
+// 배치 품질 점수 (낮을수록 좋음) — 직선(중심↔중심) 근사: 관통·선교차·총길이·종횡비·공백률
+function _arrangeScore(clones, rels, hMap) {
+  const ctr = new Map(clones.map(e => [e.id, { x: e.x + W / 2, y: e.y + hMap.get(e.id) / 2 }]));
+
+  // 세그먼트 수집 — 자기참조(from==to) 제외, 중복 관계는 길이만 계상하고 교차 판정 제외
+  const segs = [];
+  const seen = new Set();
+  let totalLen = 0;
+  rels.forEach(r => {
+    if (r.from === r.to) return;
+    const a = ctr.get(r.from), b = ctr.get(r.to);
+    if (!a || !b) return;
+    totalLen += Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    const key = r.from < r.to ? r.from + '|' + r.to : r.to + '|' + r.from;
+    if (seen.has(key)) return;
+    seen.add(key);
+    segs.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, from: r.from, to: r.to });
+  });
+
+  // crossE: 세그 × 양끝 외 엔티티 AABB 관통
+  let crossE = 0;
+  segs.forEach(s => {
+    clones.forEach(e => {
+      if (e.id === s.from || e.id === s.to) return;
+      if (_arrangeSegHitsRect(s.x1, s.y1, s.x2, s.y2, e.x, e.y, W, hMap.get(e.id))) crossE++;
+    });
+  });
+
+  // crossL: 세그 쌍 교차 (끝 엔티티 공유 쌍 제외)
+  let crossL = 0;
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const a = segs[i], b = segs[j];
+      if (a.from === b.from || a.from === b.to || a.to === b.from || a.to === b.to) continue;
+      if (_arrangeSegsCross(a, b)) crossL++;
+    }
+  }
+
+  // bbox → 종횡비 편차(캔버스 비율 기준)·공백률
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, entArea = 0;
+  clones.forEach(e => {
+    const h = hMap.get(e.id);
+    x1 = Math.min(x1, e.x); y1 = Math.min(y1, e.y);
+    x2 = Math.max(x2, e.x + W); y2 = Math.max(y2, e.y + h);
+    entArea += W * h;
+  });
+  const bw = Math.max(1, x2 - x1), bh = Math.max(1, y2 - y1);
+  const targetAspect = (typeof canvas !== 'undefined' && canvas.width && canvas.height)
+    ? canvas.width / canvas.height : 16/9;
+  const aspectDev = Math.abs(Math.log((bw / bh) / targetAspect));
+  const waste = Math.max(0, 1 - entArea / (bw * bh));
+
+  const total = crossE * _ARRANGE_W.crossE + crossL * _ARRANGE_W.crossL +
+    totalLen * _ARRANGE_W.len + aspectDev * _ARRANGE_W.aspect + waste * _ARRANGE_W.waste;
+  return { total, crossE, crossL, totalLen, aspectDev, waste };
+}
+
+// 후보 paramSet 열거 (2×2×3×3 = 36, 고정 순서 — 결정적)
+function _arrangeCandidates() {
+  const out = [];
+  _ARRANGE_DIRS.forEach(dir =>
+    _ARRANGE_SWEEPS.forEach(sweeps =>
+      _ARRANGE_PADS.forEach(pad =>
+        _ARRANGE_ASPECTS.forEach(packAspect =>
+          out.push({ dir, sweeps, padX: pad[0], padY: pad[1], packAspect })))));
+  return out;
+}
+
+function _arrangeOptKey(o) {
+  return o.dir + '|' + o.sweeps + '|' + o.padX + '|' + o.padY + '|' + o.packAspect;
+}
+
+// 국소 정련 이웃: best의 pad ±10 변형 4종 (결정적)
+function _arrangeNeighbors(opt) {
+  return [[10, 0], [-10, 0], [0, 10], [0, -10]]
+    .map(d => Object.assign({}, opt, { padX: opt.padX + d[0], padY: opt.padY + d[1] }))
+    .filter(o => o.padX >= 20 && o.padY >= 20);
+}
+
+// 시뮬레이션 본체 — rAF 청크: 후보 배치(시뮬레이션)→점수(검증)→best 교체(재배치 채택)→국소 정련
+function _arrangeSimulate(scopeEnts, scopeRels, selIds, onBest) {
+  const clones = _arrangeClone(scopeEnts);
+  const comps = findComponents(clones, scopeRels);   // 전 후보 공유 1회 (id 기반이라 클론 OK)
+  const hMap = new Map(clones.map(e => [e.id, entityHeight(e)]));
+  const queue = _arrangeCandidates();
+  const tried = new Set(queue.map(_arrangeOptKey));
+  const totalEst = queue.length + 4 * _ARRANGE_REFINE_MAX;
+  let best = null, evald = 0, refineRound = 0, refineBase = Infinity;
+  const t0 = performance.now();
+
+  function step() {
+    if (activeDiagramId !== _arrangeDiagId) {        // 다이어그램 전환 가드 (기존 패턴 미러)
+      hideLayoutProgress(); _arrangeRunning = false; return;
+    }
+    try {
+      const fStart = performance.now();
+      while (queue.length && performance.now() - fStart < _ARRANGE_FRAME_MS) {
+        const opt = queue.shift();
+        const cand = _arrangePlaceCandidate(clones, scopeRels, comps, opt);
+        cand.score = _arrangeScore(clones, scopeRels, hMap);            // 검증
+        if (!best || cand.score.total < best.score.total) best = cand;  // 동점 시 선착순(<)
+        evald++;
+        if (performance.now() - t0 > _ARRANGE_TIME_CAP) { queue.length = 0; break; } // 시간 안전망
+      }
+      updateLayoutProgress(Math.min(90, Math.round(evald / totalEst * 90)),
+        `후보 ${evald}/${totalEst} — 최고점 ${best ? best.score.total.toFixed(0) : '-'}`);
+      if (queue.length) { requestAnimationFrame(step); return; }
+
+      // 국소 정련: 직전 라운드 대비 개선이 있을 때만 (라운드 상한 + 시간 안전망)
+      if (refineRound < _ARRANGE_REFINE_MAX && best && best.score.total < refineBase &&
+          performance.now() - t0 <= _ARRANGE_TIME_CAP) {
+        const nbrs = _arrangeNeighbors(best.opt).filter(o => !tried.has(_arrangeOptKey(o)));
+        if (nbrs.length) {
+          refineBase = best.score.total;
+          refineRound++;
+          nbrs.forEach(o => tried.add(_arrangeOptKey(o)));
+          queue.push(...nbrs);
+          requestAnimationFrame(step);
+          return;
+        }
+      }
+      onBest(best);                                  // → targets 확정 → 애니메이션
+    } catch (err) {
+      hideLayoutProgress(); _arrangeRunning = false; throw err;
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// best posMap → 실좌표 targets: 원점(전체 40,40 / 부분 선택영역 좌상단) + 부분 배치 y-시프트 충돌 회피
+function _arrangeBuildTargets(best, scopeEnts, selIds) {
+  let ox = 40, oy = 40;
+  if (selIds) {
+    ox = Math.min(...scopeEnts.map(e => e.x));
+    oy = Math.min(...scopeEnts.map(e => e.y));
+  }
+
+  // 부분 배치 충돌 회피: 비선택 엔티티와 겹치는 동안 블록 전체 y 시프트
+  let shiftY = 0;
+  if (selIds) {
+    const others = ENTITIES.filter(e => !selIds.has(e.id));
+    const hit = () => {
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+      scopeEnts.forEach(e => {
+        const p = best.posMap.get(e.id);
+        x1 = Math.min(x1, ox + p.x); y1 = Math.min(y1, oy + p.y + shiftY);
+        x2 = Math.max(x2, ox + p.x + W); y2 = Math.max(y2, oy + p.y + shiftY + entityHeight(e));
+      });
+      return others.some(o => {
+        const oh = entityHeight(o);
+        return x1 < o.x + W + GAP && x2 > o.x - GAP &&
+               y1 < o.y + oh + GAP && y2 > o.y - GAP;
+      });
+    };
+    for (let guard = 0; guard < 200 && hit(); guard++) shiftY += 40;
+  }
+
+  return new Map(scopeEnts.map(e => {
+    const p = best.posMap.get(e.id);
+    return [e.id, { x: Math.round(ox + p.x), y: Math.round(oy + p.y + shiftY) }];
+  }));
+}
+
+// 이동 애니메이션 (~450ms easeInOutCubic)
+function _arrangeAnimate(targets, onDone) {
+  const DUR = 450;
+  const moves = [];
+  targets.forEach((to, id) => {
+    const e = ENTITIES.find(en => en.id === id);
+    if (e && (e.x !== to.x || e.y !== to.y))
+      moves.push({ e, x0: e.x, y0: e.y, x1: to.x, y1: to.y });
+  });
+  if (!moves.length) { onDone(); return; }
+  const t0 = performance.now();
+  function frame(now) {
+    if (activeDiagramId !== _arrangeDiagId) { _arrangeRunning = false; return; } // 전환 시 중단 (다른 다이어그램 오염 방지)
+    const t = Math.min(1, (now - t0) / DUR);
+    const k = t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; // easeInOutCubic
+    moves.forEach(m => { m.e.x = m.x0 + (m.x1 - m.x0) * k; m.e.y = m.y0 + (m.y1 - m.y0) * k; });
+    render();
+    if (t < 1) requestAnimationFrame(frame);
+    else { moves.forEach(m => { m.e.x = m.x1; m.e.y = m.y1; }); onDone(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+// 마무리 관계선 최적화 — _runAutoOptimizeRelations 단계 미러, 마무리만 fitAll+toast
+function _arrangeOptimizeRelations() {
+  const NUDGE = 12, TOL = 2, MAX_PASS = 80, MAX_ITER = 12;
+  try {
+    showLayoutProgress('자동배치 — 관계선 최적화 중...');
+
+    // 면 분산 — 수렴까지 반복
+    updateLayoutProgress(5, '면 분산 중...');
+    for (let iter = 0; iter < MAX_ITER; iter++) {
+      const before = RELATIONS.map(r => JSON.stringify(r.bend));
+      _runFaceSpacingPass();
+      const after = RELATIONS.map(r => JSON.stringify(r.bend));
+      if (before.every((s, i) => s === after[i])) break;
+    }
+
+    // 엔티티 관통 보정 — 수렴까지 반복
+    updateLayoutProgress(18, '엔티티 관통 보정 중...');
+    for (let iter = 0; iter < MAX_ITER; iter++) {
+      const before = RELATIONS.map(r => JSON.stringify(r.bend));
+      RELATIONS.forEach(rel => _fixEntityCrossingsForRel(rel));
+      const after = RELATIONS.map(r => JSON.stringify(r.bend));
+      if (before.every((s, i) => s === after[i])) break;
+    }
+
+    updateLayoutProgress(32, '겹침 탐색 중...');
+    render();
+  } catch (err) {
+    hideLayoutProgress();
+    _arrangeRunning = false;
+    throw err;
+  }
+
+  // 선 겹침 nudge — rAF 루프
+  let pass = 0;
+  function iterate() {
+    if (activeDiagramId !== _arrangeDiagId) { hideLayoutProgress(); _arrangeRunning = false; return; } // 전환 시 중단
+    let overlaps;
+    try {
+      pass++;
+      overlaps = _nudgeOverlapPass(NUDGE, TOL);
+      const pct = 32 + Math.round(pass / MAX_PASS * 66);
+      updateLayoutProgress(pct, `패스 ${pass} / ${MAX_PASS}  —  겹치는 선 ${overlaps}개`);
+      render();
+    } catch (err) {
+      hideLayoutProgress();
+      _arrangeRunning = false;
+      throw err;
+    }
+
+    if (overlaps === 0 || pass >= MAX_PASS) {
+      hideLayoutProgress();
+      _arrangeRunning = false;
+      RELATIONS.forEach(rel => _v2SimplifyWpts(rel)); // 마무리 단순화: 공선 꺾임점 제거 → 최단화
+      fitAll(); // 전체 맞춤 + 내부 saveState 1회 (유일한 undo 스냅샷)
+      showToast(overlaps === 0
+        ? `자동배치 완료 (${pass}패스)`
+        : `자동배치 완료 (잔여 겹침 ${overlaps}개)`);
+    } else {
+      requestAnimationFrame(iterate);
+    }
+  }
+  requestAnimationFrame(iterate);
+}

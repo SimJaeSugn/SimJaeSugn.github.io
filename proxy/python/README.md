@@ -72,6 +72,7 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | POST | /execute/stream | SQL SSE 스트림 |
 | GET | /schema/tables | 테이블·뷰 목록 |
 | GET | /schema | 전체 스키마 (테이블·뷰·FK) |
+| GET | /schema/comments | 테이블·컬럼 코멘트 (에이전트 apply_db_comments 용) |
 | POST | /agent/stream | 자연어 질의 → 그래프 실행 SSE (meta·token·interrupt·done·error) — Python 프록시 전용 |
 | POST | /agent/resume | interrupt 결과 회신 → 그래프 재개 SSE (툴 실행 위임 루프) |
 | GET | /agent/key | OpenAI 키 설정 여부 |

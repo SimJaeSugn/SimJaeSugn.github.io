@@ -381,3 +381,130 @@ async def get_schema():
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── 코멘트 쿼리 (테이블·컬럼) — GET /schema/comments 전용, 기존 쿼리 무변경 ──
+
+def _pg_table_comments(schema):
+    return f"""
+SELECT c.relname AS table_name, obj_description(c.oid, 'pg_class') AS table_comment
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = '{schema}' AND c.relkind IN ('r','p','v','m')
+  AND obj_description(c.oid, 'pg_class') IS NOT NULL
+"""
+
+
+def _pg_column_comments(schema):
+    return f"""
+SELECT c.relname AS table_name, a.attname AS column_name,
+       col_description(c.oid, a.attnum) AS column_comment
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+WHERE n.nspname = '{schema}' AND c.relkind IN ('r','p','v','m')
+  AND col_description(c.oid, a.attnum) IS NOT NULL
+"""
+
+
+MY_TABLE_COMMENTS = """
+SELECT table_name, table_comment
+FROM information_schema.tables
+WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
+  AND table_comment IS NOT NULL AND table_comment != ''
+"""
+
+MY_COLUMN_COMMENTS = """
+SELECT table_name, column_name, column_comment
+FROM information_schema.columns
+WHERE table_schema = DATABASE() AND column_comment IS NOT NULL AND column_comment != ''
+"""
+
+MS_TABLE_COMMENTS = """
+SELECT t.name AS table_name, CAST(ep.value AS NVARCHAR(MAX)) AS table_comment
+FROM sys.extended_properties ep
+JOIN (SELECT object_id, name FROM sys.tables UNION ALL SELECT object_id, name FROM sys.views) t
+  ON ep.major_id = t.object_id
+WHERE ep.name = 'MS_Description' AND ep.class = 1 AND ep.minor_id = 0
+"""
+
+MS_COLUMN_COMMENTS = """
+SELECT t.name AS table_name, c.name AS column_name,
+       CAST(ep.value AS NVARCHAR(MAX)) AS column_comment
+FROM sys.extended_properties ep
+JOIN (SELECT object_id, name FROM sys.tables UNION ALL SELECT object_id, name FROM sys.views) t
+  ON ep.major_id = t.object_id
+JOIN sys.columns c ON ep.major_id = c.object_id AND ep.minor_id = c.column_id
+WHERE ep.name = 'MS_Description' AND ep.class = 1 AND ep.minor_id > 0
+"""
+
+ORA_TABLE_COMMENTS = """
+SELECT table_name, comments AS table_comment
+FROM user_tab_comments WHERE comments IS NOT NULL
+"""
+
+ORA_COLUMN_COMMENTS = """
+SELECT table_name, column_name, comments AS column_comment
+FROM user_col_comments WHERE comments IS NOT NULL
+"""
+
+
+def _get_comment_queries(db_type: str, schema: str = "public"):
+    if db_type == "postgres":
+        sch = _pg_validate_schema(schema)
+        return _pg_table_comments(sch), _pg_column_comments(sch)
+    if db_type == "mysql":
+        return MY_TABLE_COMMENTS, MY_COLUMN_COMMENTS
+    if db_type == "mssql":
+        return MS_TABLE_COMMENTS, MS_COLUMN_COMMENTS
+    if db_type == "oracle":
+        return ORA_TABLE_COMMENTS, ORA_COLUMN_COMMENTS
+    raise ValueError(f"지원하지 않는 DB 타입: {db_type}")
+
+
+def _build_comments(table_rows, col_rows) -> dict:
+    table_map = {}
+
+    def _ent(name):
+        if name not in table_map:
+            table_map[name] = {"tableName": name, "comment": None, "columns": []}
+        return table_map[name]
+
+    for raw in table_rows:
+        r = _norm(raw)
+        name = _s(r.get("table_name"))
+        cm = _s(r.get("table_comment"))
+        if not name or not (cm or "").strip():
+            continue
+        _ent(name)["comment"] = cm
+
+    for raw in col_rows:
+        r = _norm(raw)
+        name = _s(r.get("table_name"))
+        col = _s(r.get("column_name"))
+        cm = _s(r.get("column_comment"))
+        if not name or not col or not (cm or "").strip():
+            continue
+        _ent(name)["columns"].append({"columnName": col, "comment": cm})
+
+    return {"tables": list(table_map.values())}
+
+
+# ── GET /schema/comments — 테이블·컬럼 코멘트(에이전트 apply_db_comments 용) ──
+
+@router.get("/comments")
+async def get_comments():
+    config = load_config()
+    if not config:
+        raise HTTPException(status_code=400, detail="접속정보가 설정되지 않았습니다.")
+    try:
+        table_q, col_q = _get_comment_queries(config["dbType"], config.get("schema") or "public")
+        adapter = get_adapter(config["dbType"])
+        import asyncio
+        t_result, c_result = await asyncio.gather(
+            adapter.execute(config, table_q),
+            adapter.execute(config, col_q),
+        )
+        return _build_comments(t_result.get("rows") or [], c_result.get("rows") or [])
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

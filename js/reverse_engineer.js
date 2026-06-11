@@ -236,6 +236,7 @@ async function _runReverseEngineerStep2() {
 
     const toUpper = document.getElementById('reToUpper')?.checked ?? false;
     const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views, toUpper);
+    _markFkColumnsFromSchema(entities, entityIdMap, fks, toUpper);
     const relations = _buildRelationsFromFks(fks, entityIdMap);
     const viewNotes = _buildViewNotes(views, entities, entityIdMap);
 
@@ -273,6 +274,10 @@ async function _runReverseEngineerStep2() {
         if (idRemap[r.from]) r.from = idRemap[r.from];
         if (idRemap[r.to])   r.to   = idRemap[r.to];
       });
+      // FK 컬럼 ref 의 부모 엔티티 id 재매핑 (자기참조 포함)
+      entities.forEach(e => (e.attrs || []).forEach(a => {
+        if (a.ref && a.ref.entity && idRemap[a.ref.entity]) a.ref = { ...a.ref, entity: idRemap[a.ref.entity] };
+      }));
       // 위치 충돌 회피 — 기존 엔티티 최하단 아래로 전체 오프셋
       const baseY = (d.entities && d.entities.length)
         ? Math.max(...d.entities.map(e => e.y + entityHeight(e))) + 80
@@ -408,16 +413,45 @@ function _buildEntitiesFromSchema(tables, views, toUpper = false) {
 }
 
 // ── 관계 객체 배열 생성 ───────────────────────────────────────────
+// 앱 규약: rel.from = 부모(참조받는 쪽), rel.to = 자식(FK 보유) — entities.js autoFK·import.js와 동일.
+// fks 행은 FK "컬럼"당 1행(복합 FK = 여러 행)이므로 (from,to) 쌍으로 dedup.
+// 자기참조 FK(fromTable===toTable)는 관계를 만들지 않는다 — FK 컬럼 마킹은 유지.
 function _buildRelationsFromFks(fks, entityIdMap) {
   const relations = [];
+  const seen = new Set();
   for (const fk of fks) {
-    const from = entityIdMap[fk.fromTable];
-    const to   = entityIdMap[fk.toTable];
-    if (from && to) {
-      relations.push({ from, to, card: fk.card || '1:N' });
-    }
+    const from = entityIdMap[fk.toTable];    // 부모 = 참조받는 쪽
+    const to   = entityIdMap[fk.fromTable];  // 자식 = FK 보유
+    if (!from || !to) continue;
+    if (from === to) continue;               // 자기참조 관계 배제
+    const key = from + '→' + to;
+    if (seen.has(key)) continue;             // 복합 FK·중복 제약 dedup (첫 행 card 채택)
+    seen.add(key);
+    relations.push({ from, to, card: fk.card || '1:N' });
   }
   return relations;
+}
+
+// ── FK 컬럼 마킹 (후처리) ─────────────────────────────────────────
+// _buildEntitiesFromSchema 결과에 fks 정보를 입혀 자식 컬럼을 kind:'fk' + ref:{entity,attr}로 마킹.
+// 정책: PK 우선 — isPk 컬럼은 kind 'pk' 유지(ref만 부여). ref.attr은 부모 참조컬럼 물리명(toUpper 동일 적용).
+// 자기참조 FK도 마킹한다(ref.entity가 자기 자신 — 모달 셀렉트가 자기 엔티티 포함).
+function _markFkColumnsFromSchema(entities, entityIdMap, fks, toUpper = false) {
+  const n = s => toUpper ? String(s).toUpperCase() : String(s);
+  const byId = {};
+  entities.forEach(e => { byId[e.id] = e; });
+  for (const fk of fks) {
+    const childId  = entityIdMap[fk.fromTable];  // FK 보유 자식
+    const parentId = entityIdMap[fk.toTable];    // 참조 부모
+    const child = childId && byId[childId];
+    if (!child || !parentId) continue;
+    const colName = n(fk.fromCol);
+    const attr = (child.attrs || []).find(a => a.physicalName === colName)
+              || (child.attrs || []).find(a => (a.physicalName || '').toLowerCase() === colName.toLowerCase());
+    if (!attr) continue;
+    if (attr.kind !== 'pk') attr.kind = 'fk';   // PK 우선 정책
+    attr.ref = { entity: parentId, attr: n(fk.toCol) };
+  }
 }
 
 // ── VIEW DDL 메모 생성 ────────────────────────────────────────────
