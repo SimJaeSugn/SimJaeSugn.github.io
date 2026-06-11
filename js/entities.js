@@ -712,24 +712,40 @@ function confirmCopyToDiag(diagId) {
 }
 
 // ── FK 컬럼 자동 생성 ────────────────────────────────────────────
+// 부모 PK 컬럼명을 그대로 상속(복합 PK는 전부). PK 없으면 테이블명 기반 폴백.
 function autoAddFkColumn(fromId, toId, card) {
   if (card === 'N:M') return;
   const fromEnt = ENTITIES.find(e => e.id === fromId);
   const toEnt   = ENTITIES.find(e => e.id === toId);
   if (!fromEnt || !toEnt) return;
-  const pkAttr = fromEnt.attrs.find(a => a.kind === 'pk');
-  const baseName = fromEnt.physicalName || fromEnt.logicalName || fromEnt.id;
-  const fkPhysical = baseName.toUpperCase() + '_ID';
-  const fkLogical  = (fromEnt.logicalName || fromEnt.id) + 'ID';
-  if (toEnt.attrs.some(a =>
-    a.physicalName?.toUpperCase() === fkPhysical ||
-    (a.kind === 'fk' && a.ref?.entity === fromEnt.id)
-  )) return;
-  toEnt.attrs.push({
-    logicalName: fkLogical, physicalName: fkPhysical,
-    type: pkAttr?.type || 'BIGINT', kind: 'fk',
-    notNull: false, unique: false, autoIncrement: false, defaultValue: '',
-    description: (fromEnt.logicalName || fromEnt.id) + ' 참조',
-    ref: { entity: fromEnt.id, attr: pkAttr?.physicalName || pkAttr?.logicalName || 'ID' }
+  const pkAttrs = fromEnt.attrs.filter(a => a.kind === 'pk');
+  // FK 후보: PK 있으면 PK 컬럼 전부(명·타입 상속), 없으면 테이블명 기반 폴백 1건
+  const candidates = pkAttrs.length
+    ? pkAttrs.map(pk => ({
+        logicalName:  pk.logicalName  || '',
+        physicalName: pk.physicalName || '',
+        type:         pk.type || 'BIGINT',
+        refAttr:      pk.physicalName || pk.logicalName || 'ID'
+      }))
+    : [{
+        logicalName:  (fromEnt.logicalName || fromEnt.id) + 'ID',
+        physicalName: (fromEnt.physicalName || fromEnt.logicalName || fromEnt.id).toUpperCase() + '_ID',
+        type:         'BIGINT',
+        refAttr:      'ID'
+      }];
+  candidates.forEach(c => {
+    const key = (c.physicalName || c.logicalName).toUpperCase();
+    const dup = toEnt.attrs.some(a =>
+      ((a.physicalName || a.logicalName || '').toUpperCase() === key) ||
+      (a.kind === 'fk' && a.ref?.entity === fromEnt.id && a.ref?.attr === c.refAttr)
+    );
+    if (dup) return;
+    toEnt.attrs.push({
+      logicalName: c.logicalName, physicalName: c.physicalName,
+      type: c.type, kind: 'fk',
+      notNull: false, unique: false, autoIncrement: false, defaultValue: '',
+      description: (fromEnt.logicalName || fromEnt.id) + ' 참조',
+      ref: { entity: fromEnt.id, attr: c.refAttr }
+    });
   });
 }

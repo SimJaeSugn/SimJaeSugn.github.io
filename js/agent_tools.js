@@ -71,25 +71,40 @@ function _agentToolCreateEntity(draft, args, remap) {
 }
 
 // autoAddFkColumn(entities.js) 과 동일한 규칙으로 드래프트에 FK 추가
+// 부모 PK 컬럼명을 그대로 상속(복합 PK는 전부). PK 없으면 테이블명 기반 폴백.
 function _agentDraftAddFk(draft, fromId, toId, card) {
   if (card === 'N:M') return;
   const fromEnt = draft.entities.find(e => e.id === fromId);
   const toEnt = draft.entities.find(e => e.id === toId);
   if (!fromEnt || !toEnt) return;
-  const pkAttr = (fromEnt.attrs || []).find(a => a.kind === 'pk');
-  const baseName = fromEnt.physicalName || fromEnt.logicalName || fromEnt.id;
-  const fkPhysical = baseName.toUpperCase() + '_ID';
-  const fkLogical = (fromEnt.logicalName || fromEnt.id) + 'ID';
-  const dup = (toEnt.attrs || []).some(a =>
-    (a.physicalName && a.physicalName.toUpperCase() === fkPhysical) ||
-    (a.kind === 'fk' && a.ref && a.ref.entity === fromEnt.id));
-  if (dup) return;
-  toEnt.attrs.push({
-    logicalName: fkLogical, physicalName: fkPhysical,
-    type: (pkAttr && pkAttr.type) || 'BIGINT', kind: 'fk',
-    notNull: false, unique: false, autoIncrement: false, defaultValue: '',
-    description: (fromEnt.logicalName || fromEnt.id) + ' 참조',
-    ref: { entity: fromEnt.id, attr: (pkAttr && (pkAttr.physicalName || pkAttr.logicalName)) || 'ID' },
+  const pkAttrs = (fromEnt.attrs || []).filter(a => a.kind === 'pk');
+  const candidates = pkAttrs.length
+    ? pkAttrs.map(pk => ({
+        logicalName:  pk.logicalName  || '',
+        physicalName: pk.physicalName || '',
+        type:         pk.type || 'BIGINT',
+        refAttr:      pk.physicalName || pk.logicalName || 'ID'
+      }))
+    : [{
+        logicalName:  (fromEnt.logicalName || fromEnt.id) + 'ID',
+        physicalName: (fromEnt.physicalName || fromEnt.logicalName || fromEnt.id).toUpperCase() + '_ID',
+        type:         'BIGINT',
+        refAttr:      'ID'
+      }];
+  candidates.forEach(c => {
+    const key = (c.physicalName || c.logicalName).toUpperCase();
+    const dup = (toEnt.attrs || []).some(a =>
+      ((a.physicalName || a.logicalName || '').toUpperCase() === key) ||
+      (a.kind === 'fk' && a.ref && a.ref.entity === fromEnt.id && a.ref.attr === c.refAttr)
+    );
+    if (dup) return;
+    toEnt.attrs.push({
+      logicalName: c.logicalName, physicalName: c.physicalName,
+      type: c.type, kind: 'fk',
+      notNull: false, unique: false, autoIncrement: false, defaultValue: '',
+      description: (fromEnt.logicalName || fromEnt.id) + ' 참조',
+      ref: { entity: fromEnt.id, attr: c.refAttr },
+    });
   });
 }
 
@@ -478,6 +493,88 @@ async function _agentToolStandardizeAttributeNames(draft, args) {
     note: unregistered.length
       ? ('미등록(unregistered) ' + unregistered.length + '개는 표준사전에 없는 컬럼이라 수정하지 않음(보고만). 사용자가 명시 요청할 때만 register_std_term 으로 등록.')
       : undefined,
+  };
+}
+
+// DB 코멘트 일괄 적용(write·async·배치) — 1회 호출 = 1회 승인 = 전 컬럼 적용.
+// 사이드카 GET /schema/comments 로 테이블·컬럼 코멘트를 한 번에 받아 대상 엔티티의
+// logicalName(코멘트 첫 줄)·description(전문)에 반영한다(컬럼마다 update_attribute 반복 금지의 결정적 대체).
+// 코멘트 없는 테이블·컬럼은 보존. 데스크탑(사이드카) 전용.
+async function _agentToolApplyDbComments(draft, args) {
+  args = args || {};
+  const view = (draft && draft.entities) ? draft : _agentReadView(draft);
+  const ids = _agentLiveIds(view, args);
+  const hadSelector = !!(args.ids || args.entityIds || args.keyword || args.name || args.query || args.all || args.scope);
+  const targets = ids.length ? view.entities.filter(e => ids.includes(e.id)) : (hadSelector ? [] : view.entities);
+  if (!targets.length) return { ok: false, error: '대상 테이블이 없습니다(전체 또는 ids/keyword 지정).' };
+
+  // 코멘트 조회(1회) — 사이드카 GET /schema/comments
+  const base = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
+  let payload;
+  try {
+    const res = await fetch(base + '/schema/comments', { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) {
+      let d = {}; try { d = await res.json(); } catch (e2) {}
+      return { ok: false, error: 'DB 코멘트 조회 실패: ' + (d.detail || d.error || ('HTTP ' + res.status)) + ' — DB 연결 설정을 먼저 확인하세요.' };
+    }
+    payload = await res.json();
+  } catch (e) {
+    return { ok: false, error: '사이드카에 연결할 수 없습니다(DB 코멘트 적용은 데스크탑 전용). ' + e.message };
+  }
+
+  // 테이블명(소문자) → { comment, columns: { 컬럼명소문자: 코멘트 } }
+  const byTable = {};
+  ((payload && payload.tables) || []).forEach(t => {
+    const cols = {};
+    (t.columns || []).forEach(c => {
+      if (c.columnName && c.comment != null && String(c.comment).trim()) cols[String(c.columnName).toLowerCase()] = String(c.comment).trim();
+    });
+    byTable[String(t.tableName || '').toLowerCase()] = {
+      comment: (t.comment != null && String(t.comment).trim()) ? String(t.comment).trim() : null,
+      columns: cols,
+    };
+  });
+
+  const target = String(args.target || 'both').toLowerCase();   // logical|description|both
+  const doLogical = target !== 'description';
+  const doDescr = target !== 'logical';
+  const onlyEmpty = args.onlyEmpty === true;
+  const firstLine = s => String(s).split(/\r?\n/)[0].trim();
+  // 리버스 엔지니어링 직후엔 논리명=물리명이므로, 그 상태도 '빈 논리명'으로 간주
+  const emptyLogical = (lg, ph) => !lg || String(lg).trim().toLowerCase() === String(ph || '').trim().toLowerCase();
+
+  let updatedColumns = 0, updatedEntities = 0, noComment = 0;
+  const changes = [], notFoundTables = [];
+  for (const e of targets) {
+    const tn = _agentNameOf(e);   // 변경 전 라벨 캡처
+    const info = byTable[String(e.physicalName || e.id || '').toLowerCase()];
+    if (!info) { notFoundTables.push(tn); continue; }
+    let entChanged = false;
+    // 테이블 코멘트 → 엔티티 논리명·설명
+    if (info.comment) {
+      const ln = firstLine(info.comment);
+      if (doLogical && (!onlyEmpty || emptyLogical(e.logicalName, e.physicalName)) && e.logicalName !== ln) { e.logicalName = ln; entChanged = true; }
+      if (doDescr && (!onlyEmpty || !e.description) && e.description !== info.comment) { e.description = info.comment; entChanged = true; }
+    }
+    // 컬럼 코멘트 → attr 논리명·설명 (코멘트 없는 컬럼은 보존)
+    for (const a of (e.attrs || [])) {
+      const cm = info.columns[String(a.physicalName || '').toLowerCase()];
+      if (!cm) { noComment++; continue; }
+      const ln = firstLine(cm);
+      let chg = false;
+      if (doLogical && (!onlyEmpty || emptyLogical(a.logicalName, a.physicalName)) && a.logicalName !== ln) { a.logicalName = ln; chg = true; }
+      if (doDescr && (!onlyEmpty || !a.description) && a.description !== cm) { a.description = cm; chg = true; }
+      if (chg) {
+        updatedColumns++; entChanged = true;
+        if (changes.length < 60) changes.push({ table: tn, column: a.physicalName || '', logicalName: ln });
+      }
+    }
+    if (entChanged) updatedEntities++;
+  }
+  return {
+    ok: true, entities: targets.length, updatedEntities, updatedColumns,
+    noComment, notFoundTables: notFoundTables.slice(0, 20), changes,
+    note: (updatedColumns || updatedEntities) ? undefined : '적용할 코멘트가 없거나 이미 동일합니다(코멘트 없는 항목은 보존).',
   };
 }
 
@@ -1244,6 +1341,7 @@ async function _agentToolReverseEngineerDb(draft, args) {
   // 3) 엔티티·관계·뷰메모 빌드(UI 빌더 재사용)
   const toUpper = !!(args.toUpper || args.uppercase);
   const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views, toUpper);
+  if (typeof _markFkColumnsFromSchema === 'function') _markFkColumnsFromSchema(entities, entityIdMap, fks, toUpper);
   const relations = _buildRelationsFromFks(fks, entityIdMap);
   const viewNotes = (typeof _buildViewNotes === 'function') ? _buildViewNotes(views, entities, entityIdMap) : [];
 
@@ -1591,6 +1689,12 @@ const AGENT_TOOL_DEFS = [
             + '표준 영문약어(abbr)와 물리명이 다르면 물리명을 abbr 로 바로 고친다(컬럼마다 update_attribute 를 반복하지 말 것). '
             + '사전에 없는 미등록 컬럼은 손대지 않고 보고만 한다(register_std_term 으로 자동 등록하지 않음). '
             + '점검(generate_term_compliance) 후 이 툴을 한 번 호출하면 수정 완료 — 반복 호출·재점검 루프 불필요. 데스크탑(사이드카) 전용.' },
+  { name: 'apply_db_comments', kind: 'write', danger: false, run: _agentToolApplyDbComments,
+    desc: '연결 DB의 테이블·컬럼 코멘트를 ERD 논리명·설명에 일괄 적용(한 번에)', params: 'entityIds?|keyword?|all?(없으면 현재 선택), onlyEmpty?, target?(logical|description|both)',
+    detail: '"DB(컬럼/테이블) 코멘트를 논리명/설명으로 적용·동기화·반영" 류는 이 툴 하나로 끝낸다. 연결 DB에서 코멘트를 일괄 조회해(사이드카 /schema/comments) '
+            + '대상(또는 선택/전체) 엔티티의 각 컬럼 logicalName(코멘트 첫 줄)·description(전문)과 테이블 logicalName·description 을 갱신한다(코멘트 없는 항목은 보존). '
+            + 'onlyEmpty=true 면 빈 값만 채움(기본은 덮어쓰기), target(logical|description|both)으로 적용 필드 제한. '
+            + '코멘트를 보겠다고 run_select 로 information_schema 를 조회하거나 컬럼마다 update_attribute 를 반복하지 말 것 — 이 툴 1회 호출로 전체 적용·승인 1회. 데스크탑(사이드카) 전용.' },
 
   // ── 추가 툴 (선택·일괄·분석·내보내기·다이어그램·섹션·메모·버전) ──
   { name: 'get_statistics', kind: 'read', danger: false, run: _agentToolGetStatistics,
@@ -1798,6 +1902,7 @@ function _agentToolLabel(tool, args) {
     case 'generate_erd_report': return 'ERD 종합 명세서 생성(문서)';
     case 'generate_term_compliance': return '표준용어 준수 점검';
     case 'standardize_attribute_names': return '표준용어 어긋난 컬럼 물리명 수정' + (sel ? ': ' + sel : '');
+    case 'apply_db_comments': return 'DB 코멘트 → 논리명/설명 일괄 적용' + (sel ? ': ' + sel : '');
     case 'copy_entities_to_diagram': return '엔티티 복사 → ' + (a.target || a.toDiagram || a.diagram || a.name || '다이어그램');
     case 'reverse_engineer_db': return '리버스 엔지니어링' + (a.name || a.diagramName ? ' → ' + (a.name || a.diagramName) : '') + (a.mode === 'append' ? '(현재에 추가)' : '');
     case 'list_themes': return '테마 목록 조회';
