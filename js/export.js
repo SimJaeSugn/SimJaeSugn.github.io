@@ -317,6 +317,24 @@ async function downloadSVG() {
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" style="background:#1e1e2e">`;
 
+  // ── 섹션 (배경 레이어 — NOTES/RELATIONS/ENTITIES보다 먼저) ──
+  SECTIONS.forEach(s => {
+    const pal = SECTION_PALETTE[(s.colorIdx ?? 0) % SECTION_PALETTE.length];
+    const sx = s.x + ox, sy = s.y + oy;
+    const r = 8, lh = SECTION_LABEL_H;
+    // 본체
+    svg += `<rect x="${sx}" y="${sy}" width="${s.w}" height="${s.h}" rx="${r}" fill="${esc(pal.bg)}" stroke="${esc(pal.border)}" stroke-width="1.5"/>`;
+    // 라벨 바 (상단 모서리만 둥근 path)
+    svg += `<path d="M${sx+r},${sy} L${sx+s.w-r},${sy} Q${sx+s.w},${sy} ${sx+s.w},${sy+r} L${sx+s.w},${sy+lh} L${sx},${sy+lh} L${sx},${sy+r} Q${sx},${sy} ${sx+r},${sy} Z" fill="${esc(COLOR.sectionLabelBg)}"/>`;
+    // 구분선
+    svg += `<line x1="${sx}" y1="${sy+lh}" x2="${sx+s.w}" y2="${sy+lh}" stroke="${esc(pal.border)}" stroke-opacity="0.33" stroke-width="1"/>`;
+    // 라벨 텍스트 (글자수 근사 truncation)
+    const maxChars = Math.max(1, Math.floor((s.w - 20) / 8));
+    let txt = s.name || '새 섹션';
+    if (txt.length > maxChars) txt = txt.slice(0, maxChars) + '…';
+    svg += `<text x="${sx+10}" y="${sy+lh/2}" fill="${esc(pal.border)}" font-size="12" font-family="Segoe UI,sans-serif" font-weight="bold" dominant-baseline="middle">${esc(txt)}</text>`;
+  });
+
   NOTES.forEach(n => {
     const nx = n.x + ox, ny = n.y + oy;
     svg += `<rect x="${nx}" y="${ny}" width="${NOTE_W}" height="${NOTE_H}" rx="5" fill="${esc(n.color||'#f9e2af')}" opacity="0.9"/>`;
