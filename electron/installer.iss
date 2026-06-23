@@ -1,4 +1,4 @@
-#define AppName      "AgenticERM"
+﻿#define AppName      "AgenticERM"
 ; 버전 단일 원천: electron/package.json — build-desktop.ps1 이 /DAppVersion= 으로 주입.
 ; /D 없이 직접 iscc 호출 시 빌드된 exe 메타데이터(ProductVersion)에서 파생(둘 다 package.json 유래).
 #ifndef AppVersion

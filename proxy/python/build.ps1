@@ -1,4 +1,4 @@
-param(
+﻿param(
     # -Clean: PyInstaller 캐시(build\)를 비우고 처음부터 풀빌드(증분 감지 우회).
     #         릴리스 빌드나 "코드 바꿨는데 옛 동작" 같은 캐시 의심 시 사용. (느리지만 확실)
     [switch]$Clean
