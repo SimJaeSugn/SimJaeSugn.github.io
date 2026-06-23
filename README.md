@@ -768,19 +768,19 @@ AgenticERM을 Windows 데스크탑 앱(.exe 설치파일)으로 빌드할 수 �
 | Node.js | 18+ | Electron 빌드 |
 | Python | 3.11+ | FastAPI 사이드카 빌드 |
 | PyInstaller | 6+ | Python → 단일 exe |
-| Inno Setup | 7 | 최종 설치파일 생성 |
+
+> NSIS 설치파일 빌더와 electron-updater는 각각 electron-builder가 자동 다운로드/`npm install`로 설치되므로 별도 도구 설치가 필요 없습니다.
 
 ### 빌드 순서
 
-> **한 번에 빌드** — 프로젝트 루트에서 아래 스크립트를 실행하면 3단계가 순서대로 자동 실행됩니다.
+> **한 번에 빌드** — 프로젝트 루트에서 아래 스크립트를 실행하면 2단계가 순서대로 자동 실행됩니다.
 > ```powershell
 > .\build-desktop.ps1
 > ```
 
 > **버전 관리(단일 원천)** — 버전은 `electron/package.json`의 `version` 한 곳에서만 관리합니다.
-> `build-desktop.ps1`이 이 값을 읽어 설치파일명에 주입(`iscc /DAppVersion=`)하고,
-> 사이드카 `/ping` 버전(`proxy/python/build.ps1`이 `_version.py` 생성)·exe 메타데이터(electron-builder)도 같은 원천에서 자동 파생됩니다.
-> `iscc`를 직접 호출하는 경우에는 2단계 산출물(`win-unpacked\AgenticERM.exe`)의 메타데이터에서 버전을 읽으므로 2단계 후에 실행하세요.
+> electron-builder(NSIS)가 이 값을 설치파일명·exe 메타데이터·업데이트 메타데이터(`latest.yml`)에 사용하고,
+> 사이드카 `/ping` 버전(`proxy/python/build.ps1`이 `_version.py` 생성)도 같은 원천에서 자동 파생됩니다.
 
 **1단계 — Python 사이드카 빌드**
 
@@ -791,21 +791,17 @@ pip install -r requirements.txt
 # 결과: proxy\python\dist\uxer-sidecar.exe
 ```
 
-**2단계 — Electron 앱 빌드**
+**2단계 — Electron 앱 + NSIS 설치파일 빌드**
 
 ```powershell
 cd electron
 npm install
-npm run build:win
-# 결과: electron\dist\win-unpacked\AgenticERM.exe
+npm run build:win   # electron-builder NSIS (로컬은 --publish never)
+# 결과: electron\dist\AgenticERM_Desktop_Setup_{버전}.exe (+ latest.yml · .blockmap)
 ```
 
-**3단계 — InnoSetup 설치파일 생성**
-
-```powershell
-iscc electron\installer.iss
-# 결과: electron\dist\AgenticERM_Desktop_Setup_{버전}.exe
-```
+> NSIS 빌더는 electron-builder가 자동 다운로드하므로 Inno Setup 설치가 필요 없습니다.
+> 설치된 앱의 자동 업데이트(electron-updater)는 §28 참조.
 
 ### 포트
 
@@ -1013,7 +1009,8 @@ SimJaeSugn.github.io/
 | Node.js | 18+ | Node.js 미들웨어, Electron 빌드 |
 | Python | 3.11+ | FastAPI 사이드카 |
 | PyInstaller | 6+ | Python → 단일 exe |
-| Inno Setup | 7 | Windows 설치파일 생성 |
+| electron-builder | 24+ | Electron → NSIS 설치파일 (`npm install`로 자동 설치, NSIS 바이너리 자동 다운로드) |
+| electron-updater | 6+ | 설치본 자동 업데이트 (GitHub Releases, `npm install`로 자동 설치) |
 | openpyxl | 3+ | 사이드카 표준사전 엑셀 업로드(`/stddict/import-excel`) 및 시드 재생성(`tools/build_std_sqlite.py`) |
 
 ### 프론트엔드
@@ -1109,15 +1106,14 @@ npm start           # 개발 모드 실행
 > npm start
 > ```
 
-> **한 번에 빌드** — 프로젝트 루트에서 아래 스크립트를 실행하면 3단계가 순서대로 자동 실행됩니다.
+> **한 번에 빌드** — 프로젝트 루트에서 아래 스크립트를 실행하면 2단계(사이드카 → Electron/NSIS)가 순서대로 자동 실행됩니다.
 > ```powershell
 > .\build-desktop.ps1
 > # → electron\dist\AgenticERM_Desktop_Setup_{버전}.exe
 > ```
 
 > **버전 관리(단일 원천)** — 버전은 `electron/package.json`의 `version` 한 곳에서만 관리합니다.
-> `build-desktop.ps1`이 설치파일명에 주입하고, 사이드카 `/ping` 버전·exe 메타데이터도 같은 원천에서 자동 파생됩니다.
-> 아래 3단계 `iscc` 직접 호출 시에는 2단계 산출물(win-unpacked exe)의 메타데이터에서 버전을 읽으므로 2단계 후에 실행하세요.
+> electron-builder(NSIS)가 설치파일명·exe 메타데이터·업데이트 메타데이터(`latest.yml`)에 사용하고, 사이드카 `/ping` 버전도 같은 원천에서 자동 파생됩니다.
 
 **1단계 — Python 사이드카 빌드** (실행 위치: `proxy/python/`)
 
@@ -1127,72 +1123,53 @@ cd proxy/python
 # → proxy\python\dist\uxer-sidecar.exe
 ```
 
-**2단계 — Electron 앱 빌드** (실행 위치: `electron/`)
+**2단계 — Electron 앱 + NSIS 설치파일 빌드** (실행 위치: `electron/`)
 
 ```powershell
 cd electron
 npm install
-npm run build:win
-# → electron\dist\win-unpacked\
+npm run build:win   # electron-builder NSIS (로컬은 --publish never)
+# → electron\dist\AgenticERM_Desktop_Setup_{버전}.exe (+ latest.yml · .blockmap)
 ```
 
 > **패키지 포함 여부:** `electron/package.json`의 `extraFiles`에 `vendor/` 전체가 포함되므로
 > `vendor/std.sqlite`는 자동으로 배포 패키지에 포함됩니다. `tools/` 디렉토리는
-> `extraFiles` 목록에 없으므로 배포 패키지에서 자동 제외됩니다.
-
-**3단계 — Inno Setup 설치파일** (실행 위치: 프로젝트 루트)
-
-```powershell
-# electron/ 폴더로 이동했다면 루트로 돌아온 후 실행
-cd ..
-iscc electron\installer.iss
-# → electron\dist\AgenticERM_Desktop_Setup_{버전}.exe
-```
-
-> **`iscc`를 찾지 못할 경우** — Inno Setup 설치 후 PATH에 등록되지 않았을 수 있다.
->
-> **방법 1 — PowerShell (관리자 권한):**
-> ```powershell
-> [System.Environment]::SetEnvironmentVariable(
->     'Path',
->     [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';C:\Program Files\Inno Setup 7',
->     'Machine'
-> )
-> ```
-> 터미널을 재시작한 후 `iscc /?` 로 등록 여부를 확인한다.
->
-> **방법 2 — GUI:**
-> 시작 메뉴 → "환경 변수 편집" 검색 → **시스템 변수** 목록에서 `Path` 선택 → 편집 → 새로 만들기 → `C:\Program Files\Inno Setup 7` 입력 → 확인
+> `extraFiles` 목록에 없으므로 배포 패키지에서 자동 제외됩니다. electron-updater는
+> `dependencies`라 `files`(`node_modules/**/*`)에 따라 app.asar에 자동 번들됩니다.
 
 | 산출물 | 설명 |
 |--------|------|
-| `proxy/python/dist/uxer-sidecar.exe` | Python 사이드카 (단일 exe, 55MB) |
+| `proxy/python/dist/uxer-sidecar.exe` | Python 사이드카 (단일 exe) |
 | `electron/dist/win-unpacked/` | 압축 해제형 앱 (테스트용) |
-| `electron/dist/AgenticERM_Desktop_Setup_{버전}.exe` | 최종 설치파일 (126MB) |
+| `electron/dist/AgenticERM_Desktop_Setup_{버전}.exe` | NSIS 설치파일 |
+| `electron/dist/latest.yml` · `*.blockmap` | electron-updater 자동 업데이트 메타데이터(릴리스에 함께 게시) |
 
-> 설치 시 UAC 관리자 권한 요청이 표시됩니다. 승인하면 `C:\Program Files\AgenticERM`에 설치되고 바탕화면 바로가기가 생성됩니다.
+> 설치 시 UAC 관리자 권한 요청이 표시됩니다(`perMachine`). 승인하면 `C:\Program Files\AgenticERM`에 설치되고 바탕화면 바로가기가 생성됩니다.
 
-### 2-1. GitHub Release 자동 배포 (Electron 설치파일)
+### 2-1. GitHub Release 자동 배포 + 자동 업데이트
 
-`v*` 태그를 push하면 GitHub Actions가 `windows-latest`에서 설치파일을 빌드해 Release에 자동 첨부합니다. 버전은 `electron/package.json` 단일 원천을 따르며, 태그가 이 버전과 일치해야 합니다.
+`v*` 태그를 push하면 GitHub Actions가 `windows-latest`에서 NSIS 설치파일과 업데이트 메타데이터를 빌드해 Release에 게시합니다. 설치된 앱은 **electron-updater**로 이 릴리스를 감지해 자동 업데이트합니다. 버전은 `electron/package.json` 단일 원천을 따르며, 태그가 이 버전과 일치해야 합니다.
 
 - 워크플로: `.github/workflows/release.yml`
-- 빌드: `build-desktop.ps1`을 그대로 호출 (Node·Python·Inno Setup은 워크플로가 준비, `pip install`/`npm install`은 스크립트가 수행)
-- 산출물: Release 자산 `AgenticERM_Desktop_Setup_{버전}.exe`
+- 빌드: 사이드카(`build.ps1`) → Electron NSIS(`npm run release` = `electron-builder --publish always`)
+- 게시 자산: `AgenticERM_Desktop_Setup_{버전}.exe` · `latest.yml` · `.blockmap` (publish 설정 `releaseType: "release"` → 즉시 정식 게시)
+- 인증: 워크플로의 `GH_TOKEN`(`secrets.GITHUB_TOKEN`)
+- 자동 업데이트 동작: 설치본 `main.js`의 `autoUpdater.checkForUpdates()`가 새 버전을 발견하면 백그라운드 다운로드 후 "재시작하여 설치"를 안내(미선택 시 다음 종료 때 설치). 차등(blockmap) 업데이트 지원.
 
 **릴리스 절차:**
 
 ```powershell
-# 1) electron/package.json 의 version 을 올린다 (예: 1.3.0 → 1.4.0)
+# 1) electron/package.json 의 version 을 올린다 (예: 1.4.0 → 1.5.0)
 # 2) 커밋·푸시
-git commit -am "v1.4.0"
+git commit -am "v1.5.0"
 git push
 # 3) 동일 버전 태그 push → 워크플로 실행
-git tag v1.4.0
-git push origin v1.4.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
-> 태그와 `electron/package.json` 버전이 다르면 워크플로가 명시적으로 실패합니다(단일 원천 강제). 수동 실행(`workflow_dispatch`) 시에는 `package.json` 버전으로 태그·릴리스를 자동 생성합니다.
+> 태그와 `electron/package.json` 버전이 다르면 워크플로가 명시적으로 실패합니다(단일 원천 강제).
+> 자동 업데이트는 **공개 릴리스(draft/prerelease 아님)** 여야 클라이언트가 감지하므로 `releaseType: "release"`로 게시합니다. 저장소가 공개이므로 클라이언트는 토큰 없이 업데이트를 확인합니다.
 
 ### 3. Node.js 미들웨어 단독 배포
 

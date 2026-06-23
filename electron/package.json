@@ -1,14 +1,17 @@
 {
   "name": "agenticerm-desktop",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "AgenticERM 데스크탑 앱 (Electron)",
+  "author": "UXIS",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win --x64 --dir",
-    "build:installer": "npm run build:win"
+    "build:win": "electron-builder --win --x64 --publish never",
+    "release": "electron-builder --win --x64 --publish always"
   },
-  "dependencies": {},
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "^24.0.0"
@@ -21,7 +24,8 @@
     },
     "files": [
       "main.js",
-      "preload.js"
+      "preload.js",
+      "node_modules/**/*"
     ],
     "extraFiles": [
       {
@@ -48,8 +52,23 @@
       }
     ],
     "win": {
-      "target": "dir",
+      "target": "nsis",
       "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AgenticERM",
+      "artifactName": "AgenticERM_Desktop_Setup_${version}.exe"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "SimJaeSugn",
+      "repo": "SimJaeSugn.github.io",
+      "releaseType": "release"
     }
   }
 }
