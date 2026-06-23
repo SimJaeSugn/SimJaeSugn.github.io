@@ -476,3 +476,15 @@
 .pm-list-body::-webkit-scrollbar { width: 4px; }
 .pm-list-body::-webkit-scrollbar-track { background: transparent; }
 .pm-list-body::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+
+/* ── About Modal ─────────────────────────────── */
+.about-info { margin-bottom: 18px; }
+.about-info > div {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 0; border-bottom: 1px solid var(--bd); font-size: 13px;
+}
+.about-info > div:last-child { border-bottom: none; }
+.about-info b { color: var(--tx-sub); font-weight: 600; }
+.about-info span { color: var(--tx-main); }
+.about-update { border-top: 1px solid var(--bd); padding-top: 14px; margin-top: 14px; }
+.about-upd-status { font-size: 13px; color: var(--tx-sub); margin-bottom: 6px; }

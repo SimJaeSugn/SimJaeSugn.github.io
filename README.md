@@ -801,7 +801,7 @@ npm run build:win   # electron-builder NSIS (로컬은 --publish never)
 ```
 
 > NSIS 빌더는 electron-builder가 자동 다운로드하므로 Inno Setup 설치가 필요 없습니다.
-> 설치된 앱의 자동 업데이트(electron-updater)는 §28 참조.
+> 설치된 앱의 인앱 업데이트(electron-updater, [도움말 ▸ 소프트웨어 정보]에서 수동)는 §28 참조.
 
 ### 포트
 
@@ -1010,7 +1010,7 @@ SimJaeSugn.github.io/
 | Python | 3.11+ | FastAPI 사이드카 |
 | PyInstaller | 6+ | Python → 단일 exe |
 | electron-builder | 24+ | Electron → NSIS 설치파일 (`npm install`로 자동 설치, NSIS 바이너리 자동 다운로드) |
-| electron-updater | 6+ | 설치본 자동 업데이트 (GitHub Releases, `npm install`로 자동 설치) |
+| electron-updater | 6+ | 설치본 인앱 업데이트 — 수동 확인·다운로드·설치 (GitHub Releases, `npm install`로 자동 설치) |
 | openpyxl | 3+ | 사이드카 표준사전 엑셀 업로드(`/stddict/import-excel`) 및 시드 재생성(`tools/build_std_sqlite.py`) |
 
 ### 프론트엔드
@@ -1146,15 +1146,15 @@ npm run build:win   # electron-builder NSIS (로컬은 --publish never)
 
 > 설치 시 UAC 관리자 권한 요청이 표시됩니다(`perMachine`). 승인하면 `C:\Program Files\AgenticERM`에 설치되고 바탕화면 바로가기가 생성됩니다.
 
-### 2-1. GitHub Release 자동 배포 + 자동 업데이트
+### 2-1. GitHub Release 자동 배포 + 인앱 업데이트(수동)
 
-`v*` 태그를 push하면 GitHub Actions가 `windows-latest`에서 NSIS 설치파일과 업데이트 메타데이터를 빌드해 Release에 게시합니다. 설치된 앱은 **electron-updater**로 이 릴리스를 감지해 자동 업데이트합니다. 버전은 `electron/package.json` 단일 원천을 따르며, 태그가 이 버전과 일치해야 합니다.
+`v*` 태그를 push하면 GitHub Actions가 `windows-latest`에서 NSIS 설치파일과 업데이트 메타데이터를 빌드해 Release에 게시합니다. 설치된 앱은 **electron-updater**로 이 릴리스를 감지하되, **자동이 아니라 [도움말 ▸ 소프트웨어 정보] 모달에서 사용자가 수동으로** 확인·다운로드·설치합니다. 버전은 `electron/package.json` 단일 원천을 따르며, 태그가 이 버전과 일치해야 합니다.
 
 - 워크플로: `.github/workflows/release.yml`
 - 빌드: 사이드카(`build.ps1`) → Electron NSIS(`npm run release` = `electron-builder --publish always`)
 - 게시 자산: `AgenticERM_Desktop_Setup_{버전}.exe` · `latest.yml` · `.blockmap` (publish 설정 `releaseType: "release"` → 즉시 정식 게시)
 - 인증: 워크플로의 `GH_TOKEN`(`secrets.GITHUB_TOKEN`)
-- 자동 업데이트 동작: 설치본 `main.js`의 `autoUpdater.checkForUpdates()`가 새 버전을 발견하면 백그라운드 다운로드 후 "재시작하여 설치"를 안내(미선택 시 다음 종료 때 설치). 차등(blockmap) 업데이트 지원.
+- 업데이트 동작(**수동·인앱**): 자동 확인/다운로드는 **사용하지 않습니다**(`autoDownload=false`, 시작 시 자동 체크 없음). 사용자가 **[도움말 ▸ 소프트웨어 정보]** 모달에서 "업데이트 확인" → (발견 시) "다운로드"(진행률 실시간 표시) → "재시작하여 설치"를 직접 트리거합니다. 차등(blockmap) 다운로드 지원. (구현: `electron/main.js` IPC `updater:check|download|install`, 렌더러 `js/ui.js` About 모달)
 
 **릴리스 절차:**
 
@@ -1169,7 +1169,7 @@ git push origin v1.5.0
 ```
 
 > 태그와 `electron/package.json` 버전이 다르면 워크플로가 명시적으로 실패합니다(단일 원천 강제).
-> 자동 업데이트는 **공개 릴리스(draft/prerelease 아님)** 여야 클라이언트가 감지하므로 `releaseType: "release"`로 게시합니다. 저장소가 공개이므로 클라이언트는 토큰 없이 업데이트를 확인합니다.
+> 인앱 업데이트 확인은 **공개 릴리스(draft/prerelease 아님)** 만 감지하므로 `releaseType: "release"`로 게시합니다. 저장소가 공개이므로 클라이언트는 토큰 없이 업데이트를 확인합니다.
 
 ### 2-2. 로컬에서 직접 릴리스 (`release-desktop.ps1`)
 
@@ -1179,7 +1179,7 @@ CI(태그 push)를 거치지 않고 **내 PC에서 빌드해 GitHub Release로 �
 # 1) electron/package.json 의 version 을 직접 올린다 (예: "version": "1.6.0")
 # 2) 루트에서 실행 (사이드카 빌드 + NSIS 빌드 + GitHub Release 게시)
 .\release-desktop.ps1
-# → GitHub Release v1.6.0 에 exe·latest.yml·blockmap 게시 → 설치본 자동 업데이트
+# → GitHub Release v1.6.0 에 exe·latest.yml·blockmap 게시 → 설치본이 [도움말 ▸ 소프트웨어 정보]에서 수동 업데이트
 ```
 
 - **게시 토큰**: `GH_TOKEN`(또는 `GITHUB_TOKEN`) 환경변수를 사용합니다. 미설정 시 스크립트가 `gh auth token`(로그인된 gh CLI 토큰, `repo` 권한)을 자동 재활용합니다.

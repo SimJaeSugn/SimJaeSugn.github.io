@@ -157,6 +157,7 @@
       <span class="mb-lbl" onclick="mbToggle('help')">Help</span>
       <div class="mb-drop" id="mb-drop-help">
         <div class="mb-item" onclick="mbClose();openShortcutsModal()"><span class="mb-ico"><i data-lucide="keyboard"></i></span><span class="mb-text">단축키 목록</span></div>
+        <div class="mb-item" onclick="mbClose();openAboutModal()"><span class="mb-ico"><i data-lucide="info"></i></span><span class="mb-text">소프트웨어 정보</span></div>
       </div>
     </div>
 
@@ -1177,6 +1178,39 @@
 
   </div><!-- /sc-modal -->
 </div><!-- /shortcutsOverlay -->
+
+<!-- ── About Modal ───────────────────────────── -->
+<div class="modal-overlay" id="aboutOverlay" onmousedown="overlayCloseExtra(event,'aboutOverlay')">
+  <div class="modal" style="width:460px">
+    <h3>ℹ 소프트웨어 정보</h3>
+
+    <div class="about-info">
+      <div><b>앱 이름</b><span>AgenticERM</span></div>
+      <div><b>버전</b><span id="aboutAppVer">—</span></div>
+      <div><b>제작사</b><span>UXIS</span></div>
+      <div><b>사이드카</b><span id="aboutSidecarVer">—</span></div>
+      <div><b>환경</b><span id="aboutEnv">—</span></div>
+    </div>
+
+    <!-- 업데이트 영역 (데스크탑 전용) -->
+    <div id="aboutUpdate" class="about-update">
+      <div id="aboutUpdStatus" class="about-upd-status">최신 여부를 확인하세요.</div>
+      <div id="aboutUpdProgressWrap" style="display:none;align-items:center;gap:8px;margin:8px 0">
+        <progress id="aboutUpdProgress" max="100" value="0" style="flex:1;height:8px"></progress>
+        <span id="aboutUpdPct" style="font-size:12px;color:var(--tx-sub)">0%</span>
+      </div>
+      <div class="modal-actions" style="border-top:none;padding-top:8px;margin-top:4px;justify-content:flex-start">
+        <button class="btn-save-m"   id="aboutCheckBtn"    onclick="aboutCheckUpdate()">업데이트 확인</button>
+        <button class="btn-save-m"   id="aboutDownloadBtn" onclick="aboutDownloadUpdate()" style="display:none">다운로드</button>
+        <button class="btn-save-m"   id="aboutInstallBtn"  onclick="aboutInstallUpdate()"  style="display:none">재시작하여 설치</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel-m" onclick="closeAboutModal()">닫기</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Focus Mode Badge ───────────────────────── -->
 <div id="focusBadge" style="display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);background:#313244;border:1px solid #89b4fa;color:#89b4fa;font-size:12px;padding:5px 16px;border-radius:20px;z-index:200;pointer-events:none;">

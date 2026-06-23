@@ -1737,6 +1737,7 @@ function overlayCloseExtra(e, overlayId) {
     if (overlayId === 'aiSchemaOverlay')     closeAISchemaModal();
     if (overlayId === 'shortcutsOverlay')    closeShortcutsModal();
     if (overlayId === 'backupConfigOverlay') closeBackupConfigModal();
+    if (overlayId === 'aboutOverlay')        closeAboutModal();
   }
 }
 
@@ -2071,6 +2072,88 @@ function closeShortcutsModal() {
   document.getElementById('shortcutsOverlay').classList.remove('active');
 }
 
+// ════════════════════════════════════════════════════════════════
+// FEATURE 6: About(소프트웨어 정보) 모달 + 수동 업데이트
+// ════════════════════════════════════════════════════════════════
+let _updUnsub = null;   // 업데이트 이벤트 구독 해제 함수 (리스너 누수 방지)
+
+function openAboutModal() {
+  document.getElementById('aboutOverlay').classList.add('active');
+  _aboutResetUpdate();
+  _aboutFillInfo();
+  _aboutWireUpdater();
+}
+function closeAboutModal() {
+  document.getElementById('aboutOverlay').classList.remove('active');
+  if (_updUnsub) { _updUnsub(); _updUnsub = null; }
+}
+
+async function _aboutFillInfo() {
+  const api = window.electronAPI;
+  const isEl = !!(api && api.isElectron);
+  // 앱 버전·환경
+  if (isEl) {
+    const info = await api.getAppInfo().catch(() => null);
+    document.getElementById('aboutAppVer').textContent = info ? info.version : '—';
+    document.getElementById('aboutEnv').textContent    = '데스크탑 (' + (info ? info.platform : api.platform) + ')';
+  } else {
+    document.getElementById('aboutAppVer').textContent = '웹';
+    document.getElementById('aboutEnv').textContent    = '웹 브라우저';
+  }
+  // 사이드카 버전 (/ping)
+  try {
+    const r = await fetch(MW_URL + '/ping', { signal: AbortSignal.timeout(2000) });
+    const j = await r.json();
+    document.getElementById('aboutSidecarVer').textContent = j.version || '—';
+  } catch { document.getElementById('aboutSidecarVer').textContent = '미실행'; }
+  // 웹이면 업데이트 영역 숨김 (데스크탑 전용)
+  document.getElementById('aboutUpdate').style.display = isEl ? '' : 'none';
+}
+
+function _aboutWireUpdater() {
+  const api = window.electronAPI;
+  if (!api || !api.onUpdaterEvent || _updUnsub) return;
+  _updUnsub = api.onUpdaterEvent((type, p) => {
+    const st    = document.getElementById('aboutUpdStatus');
+    if (!st) return;
+    if (type === 'checking')       { st.textContent = '업데이트 확인 중...'; }
+    else if (type === 'available') { st.textContent = '새 버전 ' + p.version + ' 발견'; _aboutShow('aboutDownloadBtn'); }
+    else if (type === 'not-available') { st.textContent = '최신 버전입니다.'; }
+    else if (type === 'progress')  {
+      document.getElementById('aboutUpdProgressWrap').style.display = 'flex';
+      const pct = Math.round(p.percent || 0);
+      document.getElementById('aboutUpdProgress').value = pct;
+      document.getElementById('aboutUpdPct').textContent = pct + '%';
+    }
+    else if (type === 'downloaded') { st.textContent = '다운로드 완료 — 재시작하여 설치'; _aboutShow('aboutInstallBtn'); }
+    else if (type === 'error')      { st.textContent = '오류: ' + ((p && p.message) || '알 수 없는 오류'); }
+  });
+}
+
+function _aboutShow(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+
+// 모달 재오픈 시 업데이트 영역 초기화 (다운로드 중 닫았다 다시 열어도 상태·진행률·버튼이 초기 상태로)
+function _aboutResetUpdate() {
+  const st = document.getElementById('aboutUpdStatus');   if (st)  st.textContent = '최신 여부를 확인하세요.';
+  const wrap = document.getElementById('aboutUpdProgressWrap'); if (wrap) wrap.style.display = 'none';
+  const pr = document.getElementById('aboutUpdProgress'); if (pr)  pr.value = 0;
+  const pct = document.getElementById('aboutUpdPct');     if (pct) pct.textContent = '0%';
+  const dl = document.getElementById('aboutDownloadBtn'); if (dl)  dl.style.display = 'none';
+  const ins = document.getElementById('aboutInstallBtn'); if (ins) ins.style.display = 'none';
+}
+
+async function aboutCheckUpdate() {
+  const api = window.electronAPI;
+  if (!api) return;
+  const r = await api.updaterCheck().catch(() => ({ ok: false, reason: 'unknown' }));
+  const st = document.getElementById('aboutUpdStatus');
+  if (!st) return;
+  if (r && r.reason === 'dev')   st.textContent = '개발 모드에서는 업데이트를 확인할 수 없습니다.';
+  else if (r && r.ok === false)  st.textContent = '업데이트 확인 실패: ' + (r.reason || '알 수 없는 오류');
+}
+function aboutDownloadUpdate() { window.electronAPI && window.electronAPI.updaterDownload(); }
+function aboutInstallUpdate()  { window.electronAPI && window.electronAPI.updaterInstall(); }
+
 // ── 단축키 슬라이더 ────────────────────────────────────────────
 (function () {
   const SC_COUNT = 3;
@@ -2100,6 +2183,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('snapshotOverlay').classList.contains('active'))  { closeSnapshotModal(); return; }
     if (document.getElementById('aiSchemaOverlay').classList.contains('active'))  { closeAISchemaModal(); return; }
     if (document.getElementById('shortcutsOverlay').classList.contains('active')) { closeShortcutsModal(); return; }
+    if (document.getElementById('aboutOverlay').classList.contains('active'))     { closeAboutModal(); return; }
   }
 }, true);
 
@@ -2435,6 +2519,7 @@ const CMD_LIST = [
   { label: '공유 URL 생성',   category: '공유', icon: '🔗', action: () => generateShareUrl() },
   // Help
   { label: '단축키 목록',     category: 'Help', icon: '⌨', action: () => openShortcutsModal() },
+  { label: '소프트웨어 정보', category: 'Help', icon: 'ℹ', action: () => openAboutModal() },
 ];
 
 let _cmdActiveIdx = -1;
