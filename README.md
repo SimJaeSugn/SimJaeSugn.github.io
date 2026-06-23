@@ -1171,6 +1171,21 @@ git push origin v1.5.0
 > 태그와 `electron/package.json` 버전이 다르면 워크플로가 명시적으로 실패합니다(단일 원천 강제).
 > 자동 업데이트는 **공개 릴리스(draft/prerelease 아님)** 여야 클라이언트가 감지하므로 `releaseType: "release"`로 게시합니다. 저장소가 공개이므로 클라이언트는 토큰 없이 업데이트를 확인합니다.
 
+### 2-2. 로컬에서 직접 릴리스 (`release-desktop.ps1`)
+
+CI(태그 push)를 거치지 않고 **내 PC에서 빌드해 GitHub Release로 바로 게시**하는 경로입니다. `build-desktop.ps1`(로컬 산출물만, 미게시)에 "게시"를 더한 것으로, 사이드카 빌드 → NSIS 빌드 → `electron-builder --publish always`를 한 번에 실행합니다.
+
+```powershell
+# 1) electron/package.json 의 version 을 직접 올린다 (예: "version": "1.6.0")
+# 2) 루트에서 실행 (사이드카 빌드 + NSIS 빌드 + GitHub Release 게시)
+.\release-desktop.ps1
+# → GitHub Release v1.6.0 에 exe·latest.yml·blockmap 게시 → 설치본 자동 업데이트
+```
+
+- **게시 토큰**: `GH_TOKEN`(또는 `GITHUB_TOKEN`) 환경변수를 사용합니다. 미설정 시 스크립트가 `gh auth token`(로그인된 gh CLI 토큰, `repo` 권한)을 자동 재활용합니다.
+- **태그 불필요**: electron-builder가 `package.json` 버전으로 릴리스(태그 `v<버전>` 포함)를 직접 생성합니다. 다만 저장소와 릴리스 정합을 위해 버전 올린 `package.json`은 커밋·push를 권장합니다.
+- CI 경로(`v*` 태그 push → `.github/workflows/release.yml`)와 결과물·동작은 동일하며, **빌드 위치만 내 PC ↔ GitHub 러너**로 다릅니다.
+
 ### 3. Node.js 미들웨어 단독 배포
 
 > **웹 서비스용 프록시** — 브라우저에서 AgenticERM 웹 앱(`https://simjaesugn.github.io`)을 사용할 때 운영 DB에 연결하려면 이 미들웨어를 설치해야 합니다. DB에 접근 가능한 로컬 PC 또는 내부 서버에 설치하면 웹 앱과 운영 DB를 중계합니다. Electron 데스크탑 앱 사용자는 Python 사이드카가 자동으로 실행되므로 별도 설치 불필요합니다.
