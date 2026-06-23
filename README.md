@@ -1172,6 +1172,28 @@ iscc electron\installer.iss
 
 > 설치 시 UAC 관리자 권한 요청이 표시됩니다. 승인하면 `C:\Program Files\AgenticERM`에 설치되고 바탕화면 바로가기가 생성됩니다.
 
+### 2-1. GitHub Release 자동 배포 (Electron 설치파일)
+
+`v*` 태그를 push하면 GitHub Actions가 `windows-latest`에서 설치파일을 빌드해 Release에 자동 첨부합니다. 버전은 `electron/package.json` 단일 원천을 따르며, 태그가 이 버전과 일치해야 합니다.
+
+- 워크플로: `.github/workflows/release.yml`
+- 빌드: `build-desktop.ps1`을 그대로 호출 (Node·Python·Inno Setup은 워크플로가 준비, `pip install`/`npm install`은 스크립트가 수행)
+- 산출물: Release 자산 `AgenticERM_Desktop_Setup_{버전}.exe`
+
+**릴리스 절차:**
+
+```powershell
+# 1) electron/package.json 의 version 을 올린다 (예: 1.3.0 → 1.4.0)
+# 2) 커밋·푸시
+git commit -am "v1.4.0"
+git push
+# 3) 동일 버전 태그 push → 워크플로 실행
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+> 태그와 `electron/package.json` 버전이 다르면 워크플로가 명시적으로 실패합니다(단일 원천 강제). 수동 실행(`workflow_dispatch`) 시에는 `package.json` 버전으로 태그·릴리스를 자동 생성합니다.
+
 ### 3. Node.js 미들웨어 단독 배포
 
 > **웹 서비스용 프록시** — 브라우저에서 AgenticERM 웹 앱(`https://simjaesugn.github.io`)을 사용할 때 운영 DB에 연결하려면 이 미들웨어를 설치해야 합니다. DB에 접근 가능한 로컬 PC 또는 내부 서버에 설치하면 웹 앱과 운영 DB를 중계합니다. Electron 데스크탑 앱 사용자는 Python 사이드카가 자동으로 실행되므로 별도 설치 불필요합니다.

@@ -1,0 +1,87 @@
+name: Release Desktop Installer
+
+# 데스크탑 설치파일(.exe)을 빌드해 GitHub Release 자산으로 첨부한다.
+# 버전 단일 원천: electron/package.json — 태그가 이 버전과 일치해야 한다.
+#
+# 릴리스 절차:
+#   1) electron/package.json 의 version 을 올린다 (예: 1.3.0 → 1.4.0)
+#   2) 커밋·푸시 후 동일 버전 태그를 만든다:  git tag v1.4.0 && git push origin v1.4.0
+#   3) 본 워크플로가 windows-latest 에서 build-desktop.ps1 을 실행해
+#      AgenticERM_Desktop_Setup_<버전>.exe 를 만들고 Release(v1.4.0)에 업로드한다.
+# (수동 실행 workflow_dispatch 시에는 package.json 버전으로 태그·릴리스를 자동 생성한다.)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # build-desktop.ps1 3단계(iscc)가 호출하는 Inno Setup. 러너에 기본 미설치라 설치 필요.
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      # 버전 단일 원천(electron/package.json) 읽기 → 이후 단계 입력으로 노출
+      - name: Read version from electron/package.json
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Get-Content electron/package.json -Raw | ConvertFrom-Json).version
+          if (-not $v) { throw "electron/package.json 에서 version 을 읽지 못했습니다." }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=v$v"    >> $env:GITHUB_OUTPUT
+          Write-Host "version=$v / tag=v$v"
+
+      # 태그 push 로 실행됐다면 태그와 package.json 버전이 일치하는지 가드(단일 원천 강제)
+      - name: Verify tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $expected = "${{ steps.ver.outputs.tag }}"
+          if ($tag -ne $expected) {
+            throw "태그($tag)가 electron/package.json 버전($expected)과 다릅니다. package.json 버전을 올린 뒤 동일 태그로 릴리스하세요."
+          }
+
+      # 기존 로컬 빌드 스크립트 재사용 (pip install·npm install 은 스크립트가 내부에서 수행)
+      - name: Build desktop installer
+        shell: pwsh
+        run: .\build-desktop.ps1
+
+      - name: Create release and upload installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $asset = "electron/dist/AgenticERM_Desktop_Setup_${{ steps.ver.outputs.version }}.exe"
+          if (-not (Test-Path $asset)) { throw "설치파일을 찾지 못했습니다: $asset" }
+
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            # 릴리스 없음 → 생성(태그 push면 기존 태그 사용, 수동 실행이면 현재 커밋에 태그 생성)
+            gh release create $tag $asset --title $tag --target $env:GITHUB_SHA --generate-notes
+          } else {
+            # 이미 있으면 자산만 갱신
+            gh release upload $tag $asset --clobber
+          }
