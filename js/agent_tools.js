@@ -793,6 +793,47 @@ function _agentToolBatchRenameAttributes(draft, args) {
   return { ok: true, renamed: changed };
 }
 
+// 명시적 매핑 목록으로 테이블·컬럼의 논리명/물리명을 한 번에 일괄 변경(1회 승인) ─ 패턴이 아닌 항목별 지정
+function _agentToolBatchUpdateNames(draft, args, remap) {
+  const items = args.items || args.updates || args.changes || args.list;
+  if (!Array.isArray(items) || !items.length)
+    throw new Error('items 배열이 필요합니다(각 항목: entityId, attrName?, logicalName?, physicalName?).');
+  const results = [];
+  let changed = 0;
+  items.forEach((it, i) => {
+    try {
+      const id = _agentResolveEntityId(draft, it.entityId || it.entity || it.id || it.table, remap);
+      if (!id) throw new Error('엔티티를 찾을 수 없습니다: ' + (it.entityId || it.entity || it.id || it.table || ''));
+      const ent = draft.entities.find(e => e.id === id);
+      if (!ent) throw new Error('엔티티를 찾을 수 없습니다: ' + id);
+      const target = it.attrName || it.column || it.attr;
+      if (target) {
+        // 컬럼(속성) 이름 변경
+        const attr = _agentFindAttr(ent, target);
+        if (!attr) throw new Error('컬럼을 찾을 수 없습니다: ' + target);
+        let touched = false;
+        if (it.logicalName != null) { attr.logicalName = it.logicalName; touched = true; }
+        if (it.physicalName != null) { attr.physicalName = it.physicalName; touched = true; }
+        if (it.type != null) { attr.type = it.type; touched = true; }
+        if (!touched) throw new Error('변경할 값(logicalName/physicalName)이 없습니다');
+        results.push({ ok: true, entityId: id, column: attr.physicalName || attr.logicalName });
+      } else {
+        // 테이블(엔티티) 이름 변경
+        let touched = false;
+        if (it.logicalName != null) { ent.logicalName = it.logicalName; touched = true; }
+        if (it.physicalName != null) { ent.physicalName = it.physicalName; touched = true; }
+        if (it.description != null) { ent.description = it.description; touched = true; }
+        if (!touched) throw new Error('변경할 값(logicalName/physicalName)이 없습니다');
+        results.push({ ok: true, entityId: id, table: ent.physicalName || ent.logicalName });
+      }
+      changed++;
+    } catch (e) {
+      results.push({ ok: false, index: i, error: e.message });
+    }
+  });
+  return { ok: true, changed, total: items.length, results };
+}
+
 function _agentToolAutoDetectRelationships(draft, args) {
   const ents = draft.entities;
   const byPhysical = {}; ents.forEach(e => { byPhysical[(e.physicalName || e.id).toUpperCase()] = e; });
@@ -1727,6 +1768,12 @@ const AGENT_TOOL_DEFS = [
   { name: 'batch_rename_attributes', kind: 'write', danger: false, run: _agentToolBatchRenameAttributes,
     desc: '컬럼명 일괄 변경(패턴/컨벤션)', params: 'ids?, fromPattern→toPattern 또는 convention(snake_case|camelCase|PascalCase|UPPER|lower), target?(physical|logical)',
     detail: '대상 테이블 컬럼명을 패턴 치환 또는 네이밍 컨벤션으로 일괄 변경한다. "FK 컬럼명을 snake_case로 통일".' },
+  { name: 'batch_update_names', kind: 'write', danger: false, run: _agentToolBatchUpdateNames,
+    desc: '테이블·컬럼 논리명/물리명을 항목별로 일괄 변경(한 번에)', params: 'items:[{entityId, attrName?, logicalName?, physicalName?, type?, description?}]',
+    detail: '여러 테이블·컬럼의 논리명·물리명을 명시한 매핑 목록(items)으로 한 번에 변경한다(컬럼마다 update_attribute 를 반복하지 말 것 — 1회 호출=1회 승인). '
+            + '각 항목에 attrName 이 있으면 그 컬럼을, 없으면 그 테이블 자체의 이름을 바꾼다. attrName 은 현재 물리명 또는 논리명으로 컬럼을 찾는다. '
+            + 'logicalName=한글 표시명, physicalName=영문 DB명(UPPER_SNAKE_CASE 권장). 항목별 성공/실패를 results 로 반환(일부 실패해도 나머지는 적용). '
+            + '"여러 컬럼 이름 한꺼번에 바꿔줘"·"이 테이블들 논리명/물리명 정리".' },
   { name: 'auto_detect_relationships', kind: 'write', danger: false, run: _agentToolAutoDetectRelationships,
     desc: 'FK 컬럼명 패턴으로 관계 자동 감지', params: '(없음)',
     detail: '컬럼명이 <테이블>_ID 패턴이면 해당 부모 테이블과 1:N 관계를 자동 추가한다(기존 관계는 보존). "FK 패턴으로 관계 연결".' },
@@ -1867,6 +1914,7 @@ function _agentToolLabel(tool, args) {
     // 일괄·관계
     case 'batch_update_entities': return '테이블 일괄 수정' + (sel ? ': ' + sel : '');
     case 'batch_rename_attributes': return '컬럼명 일괄 변경';
+    case 'batch_update_names': return '논리명/물리명 일괄 변경' + (Array.isArray(a.items) ? ' (' + a.items.length + '건)' : '');
     case 'auto_detect_relationships': return 'FK 패턴 관계 자동 감지';
     case 'duplicate_entity': return '테이블 복제: ' + (a.entityId || a.id || a.name || '');
     // 분석

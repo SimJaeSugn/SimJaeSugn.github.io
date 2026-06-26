@@ -864,7 +864,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/bottom_panel.js` | 하단 패널 (VSCode 스타일 서브탭 · 연결 DB SQL 실행/결과) |
 | `js/icons.js` | Lucide 아이콘 초기화 (`vendor/lucide.min.js` 로컬 번들 · `data-lucide` → SVG) |
 | `js/agent_panel.js` | 우측 패널 `속성`/`Agent` 탭 전환 · 채팅 UI · 스트림/interrupt 루프 |
-| `js/agent_tools.js` | Agent 클라이언트 툴 **66종**(엔티티·관계·속성 CRUD, 선택·뷰·하이라이트, 일괄·관계자동화, 분석·검증·통계, 섹션·메모, 다이어그램·스냅샷·다이어그램간 엔티티 복사·리버스 엔지니어링(DB→ERD), 테이블정의서·데이터사전·ERD명세서 산출물·콘텐츠 파일저장, 표준용어 점검·준수수정, DB 코멘트 일괄 적용, 테마·단축키·메뉴·컬럼템플릿 정보 등) · 드래프트 커밋·원자적 undo · 표준용어사전 연동 · async 툴 지원. 서버 측 DB 툴은 `agent/tools_proxy.py`(24종, 접속정보·프로파일관리·introspection·데이터분석·포워드엔지니어링). v1·v2·v3 공유 |
+| `js/agent_tools.js` | Agent 클라이언트 툴 **67종**(엔티티·관계·속성 CRUD, 선택·뷰·하이라이트, 일괄·관계자동화·논리물리명 일괄변경, 분석·검증·통계, 섹션·메모, 다이어그램·스냅샷·다이어그램간 엔티티 복사·리버스 엔지니어링(DB→ERD), 테이블정의서·데이터사전·ERD명세서 산출물·콘텐츠 파일저장, 표준용어 점검·준수수정, DB 코멘트 일괄 적용, 테마·단축키·메뉴·컬럼템플릿 정보 등) · 드래프트 커밋·원자적 undo · 표준용어사전 연동 · async 툴 지원. 서버 측 DB 툴은 `agent/tools_proxy.py`(24종, 접속정보·프로파일관리·introspection·데이터분석·포워드엔지니어링). v1·v2·v3 공유 |
 | `js/layout.js` | 계층형·격자형·원형 자동 배치 알고리즘 |
 | `js/export.js` | PNG·SVG·Markdown·HTML·DDL 내보내기 |
 | `js/import.js` | JSON·DDL 가져오기 및 파싱 |
