@@ -34,6 +34,7 @@ from agent.v3.nodes.analyze import analyze_node
 from agent.v3.nodes.prep import prep_node
 from agent.v3.nodes.react import react_node, react_route
 from agent.v3.nodes.meta import meta_exec_node
+from agent.v3.nodes.memory_exec import memory_exec_node
 from agent.v3.nodes.act import proxy_exec_node, client_exec_node
 from agent.v3.nodes.approve import approve_node, approve_route
 from agent.v3.nodes.verify import verify_node, verify_route
@@ -64,6 +65,7 @@ def build_graph():
     g.add_node("react", react_node)
     g.add_node("approve", approve_node)
     g.add_node("meta_exec", meta_exec_node)
+    g.add_node("memory_exec", memory_exec_node)
     g.add_node("proxy_exec", proxy_exec_node)
     g.add_node("client_exec", client_exec_node)
     g.add_node("verify", verify_node)
@@ -84,7 +86,7 @@ def build_graph():
     # finish → verify(준수 검증). verify 가 통과면 respond, 보완 필요면 react 로 되돌림.
     g.add_conditional_edges(
         "react", react_route,
-        {"finish": "verify", "meta": "meta_exec", "approve": "approve",
+        {"finish": "verify", "meta": "meta_exec", "memory": "memory_exec", "approve": "approve",
          "proxy": "proxy_exec", "client": "client_exec", "clarify": "clarify"},
     )
     # approve: 승인 시 해당 location 실행, 거부 시 respond(취소)
@@ -103,6 +105,7 @@ def build_graph():
         {"analyze": "analyze", "react": "react", "respond": "respond"},
     )
     g.add_edge("meta_exec", "react")
+    g.add_edge("memory_exec", "react")
     g.add_edge("proxy_exec", "react")
     g.add_edge("client_exec", "react")
 

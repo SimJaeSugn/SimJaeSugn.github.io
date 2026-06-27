@@ -17,6 +17,7 @@ from agent.common.llm import get_fast_llm                       # v1 읽기 전�
 from agent.common.prompts import ANALYZE_SYSTEM, context_brief  # v1 읽기 전용 공유
 from agent.common.schemas import IntentSpec                      # v1 읽기 전용 공유
 from agent.common.state import recent_messages                   # v1 읽기 전용 공유
+from agent.v3.common.memory import render_memory_section          # v3 전용 메모리
 from agent.v3.common.state import AgentState
 
 
@@ -29,7 +30,9 @@ def analyze_node(state: AgentState) -> dict:
     llm = get_fast_llm()
     # json_schema: 강제 tool_choice 미사용 → 로컬 서버(LM Studio) 호환
     analyzer = llm.with_structured_output(IntentSpec, method="json_schema")
-    system = ANALYZE_SYSTEM + "\n\n[현재 ERD 요약]\n" + context_brief(state.get("erd_context"))
+    system = (ANALYZE_SYSTEM
+              + "\n\n[메모리(사용자가 기억시킨 영구 지침)]\n" + render_memory_section()
+              + "\n\n[현재 ERD 요약]\n" + context_brief(state.get("erd_context")))
     prompt = [("system", system)] + recent_messages(state)
     try:
         intent: IntentSpec = analyzer.invoke(prompt)

@@ -24,11 +24,14 @@ from agent.v3.common.prompts import (
     render_scratchpad,
     tools_catalog_text,
 )
+from agent.v3.common.memory import render_memory_section
 from agent.v3.common.schemas import (
     ASK_USER,
     ASK_USER_TOOL,
     FINISH,
     MAX_LOOP,
+    MEMORY_TOOL_CATALOG,
+    MEMORY_TOOL_NAMES,
     META_TOOL_CATALOG,
     META_TOOL_NAMES,
     ReActStep,
@@ -127,13 +130,15 @@ def react_node(state: AgentState) -> dict:
     if loop > MAX_LOOP:
         return _finish(loop, f"반복 상한({MAX_LOOP}회) 도달 — 현재까지 결과로 종료합니다.")
 
-    catalog = (state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG + META_TOOL_CATALOG + [ASK_USER_TOOL]
+    catalog = ((state.get("tool_catalog") or []) + PROXY_TOOL_CATALOG
+               + META_TOOL_CATALOG + MEMORY_TOOL_CATALOG + [ASK_USER_TOOL])
     known = {t.get("name") for t in catalog if t.get("name")}
     intent_json = json.dumps(state.get("intent") or {}, ensure_ascii=False)
 
     system = (
         REACT_SYSTEM
         + f"\n\n[분석된 의도]\n{intent_json}"
+        + "\n\n[메모리]\n" + render_memory_section()
         + "\n\n[사용 가능한 툴]\n" + tools_catalog_text(catalog)
         + "\n\n[현재 ERD]\n" + context_brief(state.get("erd_context"))
         + "\n\n[관찰 기록]\n" + render_scratchpad(state.get("scratchpad"))
@@ -192,6 +197,11 @@ def react_node(state: AgentState) -> dict:
     if tool == "register_std_term" and sum(1 for e in scratch if e.get("tool") == "register_std_term") >= 2:
         return _finish(loop, thought + " (표준용어 사전 등록 반복 감지 — 컬럼 표준화는 standardize_attribute_names 로 수행하며 사전 대량 등록은 중단)")
 
+    # 가드 ⑤: remember 반복 누적 방지 — 기억할 내용이 매번 달라 가드①을 빠져나간다.
+    # 한 턴에 2회까지 허용(여러 항목 기억은 가능), 그 이상이면 종료.
+    if tool == "remember" and sum(1 for e in scratch if e.get("tool") == "remember") >= 2:
+        return _finish(loop, thought + " (메모리 저장 반복 감지 — 필요한 내용은 이미 기억됨)")
+
     # 승인 필요 판정: write/external/danger 툴은 실행 전 사용자 승인을 받는다(read/meta 면제)
     tdef = next((t for t in catalog if t.get("name") == tool), None)
     needs_approval = bool(tdef) and ((tdef.get("kind") in ("write", "external")) or bool(tdef.get("danger")))
@@ -217,6 +227,8 @@ def react_route(state: AgentState) -> str:
         return "clarify"   # 정보/방향 부족 → 사용자에게 되묻기(interrupt)
     if tool in META_TOOL_NAMES:
         return "meta"
+    if tool in MEMORY_TOOL_NAMES:
+        return "memory"    # 메모리 저장/조회/삭제 → 승인 면제(로컬 md 파일)
     if state.get("react_needs_approval"):
         return "approve"   # 쓰기/위험 → 실행 전 승인
     if tool in PROXY_TOOL_NAMES:

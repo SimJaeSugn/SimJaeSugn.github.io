@@ -155,9 +155,9 @@ proxy/python/
 │   │   ├── nodes/         ← analyze(v1 gate 대체, 4분기 route) · plan(plan_node_v2, StepV2 생성)
 │   │   └── eval/          ← 검증 오라클(P1)+자동최적화 게이트(P3) — fixtures.jsonl(골든11+홀드아웃6) · scorer(§7.1 지표) · runner(analyze→plan dry-run) · gate(v1무손상·테스트자산 동결 검사) · README.md(구동법·픽스처 규칙·P3 자동최적화 런북)
 │   └── v3/                ← v3 에이전트 서브패키지 (ReAct 하이브리드 — V3-M3, v1 노드 읽기 재사용)
-│       ├── graph.py       ← build_graph() — prep→analyze→{answer|clarify⇄analyze|fetch_tools→react⇄{meta_exec|approve→exec|proxy_exec|client_exec|clarify}→verify→respond}
-│       ├── common/        ← state(AgentState — v1 필드+scratchpad·loop_count·react_*·verify_count·clarify_count) · schemas(ReActStep·META_TOOL_CATALOG·ASK_USER·V3Verdict·MAX_LOOP·MAX_VERIFY·MAX_CLARIFY) · prompts(REACT_SYSTEM·plan/reflect·VERIFY_SYSTEM·render_scratchpad)
-│       └── nodes/         ← prep(턴 리셋) · react(추론+라우팅) · meta(plan/reflect 메타툴) · act(proxy_exec·client_exec) · approve(쓰기/위험 승인) · verify(준수 검증) · clarify(되묻기 interrupt — 의도불명/정보부족)
+│       ├── graph.py       ← build_graph() — prep→analyze→{answer|clarify⇄analyze|fetch_tools→react⇄{meta_exec|memory_exec|approve→exec|proxy_exec|client_exec|clarify}→verify→respond}
+│       ├── common/        ← state(AgentState — v1 필드+scratchpad·loop_count·react_*·verify_count·clarify_count·auto_approve) · schemas(ReActStep·META_TOOL_CATALOG·MEMORY_TOOL_CATALOG·ASK_USER·V3Verdict·V3VerifyProbe·MAX_LOOP·MAX_VERIFY·MAX_CLARIFY) · prompts(REACT_SYSTEM·plan/reflect·VERIFY_SYSTEM·VERIFY_PROBE_SYSTEM·render_scratchpad) · memory(영구 메모리 md R/W — ~/.uxermanager/agent_v3_memory.md, mtime 자동 재로드)
+│       └── nodes/         ← prep(턴 리셋+자동승인 감지) · react(추론+라우팅) · meta(plan/reflect 메타툴) · memory_exec(remember/recall/forget) · act(proxy_exec·client_exec) · approve(쓰기/위험 승인) · verify(준수 검증+확인 probe) · clarify(되묻기 interrupt — 의도불명/정보부족)
 ├── db/
 │   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB)
 │   ├── system_db.py       ← 내부 시스템 DB(aerm_storage) 고정 접속·레거시 정리 — 프로파일 미노출

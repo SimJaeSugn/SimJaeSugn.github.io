@@ -52,6 +52,30 @@ ASK_USER_TOOL = {
     "params": "question(필수: 사용자에게 할 질문), options(선택: 보기 목록 string[])",
 }
 
+# ── 메모리 툴 카탈로그 (location='memory') — 영구 기억 저장/조회/삭제 ──────
+# 로컬 md 파일(~/.uxermanager/agent_v3_memory.md)만 다루는 저위험 작업이라 승인 면제.
+# memory_exec 노드가 처리하며 react_route 가 approve 보다 먼저 'memory' 로 분기한다.
+MEMORY_TOOL_CATALOG = [
+    {
+        "name": "remember", "kind": "write", "location": "memory", "danger": False,
+        "desc": "사용자가 영구히 기억하라고 지시한 내용을 메모리에 저장한다. "
+                "'이건 기억해'·'앞으로 항상 ~해'·'잊지 마' 류일 때 사용(이후 모든 턴의 시스템 프롬프트 [메모리]에 로드됨).",
+        "params": "content(필수: 기억할 내용. 한 항목 = 한 문장으로 간결히)",
+    },
+    {
+        "name": "recall", "kind": "read", "location": "memory", "danger": False,
+        "desc": "저장된 에이전트 메모리를 조회한다(이미 [메모리] 섹션에 로드돼 있어 보통 불필요).",
+        "params": "(없음)",
+    },
+    {
+        "name": "forget", "kind": "write", "location": "memory", "danger": False,
+        "desc": "메모리에서 항목을 삭제한다. '~는 잊어줘'면 match, '메모리 전부 지워'면 all=true.",
+        "params": "match?(지울 항목에 포함된 텍스트) | all?(true 면 전체 삭제)",
+    },
+]
+MEMORY_TOOL_NAMES = {t["name"] for t in MEMORY_TOOL_CATALOG}
+
+
 # 루프 종료 신호 토큰
 FINISH = "finish"
 
