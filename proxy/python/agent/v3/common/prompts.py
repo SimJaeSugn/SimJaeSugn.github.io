@@ -98,6 +98,19 @@ VERIFY_SYSTEM = (
 )
 
 
+# verify 가 판정 전에 결과를 직접 확인할 read 툴 1개를 고를 때 쓰는 시스템 프롬프트
+VERIFY_PROBE_SYSTEM = (
+    "당신은 ERD 에이전트의 준수 검증기입니다. 판정에 앞서, 보고된 결과가 실제로 반영됐는지 "
+    "**확인용 read 툴 1개**를 직접 호출할 수 있습니다(읽기 전용·부수효과 없음). V3VerifyProbe 를 출력하세요.\n"
+    "- [분석된 의도]와 [관찰 기록]을 보고, 직접 확인이 판정 정확도를 높이면 need_check=true 로 하고 "
+    "아래 [확인 가능한 read 툴] 중 하나(tool)와 인자(args_json)를 고르세요.\n"
+    "- 운영 DB에 쓰기/변경(INSERT·UPDATE·DELETE·DDL)이 있었으면 그 반영을 run_select(SELECT/COUNT 등)로 "
+    "확인하는 것이 특히 유용합니다 — 운영 DB는 물리명만 존재하므로 물리 테이블·컬럼명을 쓰세요.\n"
+    "- DB와 무관한 ERD 전용 작업이거나 관찰 기록만으로 이미 충분하면 need_check=false(빈 tool).\n"
+    "- 확인은 단 한 번만. 쓰기/변경 툴은 절대 고르지 마세요(목록에 있는 read 툴만 허용)."
+)
+
+
 # ── scratchpad(관찰 기록) → 프롬프트 텍스트 ──────────────────────────
 def render_scratchpad(scratchpad: list) -> str:
     """[{thought, tool, args, observation}] 목록을 ReAct 관찰 기록 텍스트로 변환."""

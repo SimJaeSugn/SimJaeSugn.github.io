@@ -70,3 +70,6 @@ class AgentState(TypedDict, total=False):
     # clarify 노드 — 의도 불명확(analyze) 또는 ReAct 루프 중(ask_user) 사용자 되묻기
     clarify_count: int                    # 되묻기 횟수(무한 되묻기 가드, MAX_CLARIFY)
     clarify_cancelled: Optional[bool]     # 사용자가 답을 건너뜀 → respond(취소)로 분기
+    # 이번 턴 질의에서 사용자가 '승인 없이 진행' 등을 명시했는가 → 그 턴 한정 승인 면제
+    # (prep 노드가 질의 텍스트에서 감지. 기본 None/False = 승인 게이트 정상 동작)
+    auto_approve: Optional[bool]

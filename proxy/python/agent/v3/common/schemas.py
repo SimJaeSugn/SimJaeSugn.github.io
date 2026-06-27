@@ -56,7 +56,7 @@ ASK_USER_TOOL = {
 FINISH = "finish"
 
 # 무한루프 가드 — 한 턴의 ReAct 반복 상한
-MAX_LOOP = 16
+MAX_LOOP = 35
 
 # analyze↔clarify 되묻기 상한(무한 되묻기 방지) — 도달 시 가용 정보로 최선 응답
 MAX_CLARIFY = 3
@@ -78,3 +78,25 @@ class V3Verdict(BaseModel):
 
 # verify 가 react 로 되돌리는 최대 횟수(무한 검증-보완 루프 방지)
 MAX_VERIFY = 2
+
+
+# ── verify 의 확인 probe (판정 전 read 툴 1회 호출 결정) ──────────────
+class V3VerifyProbe(BaseModel):
+    """verify 가 판정 전에 결과를 직접 확인하기 위한 단일 read 툴 호출 결정.
+
+    DB에 쓰기/변경이 있었으면 그 반영을 SELECT/COUNT 등으로 1회 확인하면 판정이 정확해진다.
+    ERD 전용(=DB 무관) 작업이거나 관찰 기록만으로 충분하면 need_check=False.
+    """
+    need_check: bool = Field(
+        default=False,
+        description="결과를 read 툴로 직접 확인하는 게 판정에 도움이 되면 true. DB 무관(ERD 전용)이거나 관찰만으로 충분하면 false.",
+    )
+    tool: str = Field(
+        default="",
+        description="확인에 쓸 proxy read 툴 이름 1개(제시된 목록 중에서). need_check=false면 빈 문자열.",
+    )
+    args_json: str = Field(
+        default="{}",
+        description="그 툴의 인자 JSON 객체 **문자열**. 예: '{\"sql\": \"SELECT COUNT(*) FROM ORDERS\"}'. 없으면 '{}'.",
+    )
+    reason: str = Field(default="", description="무엇을 왜 확인하는지 한 줄.")

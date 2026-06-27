@@ -195,6 +195,10 @@ def react_node(state: AgentState) -> dict:
     # 승인 필요 판정: write/external/danger 툴은 실행 전 사용자 승인을 받는다(read/meta 면제)
     tdef = next((t for t in catalog if t.get("name") == tool), None)
     needs_approval = bool(tdef) and ((tdef.get("kind") in ("write", "external")) or bool(tdef.get("danger")))
+    # 사용자가 이번 질의에서 '승인 없이 진행해줘' 등을 명시하면 그 턴 한정 승인 면제
+    # (prep 노드가 질의 텍스트에서 감지해 state['auto_approve'] 로 전달 — 기본은 승인 ON)
+    if state.get("auto_approve"):
+        needs_approval = False
     return {
         "loop_count": loop,
         "react_tool": tool,
