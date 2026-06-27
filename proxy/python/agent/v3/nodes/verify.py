@@ -20,6 +20,7 @@ from agent.common.llm import get_main_llm
 from agent.common.state import recent_messages
 from agent.tools_proxy import PROXY_TOOL_CATALOG, run_proxy_tool
 
+from agent.v3.common.memory import render_memory_section
 from agent.v3.common.prompts import (
     VERIFY_PROBE_SYSTEM,
     VERIFY_SYSTEM,
@@ -115,6 +116,7 @@ async def verify_node(state: AgentState) -> dict:
     system = (
         VERIFY_SYSTEM
         + f"\n\n[분석된 의도]\n{json.dumps(intent, ensure_ascii=False)}"
+        + "\n\n[메모리]\n" + render_memory_section()
         + "\n\n[관찰 기록]\n" + scratch_text
     )
     verdict: V3Verdict = await verifier.ainvoke([("system", system)] + messages)

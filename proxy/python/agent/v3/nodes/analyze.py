@@ -31,9 +31,10 @@ def analyze_node(state: AgentState) -> dict:
     # json_schema: 강제 tool_choice 미사용 → 로컬 서버(LM Studio) 호환
     analyzer = llm.with_structured_output(IntentSpec, method="json_schema")
     system = (ANALYZE_SYSTEM
-              + "\n\n[메모리 라우팅 규칙(중요)] 사용자가 무언가를 영구히 '기억해/기억하고 있어/외워둬/잊지 마/앞으로 항상 ~해'라고 하거나, "
-              "'뭘 기억하고 있어?/기억한 것 알려줘'(조회) 또는 '~는 잊어줘/메모리 지워'(삭제)라고 하면, 이는 메모리 툴"
-              "(remember·recall·forget) 실행이 필요한 요청이므로 **kind=act** 로 분류한다(answer 아님)."
+              + "\n\n[메모리 라우팅 규칙(중요)] 사용자가 무언가를 영구히 '기억해/외워둬/잊지 마/앞으로 항상 ~해'(저장) 또는 "
+              "'~는 잊어줘/메모리 지워'(삭제)라고 하면, 이는 메모리 툴(remember·forget) 실행이 필요하므로 **kind=act**.\n"
+              "반대로 **이미 기억된 정보를 묻는 조회**('내 이름 뭐야?'·'나 누구야?'·'뭘 기억하고 있어?' 등)는 [메모리]가 이미 "
+              "시스템 프롬프트에 로드돼 있어 **도구 없이 바로 답할 수 있으므로 kind=answer** 로 분류한다(act 로 보내 ReAct 루프를 돌리지 말 것)."
               + "\n\n[메모리(사용자가 기억시킨 영구 지침)]\n" + render_memory_section()
               + "\n\n[현재 ERD 요약]\n" + context_brief(state.get("erd_context")))
     prompt = [("system", system)] + recent_messages(state)

@@ -17,20 +17,22 @@ from db.system_db import DATA_DIR   # ~/.uxermanager (공유 인프라 — 경�
 
 MEMORY_FILE: Path = DATA_DIR / "agent_v3_memory.md"
 
-# 메모리 의도 감지(결정적) — 약한 로컬 LLM 이 '기억해' 류를 answer 로 오분류하는 것을 보정한다.
-# analyze 가 answer 로 분류해도 이 패턴에 걸리면 act 로 강제(react 루프 → remember/recall/forget 도달).
-_MEMORY_INTENT_RE = re.compile(
-    r"기억해|기억하|기억 해|기억해둬|기억해 둬|외워|외웠|기억할|기억된|기억하고\s*있|기억나|기억 나"
-    r"|잊지\s*마|잊지마|잊어버리지|잊어\s*줘|잊어줘|잊어라|메모리(에|에서|를|는|\s)?\s*(저장|기억|지워|삭제|비워)"
-    r"|뭘\s*기억|무엇을\s*기억|기억(한|하는)\s*(것|내용)"
-    r"|remember|memori[sz]e|forget|recall",
+# 메모리 '쓰기'(저장/삭제) 의도만 감지 — 약한 로컬 LLM 이 '기억해/잊어' 류를 answer 로
+# 오분류해도 act 로 강제해 remember/forget 툴에 도달시킨다.
+# 주의: 조회('내 이름 뭐야'·'뭘 기억해')는 여기 포함하지 않는다 — 메모리가 이미 모든 노드의
+# 시스템 프롬프트 [메모리]에 로드되므로, 조회는 answer 모드에서 한 번에 답하는 게 맞다(루프 불필요).
+_MEMORY_WRITE_RE = re.compile(
+    r"기억해|기억 해|기억해둬|기억해 둬|기억해줘|외워둬|외워 둬|외워줘|외워라|외워두"
+    r"|잊지\s*마|잊지마|잊어버려|잊어\s*줘|잊어줘|잊어라"
+    r"|메모리(에|에서|를|는|\s)?\s*(저장|기억|지워|삭제|비워|추가)"
+    r"|remember|memori[sz]e|forget",
     re.IGNORECASE,
 )
 
 
 def is_memory_request(text: str) -> bool:
-    """발화가 영구 메모리 저장/조회/삭제 의도인지(결정적 휴리스틱)."""
-    return bool(_MEMORY_INTENT_RE.search(str(text or "")))
+    """발화가 영구 메모리 '저장/삭제' 의도인지(결정적 휴리스틱). 조회는 제외(answer 가 처리)."""
+    return bool(_MEMORY_WRITE_RE.search(str(text or "")))
 
 # mtime 기반 로드 캐시: (mtime, content). 파일이 바뀌면 갱신.
 _cache: tuple[float, str] | None = None
