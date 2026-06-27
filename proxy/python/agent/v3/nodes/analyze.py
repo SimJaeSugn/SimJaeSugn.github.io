@@ -17,8 +17,8 @@ from agent.common.llm import get_fast_llm                       # v1 읽기 전�
 from agent.common.prompts import ANALYZE_SYSTEM, context_brief  # v1 읽기 전용 공유
 from agent.common.schemas import IntentSpec                      # v1 읽기 전용 공유
 from agent.common.state import recent_messages                   # v1 읽기 전용 공유
-from agent.v3.common.memory import render_memory_section          # v3 전용 메모리
-from agent.v3.common.state import AgentState
+from agent.v3.common.memory import is_memory_request, render_memory_section  # v3 전용 메모리
+from agent.v3.common.state import AgentState, last_user_text
 
 
 def analyze_node(state: AgentState) -> dict:
@@ -31,6 +31,9 @@ def analyze_node(state: AgentState) -> dict:
     # json_schema: 강제 tool_choice 미사용 → 로컬 서버(LM Studio) 호환
     analyzer = llm.with_structured_output(IntentSpec, method="json_schema")
     system = (ANALYZE_SYSTEM
+              + "\n\n[메모리 라우팅 규칙(중요)] 사용자가 무언가를 영구히 '기억해/기억하고 있어/외워둬/잊지 마/앞으로 항상 ~해'라고 하거나, "
+              "'뭘 기억하고 있어?/기억한 것 알려줘'(조회) 또는 '~는 잊어줘/메모리 지워'(삭제)라고 하면, 이는 메모리 툴"
+              "(remember·recall·forget) 실행이 필요한 요청이므로 **kind=act** 로 분류한다(answer 아님)."
               + "\n\n[메모리(사용자가 기억시킨 영구 지침)]\n" + render_memory_section()
               + "\n\n[현재 ERD 요약]\n" + context_brief(state.get("erd_context")))
     prompt = [("system", system)] + recent_messages(state)
@@ -42,9 +45,24 @@ def analyze_node(state: AgentState) -> dict:
         return {"route": "answer", "intent": None, "past_steps": None}
 
     route = intent.kind  # "answer" | "act" | "mixed" | "clarify"
+    intent_dump = intent.model_dump()
+
+    # 결정적 보정: 약한 로컬 LLM 이 '기억해/잊어/기억하고 있어' 류를 answer 로 오분류해도
+    # 메모리 의도면 act 로 강제한다 → react 루프에 도달해 remember/recall/forget 툴을 쓸 수 있다.
+    # (프롬프트 규칙만으로는 약한 모델이 안 따르므로 코드로 보장. answer 일 때만 끌어올림.)
+    if route == "answer" and is_memory_request(last_user_text(state)):
+        route = "act"
+        intent_dump["kind"] = "act"
+        if not intent_dump.get("goals"):
+            intent_dump["goals"] = [{
+                "id": "g1", "action": "remember",
+                "target_scope": "에이전트 메모리",
+                "description": "사용자가 기억/조회/삭제를 요청한 내용을 메모리 툴로 처리",
+            }]
+
     result = {
         "route": route,
-        "intent": intent.model_dump(),
+        "intent": intent_dump,
         "past_steps": None,   # 새 턴 시작 — v1 과 동일 리셋
     }
     if route == "clarify":

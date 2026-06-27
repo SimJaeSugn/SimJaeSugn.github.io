@@ -17,6 +17,21 @@ from db.system_db import DATA_DIR   # ~/.uxermanager (공유 인프라 — 경�
 
 MEMORY_FILE: Path = DATA_DIR / "agent_v3_memory.md"
 
+# 메모리 의도 감지(결정적) — 약한 로컬 LLM 이 '기억해' 류를 answer 로 오분류하는 것을 보정한다.
+# analyze 가 answer 로 분류해도 이 패턴에 걸리면 act 로 강제(react 루프 → remember/recall/forget 도달).
+_MEMORY_INTENT_RE = re.compile(
+    r"기억해|기억하|기억 해|기억해둬|기억해 둬|외워|외웠|기억할|기억된|기억하고\s*있|기억나|기억 나"
+    r"|잊지\s*마|잊지마|잊어버리지|잊어\s*줘|잊어줘|잊어라|메모리(에|에서|를|는|\s)?\s*(저장|기억|지워|삭제|비워)"
+    r"|뭘\s*기억|무엇을\s*기억|기억(한|하는)\s*(것|내용)"
+    r"|remember|memori[sz]e|forget|recall",
+    re.IGNORECASE,
+)
+
+
+def is_memory_request(text: str) -> bool:
+    """발화가 영구 메모리 저장/조회/삭제 의도인지(결정적 휴리스틱)."""
+    return bool(_MEMORY_INTENT_RE.search(str(text or "")))
+
 # mtime 기반 로드 캐시: (mtime, content). 파일이 바뀌면 갱신.
 _cache: tuple[float, str] | None = None
 
