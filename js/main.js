@@ -38,7 +38,14 @@ if (!_restoredFromUrl && typeof isPcApp === 'function' && isPcApp() && typeof lo
       undoStack.length = 0;
       undoStack.push(JSON.stringify({ diagrams, activeDiagramId, viewMode, notationStyle, gridSnap }));
     }
-  }).finally(() => _pcHideLoading());
+  }).finally(() => {
+    _pcHideLoading();
+    // 영속 파일 복원까지 끝났으니 스플래시 '시작하기' 활성화
+    if (typeof splashMarkDataLoaded === 'function') splashMarkDataLoaded();
+  });
+} else {
+  // 웹/공유URL 복원 — 데이터는 위에서 동기 로드 완료 → 스플래시 닫기 활성화
+  if (typeof splashMarkDataLoaded === 'function') splashMarkDataLoaded();
 }
 
 // ── DOMContentLoaded ──────────────────────────────────────────────

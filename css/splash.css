@@ -1,0 +1,219 @@
+/* ── 스플래시(시작) 화면 ─────────────────────────────────────────────
+   AgenticERM 홍보영상(promo) 의 브랜드·팔레트를 경량 재현한 자체 스플래시.
+   index.html 최상단에 마크업이 있어 첫 페인트에 즉시 표시된다.
+   js/splash.js 가 애니메이션·데이터 로딩 게이팅·닫기를 제어한다.
+   localStorage 'aerm_splash_disabled'=='1' 이면 head 인라인 스크립트가
+   <html class="splash-off"> 를 달아 첫 페인트부터 숨긴다(깜빡임 방지). */
+
+:root {
+  --sp-bg:    #0b0e14;
+  --sp-card:  #121823;
+  --sp-line:  #283346;
+  --sp-stroke:#33415a;
+  --sp-ink:   #e8edf5;
+  --sp-sub:   #7d8aa0;
+  --sp-blue:  #5b9dff;
+  --sp-blue2: #2f63e0;
+  --sp-green: #46c08a;
+}
+
+.splash-off #splashOverlay { display: none !important; }
+
+/* ── 모드 전환(lite=경량 재현 / promo=원본 홍보영상) ── */
+#splashOverlay [data-mode="promo"] { display: none; }            /* 기본·lite: promo 숨김 */
+.splash-mode-promo #splashOverlay [data-mode="lite"]  { display: none; }
+.splash-mode-promo #splashOverlay [data-mode="promo"] { display: block; }
+
+#splashOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(120% 120% at 50% 30%, #10151f 0%, var(--sp-bg) 60%, #07090e 100%);
+  font-family: 'Noto Sans KR', 'Pretendard', system-ui, -apple-system, sans-serif;
+  color: var(--sp-ink);
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 1;
+  transition: opacity .4s ease;
+}
+#splashOverlay.splash-closing { opacity: 0; pointer-events: none; }
+
+/* 배경 ERD 점 그리드 + 은은한 빛 */
+.splash-bg {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 38%, #000 35%, transparent 78%);
+          mask-image: radial-gradient(120% 90% at 50% 38%, #000 35%, transparent 78%);
+  opacity: .5;
+}
+.splash-bg::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 30%;
+  width: 760px; height: 760px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(91,157,255,.16) 0%, rgba(91,157,255,0) 62%);
+  animation: splashGlow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes splashGlow {
+  0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: .9;  transform: translate(-50%, -50%) scale(1.08); }
+}
+
+/* 중앙 카드 */
+.splash-card {
+  position: relative;
+  z-index: 1;
+  width: 460px;
+  max-width: calc(100vw - 48px);
+  padding: 34px 36px 26px;
+  text-align: center;
+  background: rgba(18, 24, 35, .72);
+  border: 1px solid var(--sp-stroke);
+  border-radius: 18px;
+  box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(91,157,255,.06) inset;
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+  animation: splashCardIn .55s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes splashCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 로고(엔티티 노드 마크) */
+.splash-logo { width: 96px; height: 96px; margin: 0 auto 10px; }
+.splash-logo svg { display: block; width: 100%; height: 100%; }
+.splash-logo .sp-core { transform-box: fill-box; transform-origin: center; animation: splashPulse 2.6s ease-in-out infinite; }
+.splash-logo .sp-spark { transform-box: fill-box; transform-origin: center; animation: splashSpark 2.6s ease-in-out infinite; }
+.splash-logo .sp-node  { animation: splashNode 2.6s ease-in-out infinite; }
+.splash-logo .sp-node:nth-of-type(2) { animation-delay: .12s; }
+.splash-logo .sp-node:nth-of-type(3) { animation-delay: .24s; }
+@keyframes splashPulse { 0%,100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(91,157,255,.5)); } 50% { transform: scale(1.06); filter: drop-shadow(0 0 16px rgba(91,157,255,.85)); } }
+@keyframes splashSpark { 0%,100% { opacity: .9; } 50% { opacity: 1; } }
+@keyframes splashNode  { 0%,100% { opacity: .85; } 50% { opacity: 1; } }
+
+.splash-wordmark {
+  font-size: 34px; font-weight: 800; letter-spacing: -.02em; color: #fff; margin-top: 2px;
+}
+.splash-tag  { font-size: 15px; font-weight: 600; color: var(--sp-blue); margin-top: 9px; }
+.splash-sub  { font-size: 12.5px; color: var(--sp-sub); margin-top: 5px; }
+
+/* 회전 캡션 */
+.splash-caption {
+  margin: 18px auto 4px;
+  min-height: 52px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.splash-cap-bar { width: 30px; height: 3px; border-radius: 2px; background: var(--sp-blue); margin-bottom: 4px; }
+.splash-cap-title { font-size: 16px; font-weight: 700; color: #fff; }
+.splash-cap-desc  { font-size: 12px; color: #b9c3d4; }
+.splash-cap-title, .splash-cap-desc {
+  transition: opacity .4s ease, transform .4s ease;
+}
+.splash-caption.cap-out .splash-cap-title,
+.splash-caption.cap-out .splash-cap-desc { opacity: 0; transform: translateY(6px); }
+
+/* 표준화 카운터(장식) */
+.splash-meter { margin: 16px auto 18px; width: 300px; max-width: 100%; }
+.splash-meter-head {
+  display: flex; align-items: baseline; justify-content: center; gap: 7px; margin-bottom: 7px;
+}
+.splash-meter-head #splashStdNum {
+  font-size: 22px; font-weight: 800; color: var(--sp-blue);
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums;
+}
+.splash-meter-head .sp-meter-unit { font-size: 12px; color: var(--sp-sub); }
+.splash-meter-track { height: 5px; border-radius: 3px; background: #222c3c; overflow: hidden; }
+.splash-meter-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--sp-blue2), var(--sp-blue));
+  border-radius: 3px;
+}
+
+/* 하단: 상태 + 시작 버튼 */
+.splash-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  margin-top: 4px;
+}
+.splash-status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; color: var(--sp-sub); text-align: left;
+}
+.splash-status.ready { color: var(--sp-green); }
+.splash-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--sp-blue);
+  box-shadow: 0 0 0 0 rgba(91,157,255,.5);
+  animation: splashDot 1.2s ease-out infinite;
+}
+.splash-status.ready .splash-dot { background: var(--sp-green); animation: none; }
+@keyframes splashDot {
+  0%   { box-shadow: 0 0 0 0 rgba(91,157,255,.55); }
+  100% { box-shadow: 0 0 0 7px rgba(91,157,255,0); }
+}
+
+.splash-start {
+  flex-shrink: 0;
+  padding: 9px 22px;
+  font-size: 13.5px; font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(180deg, #6aa6ff, var(--sp-blue2));
+  border: none; border-radius: 9px;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease, filter .2s ease;
+  box-shadow: 0 6px 18px rgba(47,99,224,.4);
+}
+.splash-start:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(47,99,224,.5); }
+.splash-start:active:not(:disabled) { transform: translateY(0); }
+.splash-start:disabled {
+  cursor: default; opacity: .5; filter: grayscale(.5);
+  background: #2a3445; box-shadow: none; color: #8a96ab;
+}
+.splash-start.ready { animation: splashBtnReady .5s ease both; }
+@keyframes splashBtnReady { from { transform: scale(.96); } to { transform: none; } }
+
+/* 다시 표시 안 함 */
+.splash-skip {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 16px;
+  font-size: 12px; color: var(--sp-sub); cursor: pointer;
+}
+.splash-skip input { accent-color: var(--sp-blue); cursor: pointer; }
+
+/* ── promo 모드(원본 홍보영상 iframe) ── */
+.splash-promo { position: absolute; inset: 0; }
+.splash-promo-frame {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: 0; background: #0b0e14;
+  display: block;
+}
+.splash-promo-controls {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 24px 20px;
+  background: linear-gradient(to top, rgba(7,9,14,.94) 10%, rgba(7,9,14,.55) 60%, rgba(7,9,14,0) 100%);
+  pointer-events: none;   /* 영상 위 그라데이션은 통과, 컨트롤만 클릭 */
+}
+.splash-promo-controls > * { pointer-events: auto; }
+.splash-promo-spacer { flex: 1; }
+.splash-promo-controls .splash-skip { margin-top: 0; }
+
+/* About 모달 스플래시 옵션 행 */
+.about-splash-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 12px 0 2px; padding-top: 12px;
+  border-top: 1px solid var(--bd, #2a2f3a);
+  font-size: 13px;
+}
+.about-splash-row label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--tx-main, #e6e9ef); }
+.about-splash-row input { accent-color: #5b9dff; cursor: pointer; }
+.about-splash-row .about-splash-hint { font-size: 11.5px; color: var(--tx-sub, #7d8aa0); }

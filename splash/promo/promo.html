@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgenticERM 홍보영상</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#0b0e14; overflow:hidden; }
+  #promoRoot { position:absolute; inset:0; }
+  /* 스플래시 맥락 — 영상 스크러버(재생바)는 숨김 */
+  [data-omelette-chrome] { display:none !important; }
+</style>
+</head>
+<body>
+<div id="promoRoot"></div>
+<!-- 로컬 벤더 React (오프라인·CDN 불필요) -->
+<script src="../../vendor/react.production.min.js"></script>
+<script src="../../vendor/react-dom.production.min.js"></script>
+<!-- promo 타임라인 엔진 + 장면 (빌드: babel 로 .jsx → .js 사전 트랜스파일) -->
+<script src="animations.js"></script>
+<script src="promo-scenes.js"></script>
+<script>
+  (function () {
+    // 매번 처음(0초)부터 재생 — Stage 가 저장한 재생위치 초기화
+    try { localStorage.removeItem('agenticerm-promo:t'); } catch (e) {}
+    var root = document.getElementById('promoRoot');
+    var tries = 0;
+    function mount() {
+      if (!window.React || !window.ReactDOM || !window.PromoVideo) {
+        if (tries++ > 200) return;            // ~6초 후 포기(상위 splash 가 라이트로 폴백)
+        return setTimeout(mount, 30);
+      }
+      try {
+        var el = React.createElement(window.PromoVideo);
+        if (ReactDOM.createRoot) ReactDOM.createRoot(root).render(el);
+        else ReactDOM.render(el, root);
+        // 상위 splash 에게 렌더 성공 통지
+        try { window.parent && window.parent.postMessage({ type: 'agenticerm-promo-ready' }, '*'); } catch (e) {}
+      } catch (e) {
+        try { window.parent && window.parent.postMessage({ type: 'agenticerm-promo-error', error: String(e) }, '*'); } catch (e2) {}
+      }
+    }
+    mount();
+  })();
+</script>
+</body>
+</html>

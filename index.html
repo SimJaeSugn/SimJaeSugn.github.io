@@ -8,8 +8,66 @@
 <link rel="stylesheet" href="css/panel.css">
 <link rel="stylesheet" href="css/modal.css">
 <link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/splash.css">
+<!-- 스플래시: 비활성이면 첫 페인트부터 숨김, 아니면 두 모드(경량/홍보영상) 중 무작위 선택 -->
+<script>try{var _sd=localStorage.getItem('aerm_splash_disabled')==='1';var _h=document.documentElement;if(_sd)_h.classList.add('splash-off');else _h.classList.add(Math.random()<0.5?'splash-mode-promo':'splash-mode-lite');}catch(e){document.documentElement.classList.add('splash-mode-lite');}</script>
 </head>
 <body>
+
+<!-- ── 스플래시(시작) 화면 — js/splash.js 가 제어. 두 모드: lite(경량 재현)·promo(원본 홍보영상) ── -->
+<div id="splashOverlay" role="dialog" aria-label="AgenticERM 시작 화면">
+  <!-- 모드 A: 경량 재현(브랜드 카드) -->
+  <div class="splash-bg" data-mode="lite"></div>
+  <div class="splash-card" data-mode="lite">
+    <div class="splash-logo">
+      <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+        <defs><linearGradient id="splashCore" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6aa6ff"/><stop offset="1" stop-color="#2f63e0"/></linearGradient></defs>
+        <line x1="100" y1="84" x2="54"  y2="132" stroke="#3a4658" stroke-width="3" stroke-linecap="round"/>
+        <line x1="100" y1="84" x2="146" y2="132" stroke="#3a4658" stroke-width="3" stroke-linecap="round"/>
+        <line x1="100" y1="84" x2="100" y2="152" stroke="#3a4658" stroke-width="3" stroke-linecap="round"/>
+        <circle class="sp-node" cx="54"  cy="132" r="11" fill="#161d29" stroke="#5b9dff" stroke-width="2.5"/>
+        <circle class="sp-node" cx="146" cy="132" r="11" fill="#161d29" stroke="#5b9dff" stroke-width="2.5"/>
+        <circle class="sp-node" cx="100" cy="152" r="11" fill="#161d29" stroke="#5b9dff" stroke-width="2.5"/>
+        <circle class="sp-core" cx="100" cy="84" r="29" fill="url(#splashCore)"/>
+        <polygon class="sp-spark" points="100,65 107,77 119,84 107,91 100,103 93,91 81,84 93,77" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="splash-wordmark">AgenticERM</div>
+    <div class="splash-tag">대화로 설계하는 데이터 모델</div>
+    <div class="splash-sub">복잡한 스키마 작업을, 에이전트가 대신합니다</div>
+
+    <div class="splash-caption" id="splashCaption">
+      <div class="splash-cap-bar"></div>
+      <div class="splash-cap-title" id="splashCapTitle">복잡한 스키마 작업</div>
+      <div class="splash-cap-desc" id="splashCapDesc">테이블 15 · 컬럼 112 · 관계 10 — 모두 손으로 할 일</div>
+    </div>
+
+    <div class="splash-meter">
+      <div class="splash-meter-head">
+        <span id="splashStdNum">0</span><span class="sp-meter-unit">/ 112 컬럼 표준화</span>
+      </div>
+      <div class="splash-meter-track"><div class="splash-meter-fill" id="splashStdFill"></div></div>
+    </div>
+
+    <div class="splash-foot">
+      <div class="splash-status js-sp-status"><span class="splash-dot"></span> 데이터를 불러오는 중…</div>
+      <button class="splash-start js-sp-start" disabled>시작하기</button>
+    </div>
+    <label class="splash-skip"><input type="checkbox" class="js-sp-skip"> 다음에 표시 안 함</label>
+  </div>
+
+  <!-- 모드 B: 원본 홍보영상(iframe). src 는 splash.js 가 promo 모드일 때만 주입 -->
+  <div class="splash-promo" data-mode="promo">
+    <iframe class="splash-promo-frame" title="AgenticERM 홍보영상" referrerpolicy="no-referrer"></iframe>
+    <div class="splash-promo-controls">
+      <div class="splash-status js-sp-status"><span class="splash-dot"></span> 데이터를 불러오는 중…</div>
+      <span class="splash-promo-spacer"></span>
+      <label class="splash-skip"><input type="checkbox" class="js-sp-skip"> 다음에 표시 안 함</label>
+      <button class="splash-start js-sp-start" disabled>시작하기</button>
+    </div>
+  </div>
+</div>
+<script src="js/splash.js"></script>
 
 <!-- ── Menu Bar ──────────────────────────────────────────── -->
 <div id="menubar">
@@ -1204,6 +1262,12 @@
         <button class="btn-save-m"   id="aboutDownloadBtn" onclick="aboutDownloadUpdate()" style="display:none">다운로드</button>
         <button class="btn-save-m"   id="aboutInstallBtn"  onclick="aboutInstallUpdate()"  style="display:none">재시작하여 설치</button>
       </div>
+    </div>
+
+    <!-- 시작 화면(스플래시) 표시 옵션 -->
+    <div class="about-splash-row">
+      <label><input type="checkbox" id="aboutSplashChk" onchange="onAboutSplashToggle(this.checked)"> 시작 시 시작 화면(스플래시) 표시</label>
+      <span class="about-splash-hint">홍보 시작 화면</span>
     </div>
 
     <div class="modal-actions">

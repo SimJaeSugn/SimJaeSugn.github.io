@@ -2082,6 +2082,14 @@ function openAboutModal() {
   _aboutResetUpdate();
   _aboutFillInfo();
   _aboutWireUpdater();
+  // 시작 화면(스플래시) 표시 옵션 동기화
+  const sc = document.getElementById('aboutSplashChk');
+  if (sc) sc.checked = (typeof splashGetEnabled === 'function') ? splashGetEnabled() : true;
+}
+
+// About 모달의 '스플래시 표시' 토글 → 영구 설정(localStorage)
+function onAboutSplashToggle(on) {
+  if (typeof splashSetEnabled === 'function') splashSetEnabled(!!on);
 }
 function closeAboutModal() {
   document.getElementById('aboutOverlay').classList.remove('active');

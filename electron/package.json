@@ -1,6 +1,6 @@
 {
   "name": "agenticerm-desktop",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "AgenticERM 데스크탑 앱 (Electron)",
   "author": "UXIS",
   "main": "main.js",
@@ -43,6 +43,10 @@
       {
         "from": "../vendor",
         "to": "vendor"
+      },
+      {
+        "from": "../splash",
+        "to": "splash"
       }
     ],
     "extraResources": [

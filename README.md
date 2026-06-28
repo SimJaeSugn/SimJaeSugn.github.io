@@ -864,7 +864,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/bottom_panel.js` | 하단 패널 (VSCode 스타일 서브탭 · 연결 DB SQL 실행/결과) |
 | `js/icons.js` | Lucide 아이콘 초기화 (`vendor/lucide.min.js` 로컬 번들 · `data-lucide` → SVG) |
 | `js/agent_panel.js` | 우측 패널 `속성`/`Agent` 탭 전환 · 채팅 UI · 스트림/interrupt 루프 |
-| `js/agent_tools.js` | Agent 클라이언트 툴 **67종**(엔티티·관계·속성 CRUD, 선택·뷰·하이라이트, 일괄·관계자동화·논리물리명 일괄변경, 분석·검증·통계, 섹션·메모, 다이어그램·스냅샷·다이어그램간 엔티티 복사·리버스 엔지니어링(DB→ERD), 테이블정의서·데이터사전·ERD명세서 산출물·콘텐츠 파일저장, 표준용어 점검·준수수정, DB 코멘트 일괄 적용, 테마·단축키·메뉴·컬럼템플릿 정보 등) · 드래프트 커밋·원자적 undo · 표준용어사전 연동 · async 툴 지원. 서버 측 DB 툴은 `agent/tools_proxy.py`(24종, 접속정보·프로파일관리·introspection·데이터분석·포워드엔지니어링). v1·v2·v3 공유 |
+| `js/agent_tools.js` | Agent 클라이언트 툴 **68종**(엔티티·관계·속성 CRUD, 선택·뷰·하이라이트, 일괄·관계자동화·논리물리명 일괄변경·컬럼 논리명 한글화, 분석·검증·통계, 섹션·메모, 다이어그램·스냅샷·다이어그램간 엔티티 복사·리버스 엔지니어링(DB→ERD), 테이블정의서·데이터사전·ERD명세서 산출물·콘텐츠 파일저장, 표준용어 점검·준수수정, DB 코멘트 일괄 적용, 테마·단축키·메뉴·컬럼템플릿 정보 등) · 드래프트 커밋·원자적 undo · 표준용어사전 연동 · async 툴 지원. 서버 측 DB 툴은 `agent/tools_proxy.py`(24종, 접속정보·프로파일관리·introspection·데이터분석·포워드엔지니어링). v1·v2·v3 공유 |
 | `js/layout.js` | 계층형·격자형·원형 자동 배치 알고리즘 |
 | `js/export.js` | PNG·SVG·Markdown·HTML·DDL 내보내기 |
 | `js/import.js` | JSON·DDL 가져오기 및 파싱 |
@@ -884,7 +884,10 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/forward_engineer.js` | DDL 생성 (Forward Engineering) |
 | `js/profile_manager.js` | DB 접속 프로파일 관리 |
 | `js/pc_store.js` | PC앱(Electron) 워크스페이스 영속화 — Ctrl+S로 모든 다이어그램+스냅샷을 사이드카 단일 파일에 저장/복원 (웹은 미사용) |
-| `js/main.js` | 앱 진입점 초기화 (상태 복원·렌더 부트스트랩) |
+| `js/splash.js` · `css/splash.css` | 시작 화면(스플래시) — 시작 시 **두 모드 중 무작위**: ① lite(브랜드 경량 재현: 로고·회전 캡션·'112 컬럼 표준화' 카운터) ② promo(원본 홍보영상 `splash/promo/promo.html` iframe). 모든 데이터 로드 완료 시 '시작하기'(닫기) 활성. promo 로드 실패 시 lite 폴백. `localStorage`(`aerm_splash_disabled`)로 영구 비활성 — 소프트웨어 정보(About) 모달 토글·'다음에 표시 안 함' 체크 |
+| `splash/promo/` | 원본 홍보영상 번들(promo 모드) — `promo.html`(iframe 호스트) + `animations.js`·`promo-scenes.js`(JSX 사전 트랜스파일·IIFE) + `*.jsx` 소스. 로컬 React(`vendor/react*.min.js`)로 오프라인 재생, CDN/Babel 런타임 불필요. 빌드법은 `splash/promo/README.md` |
+| `vendor/react.production.min.js` · `vendor/react-dom.production.min.js` | 홍보영상(promo 모드) 전용 로컬 React UMD. 메인 앱(`index.html`)에는 로드되지 않음 — promo iframe 안에서만 사용 |
+| `js/main.js` | 앱 진입점 초기화 (상태 복원·렌더 부트스트랩 · 로드 완료 시 `splashMarkDataLoaded()`) |
 
 ### Agent v2 품질 검증·자동 최적화 (eval)
 

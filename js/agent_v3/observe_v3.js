@@ -67,10 +67,67 @@ function _agentV3TraceEsc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// ── 단계별 누적 반복 제거 + 타자기 스트리밍 헬퍼 ───────────────────
+// 약한 로컬 LLM 은 매 ReAct 스텝의 thought 에 직전 맥락(요청·현황 등)을 통째로 되풀이한다.
+// 이전 단계에서 이미 보여준 문장은 빼고 '이번 단계의 새 계획'만 렌더해 가독성을 높인다.
+
+// 문장 단위 분할 (한글/영문 문장부호 + 줄바꿈)
+function _agentV3Sentences(text) {
+  return String(text == null ? '' : text)
+    .split(/(?<=[.!?。…])\s+|\n+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+// 비교용 정규화 — 공백·문장부호 제거(약간의 표현 차는 무시, 동일 핵심문장 매칭)
+function _agentV3NormSent(s) {
+  return String(s == null ? '' : s).replace(/[\s.,!?。…·\-—'"`()\[\]]/g, '').toLowerCase();
+}
+
+// 추적 컨테이너(body)에 '이번 턴에 이미 본 문장' 집합을 둔다(턴마다 새 trace → 새 집합).
+function _agentV3SeenSet(body) {
+  if (!body) return null;
+  if (!body._seenSents) body._seenSents = new Set();
+  return body._seenSents;
+}
+
+// thought 에서 이전 단계와 겹치지 않는 '새 문장'만 추출(+ 본 문장으로 등록).
+function _agentV3DedupThought(body, text) {
+  const seen = _agentV3SeenSet(body);
+  const out = [];
+  _agentV3Sentences(text).forEach(s => {
+    const k = _agentV3NormSent(s);
+    if (!k) return;
+    if (seen && seen.has(k)) return;      // 이전 단계서 이미 나온 문구 → 누적하지 않음
+    if (seen) seen.add(k);
+    out.push(s);
+  });
+  return out.join(' ');
+}
+
+// 타자기 스트리밍 — el.textContent 를 점진적으로 채운다(XSS 안전: textContent 사용).
+// 여러 스텝이 동시에 흘러도 각자 자기 el 만 갱신하므로 충돌 없음.
+function _agentV3StreamInto(el, text) {
+  if (!el) return;
+  const full = String(text == null ? '' : text);
+  if (!full) { el.textContent = ''; return; }
+  let i = 0;
+  const chunk = Math.max(1, Math.ceil(full.length / 60));  // 길면 여러 글자씩 → 과도한 지연 방지
+  const tick = () => {
+    if (el.isConnected === false) { el.textContent = full; return; }  // 분리됐으면 즉시 완성
+    i = Math.min(full.length, i + chunk);
+    el.textContent = full.slice(0, i);
+    if (typeof _agentV3ScrollBottom === 'function') _agentV3ScrollBottom();
+    if (i < full.length) setTimeout(tick, 18);
+  };
+  tick();
+}
+
 // 의도 요약 — 한 줄
 function _agentV3RenderIntent(data, bubble) {
   const t = _agentV3Trace(bubble);
   if (!t || !data || !data.summary) return;
+  _agentV3DedupThought(t, data.summary);   // 의도 문장을 '본 문장'으로 등록(이후 thought 의 반복 제거용)
   const line = document.createElement('div');
   line.innerHTML = '<span style="color:var(--green,#a6e3a1)">🎯</span> '
     + '<span style="opacity:.85">' + _agentV3TraceEsc(data.summary) + '</span>';
@@ -78,16 +135,18 @@ function _agentV3RenderIntent(data, bubble) {
   _agentV3ScrollBottom();
 }
 
-// ReAct 추론(생각) + 다음 행동
+// ReAct 추론(생각) + 다음 행동 — 누적 반복 제거 + 타자기 스트리밍
 function _agentV3RenderThought(data, bubble) {
   const t = _agentV3Trace(bubble);
   if (!t) return;
   const tool = data.tool === 'finish' ? '완료' : ('→ ' + _agentV3TraceEsc(data.tool || ''));
+  const fresh = _agentV3DedupThought(t, (data && data.thought) || '');  // 이번 단계의 새 계획만
   const line = document.createElement('div');
   line.innerHTML = '<span style="color:var(--mauve,#cba6f7)">🧠</span> '
-    + _agentV3TraceEsc(data.thought || '')
+    + '<span class="agent-v3-think"></span>'
     + ' <span style="opacity:.55">' + tool + '</span>';
   t.appendChild(line);
+  _agentV3StreamInto(line.querySelector('.agent-v3-think'), fresh);   // 스트리밍 출력
   _agentV3ScrollBottom();
 }
 

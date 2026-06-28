@@ -279,12 +279,15 @@ async function agentV3Send() {
       _agentV3SetReply(bubble, '(응답 없음)');
     }
   } catch (e) {
-    _agentV3ThreadId = null;
     if (e.name === 'AbortError') {
+      // 사용자 중단(중단 버튼) — thread_id 를 보존해 대화 세션 컨텍스트를 유지한다.
+      // (예전엔 여기서 thread_id 를 null 로 비워, 중단 후 다음 질의가 직전 대화를 잃었다.)
       if (bubble) bubble.innerHTML = acc ? _agentV3Render(acc) + '<br><span style="opacity:.6">(중단됨)</span>' : '(중단됨)';
     } else if (e instanceof TypeError) {
+      _agentV3ThreadId = null;   // 프록시 연결 실패 — 스레드 미수립이므로 초기화
       if (bubble) bubble.innerHTML = '⚠ 프록시(127.0.0.1:3737)에 연결할 수 없습니다.<br>AgenticERM 데스크탑 앱 또는 프록시를 실행하세요.';
     } else {
+      _agentV3ThreadId = null;   // HTTP/백엔드 오류 — 스레드 상태 불확실하므로 안전하게 초기화
       if (bubble) bubble.innerHTML = '⚠ ' + _agentV3Esc(e.message);
       if (/키|key/i.test(e.message)) agentV3ShowKeyPrompt();
     }

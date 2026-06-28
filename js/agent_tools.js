@@ -578,6 +578,140 @@ async function _agentToolApplyDbComments(draft, args) {
   };
 }
 
+// 연결 DB 코멘트 조회(공유 헬퍼) — 사이드카 GET /schema/comments.
+// 반환: { tableLower: { comment, columns: { colLower: comment } } } 또는 null(조회 실패).
+async function _agentFetchDbComments() {
+  const base = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
+  let payload;
+  try {
+    const res = await fetch(base + '/schema/comments', { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) return null;
+    payload = await res.json();
+  } catch (e) { return null; }
+  const byTable = {};
+  ((payload && payload.tables) || []).forEach(t => {
+    const cols = {};
+    (t.columns || []).forEach(c => {
+      if (c.columnName && c.comment != null && String(c.comment).trim()) cols[String(c.columnName).toLowerCase()] = String(c.comment).trim();
+    });
+    byTable[String(t.tableName || '').toLowerCase()] = {
+      comment: (t.comment != null && String(t.comment).trim()) ? String(t.comment).trim() : null,
+      columns: cols,
+    };
+  });
+  return byTable;
+}
+
+// 표준용어사전 인덱스 조회(공유 헬퍼) — 사이드카 GET /stddict/index?table=term|word.
+// 반환: { ABBR대문자: 한글명 } 맵(첫 항목 우선, abbr 충돌 시 first-wins) 또는 null(조회 실패).
+async function _agentStdIndexMap(table) {
+  const base = (typeof MW_URL !== 'undefined') ? MW_URL : 'http://127.0.0.1:3737';
+  let items;
+  try {
+    const res = await fetch(base + '/stddict/index?table=' + encodeURIComponent(table), { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return null;
+    const j = await res.json();
+    items = (j && j.items) || [];
+  } catch (e) { return null; }
+  const map = {};
+  items.forEach(t => {
+    const ab = (t.abbr == null ? '' : String(t.abbr)).trim().toUpperCase();
+    if (ab && t.name && map[ab] === undefined) map[ab] = String(t.name).trim();
+  });
+  return map;
+}
+
+// 컬럼 논리명 한글화(write·async·배치) — 1회 호출 = 1회 승인 = 전 컬럼 적용.
+// standardize_attribute_names(논리명→물리abbr)의 역방향. 출처 우선순위(오너 결정 2026-06-28):
+//   ① 표준용어사전 역변환 — term(전체 물리명 그대로 표준어면 그 한글) → word(원자 단어 abbr 합성)
+//   ② 연결 DB 컬럼 코멘트. 둘 다 실패한 컬럼은 unresolved 로 보고 → LLM 이 batch_update_names 로 소수만 보완.
+// 모든 한글명을 LLM 이 112개 손으로 만들어 items 에 넣다가 빈 배열로 실패하던 문제의 결정적 대체.
+async function _agentToolLocalizeAttributeNames(draft, args) {
+  args = args || {};
+  const view = (draft && draft.entities) ? draft : _agentReadView(draft);
+  const ids = _agentLiveIds(view, args);
+  const hadSelector = !!(args.ids || args.entityIds || args.keyword || args.name || args.query || args.all || args.scope);
+  const targets = ids.length ? view.entities.filter(e => ids.includes(e.id)) : (hadSelector ? [] : view.entities);
+  if (!targets.length) return { ok: false, error: '대상 테이블이 없습니다(전체 또는 ids/keyword 지정).' };
+
+  const onlyEmpty = args.onlyEmpty !== false;   // 기본 true — 이미 한글 논리명이 있는 컬럼은 보존
+  const cap = Number(args.limit) || 500;
+
+  // ① 표준사전 역변환 맵 — term(전체 표준어 abbr→한글), word(원자 단어 abbr→한글)
+  const termMap = await _agentStdIndexMap('term');
+  const wordMap = await _agentStdIndexMap('word');
+  // 물리명 → 한글 논리명: 전체 물리명이 표준어(term)면 그 한글, 아니면 _ 로 나눠 원자단어(word)로 합성
+  const fromDict = (physical) => {
+    const ph = String(physical || '').trim();
+    if (!ph) return null;
+    if (termMap) { const exact = termMap[ph.toUpperCase()]; if (exact) return exact; }   // 전체 표준어 정확 일치
+    if (wordMap) {
+      const tokens = ph.split(/[_\s]+/).filter(Boolean);
+      if (tokens.length) {
+        const parts = [];
+        let ok = true;
+        for (const tk of tokens) { const w = wordMap[tk.toUpperCase()]; if (!w) { ok = false; break; } parts.push(w); }
+        if (ok && parts.length) return parts.join('');   // 모든 토큰 해소 시에만 채택
+      }
+    }
+    return null;
+  };
+
+  const isEmpty = (lg, ph) => !lg || String(lg).trim().toLowerCase() === String(ph || '').trim().toLowerCase();
+  let updated = 0, alreadyKorean = 0, checked = 0;
+  const changes = [], needComment = [];
+  for (const e of targets) {
+    for (const a of (e.attrs || [])) {
+      if (checked >= cap) break;
+      if (onlyEmpty && !isEmpty(a.logicalName, a.physicalName)) { alreadyKorean++; continue; }
+      checked++;
+      const ko = fromDict(a.physicalName);
+      if (ko) {
+        const before = a.logicalName || '';
+        a.logicalName = ko;   // 드래프트 직접 수정 → 프레임워크가 커밋
+        if (changes.length < 80) changes.push({ table: _agentNameOf(e), column: a.physicalName, before, after: ko, src: 'dict' });
+        updated++;
+      } else {
+        needComment.push({ e, a });
+      }
+    }
+    if (checked >= cap) break;
+  }
+
+  // ② DB 코멘트로 미해소 컬럼 보완
+  let unresolved = [];
+  if (needComment.length) {
+    const byTable = await _agentFetchDbComments();
+    if (byTable) {
+      const firstLine = s => String(s).split(/\r?\n/)[0].trim();
+      needComment.forEach(({ e, a }) => {
+        const info = byTable[String(e.physicalName || e.id || '').toLowerCase()];
+        const cm = info && info.columns[String(a.physicalName || '').toLowerCase()];
+        if (cm) {
+          const before = a.logicalName || '';
+          a.logicalName = firstLine(cm);
+          if (changes.length < 80) changes.push({ table: _agentNameOf(e), column: a.physicalName, before, after: a.logicalName, src: 'comment' });
+          updated++;
+        } else {
+          unresolved.push({ entityId: e.id, table: _agentNameOf(e), attrName: a.physicalName });
+        }
+      });
+    } else {
+      unresolved = needComment.map(({ e, a }) => ({ entityId: e.id, table: _agentNameOf(e), attrName: a.physicalName }));
+    }
+  }
+
+  return {
+    ok: true, updated, alreadyKorean, checked,
+    changes: changes.slice(0, 80),
+    unresolvedCount: unresolved.length, unresolved: unresolved.slice(0, 60),
+    note: unresolved.length
+      ? ('표준용어사전·DB코멘트로 한글명을 결정하지 못한 ' + unresolved.length + '개 컬럼이 남았습니다. '
+         + '이들만 batch_update_names 의 items 에 {entityId, attrName, logicalName(한글)} 로 직접 채우세요(테이블별로 나눠 호출, items 를 절대 비우지 말 것).')
+      : '대상 컬럼의 논리명을 모두 한글로 채웠습니다.',
+  };
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 추가 클라이언트 툴 — 선택·하이라이트·뷰·일괄·분석·내보내기·다이어그램·섹션·메모·버전
 //   분류: read(상태변경 없음) · write-draft(엔티티/관계 드래프트) ·
@@ -797,7 +931,9 @@ function _agentToolBatchRenameAttributes(draft, args) {
 function _agentToolBatchUpdateNames(draft, args, remap) {
   const items = args.items || args.updates || args.changes || args.list;
   if (!Array.isArray(items) || !items.length)
-    throw new Error('items 배열이 필요합니다(각 항목: entityId, attrName?, logicalName?, physicalName?).');
+    throw new Error('items 배열이 비어 있습니다. 변경할 항목을 [{entityId, attrName?, logicalName?, physicalName?}] 로 채워 호출하세요'
+      + '(먼저 describe_table 로 컬럼을 읽어 entityId·attrName 을 확보). '
+      + '"모든 컬럼 논리명 한글화"처럼 대량 작업이면 batch_update_names 대신 localize_attribute_names(표준사전→DB코멘트로 자동 채움)를 쓰세요.');
   const results = [];
   let changed = 0;
   items.forEach((it, i) => {
@@ -1683,23 +1819,25 @@ const AGENT_TOOL_DEFS = [
     desc: '컬럼 추가', params: 'entityId, attr{logicalName,physicalName,type,kind,notNull}',
     detail: '대상 엔티티에 컬럼을 추가한다. logicalName=한글 컬럼명, physicalName=UPPER_SNAKE_CASE 영문 컬럼명(혼동 금지). 동일 physicalName이 이미 있으면 추가하지 않는다.' },
   { name: 'update_attribute', kind: 'write', danger: false, run: _agentToolUpdateAttribute,
-    desc: '기존 컬럼 수정', params: 'entityId, attrName, {logicalName?,physicalName?,type?,kind?,notNull?,unique?}',
+    desc: '단일 컬럼 수정(이름·자료형 등 — 여러 컬럼/테이블 이름 일괄은 batch_update_names)', params: 'entityId, attrName, {logicalName?,physicalName?,type?,kind?,notNull?,unique?}',
     detail: 'attrName(현재 물리명 또는 논리명)으로 대상 컬럼을 찾아 전달된 필드만 수정한다. physicalName 전달 시 컬럼명 변경.' },
   { name: 'remove_attribute', kind: 'write', danger: true,  run: _agentToolRemoveAttribute,
     desc: '컬럼 삭제', params: 'entityId, attrName',
     detail: '대상 엔티티에서 attrName 컬럼을 제거한다. 되돌리기 주의(undo로 복구 가능).' },
   { name: 'update_entity',   kind: 'write', danger: false, run: _agentToolUpdateEntity,
-    desc: '테이블 이름/설명 수정', params: 'entityId, logicalName?, physicalName?, description?',
+    desc: '단일 테이블의 이름(논리명/물리명)·설명 수정(여러 테이블 이름 일괄은 batch_update_names)', params: 'entityId, logicalName?, physicalName?, description?',
     detail: '대상 엔티티의 논리명/물리명/설명을 부분 수정한다(전달된 필드만).' },
   { name: 'find_tables',     kind: 'read',  danger: false, run: _agentToolFindTables,
-    desc: '키워드로 테이블 검색', params: 'keyword?',
-    detail: '이름/키워드로 엔티티를 검색해 {id, name} 목록을 반환한다(상태 변경 없음). 정확한 id를 모를 때 먼저 사용.' },
+    desc: 'ERD(캔버스)에서 키워드로 테이블 검색(연결 DB 실물은 list_db_tables/find_db_column)', params: 'keyword?',
+    detail: '현재 ERD(캔버스)의 엔티티를 이름/키워드로 검색해 {id, name} 목록을 반환한다(상태 변경 없음). 정확한 id를 모를 때 먼저 사용. '
+            + '연결된 운영 DB의 실제 테이블을 찾으려면 list_db_tables·find_db_column 을 쓴다.' },
   { name: 'describe_table',  kind: 'read',  danger: false, run: _agentToolDescribeTable,
-    desc: '테이블 상세 조회(컬럼·관계)', params: 'entityId',
-    detail: '엔티티의 컬럼(타입·종류·PK/FK·notNull)과 연결된 관계를 반환한다. 수정 전 현재 구조 확인용(읽기 전용).' },
+    desc: 'ERD(캔버스) 테이블 상세 조회(컬럼·관계 — 연결 DB 실물은 describe_db_table)', params: 'entityId',
+    detail: '현재 ERD(캔버스) 엔티티의 컬럼(타입·종류·PK/FK·notNull)과 연결된 관계를 반환한다. 수정 전 현재 구조 확인용(읽기 전용). '
+            + '연결된 운영 DB의 실제 컬럼/PK/FK 를 보려면 describe_db_table 을 쓴다.' },
   { name: 'list_relations',  kind: 'read',  danger: false, run: _agentToolListRelations,
-    desc: '관계 목록 조회', params: 'entityId?(생략 시 전체)',
-    detail: '특정 엔티티(또는 전체)에 연결된 관계를 반환한다(읽기 전용).' },
+    desc: 'ERD(캔버스) 관계 목록 조회(연결 DB의 실제 FK 제약은 get_db_constraints)', params: 'entityId?(생략 시 전체)',
+    detail: '현재 ERD(캔버스)에서 특정 엔티티(또는 전체)에 연결된 관계를 반환한다(읽기 전용). 연결 DB 실물 FK 제약은 get_db_constraints.' },
   { name: 'generate_ddl',    kind: 'read',  danger: false, run: _agentToolGenerateDdl,
     desc: 'ERD로부터 CREATE TABLE DDL(SQL) 생성', params: 'dialect?(mysql|postgres|oracle|mssql), entityIds?',
     detail: '선택(또는 지정/전체) 엔티티의 CREATE TABLE 문을 텍스트로 생성한다. DB에 실행하지 않음(run_sql 과 다름). '
@@ -1714,7 +1852,7 @@ const AGENT_TOOL_DEFS = [
     desc: '기존 관계의 카디널리티 변경', params: 'from, to, card(1:1|1:N|N:M)',
     detail: '이미 있는 from↔to 관계를 찾아 card 만 바꾼다(관계를 지우고 다시 만들지 않음). 방향이 반대로 와도 매칭한다. FK 컬럼은 유지. "관계를 …로 바꿔/변경"에 사용.' },
   { name: 'normalize_check', kind: 'read', danger: false, run: _agentToolNormalizeCheck,
-    desc: 'ERD 정규화 위반 진단(읽기 전용)', params: '(없음)',
+    desc: 'ERD 정규화 위반 빠른 진단(위반 목록만 — 상세 수정안까지는 suggest_normalization)', params: '(없음)',
     detail: 'PK 없는 테이블·N:M 관계 등 정규화 위반 후보를 찾아 {violationCount, findings} 로 반환한다. 상태 변경 없음. "정규화 위반 찾아/검사"에 사용.' },
   { name: 'lookup_std_term', kind: 'read', danger: false, run: _agentToolLookupStdTerm,
     desc: '표준용어사전 조회', params: 'name(표준용어명/키워드)',
@@ -1736,6 +1874,13 @@ const AGENT_TOOL_DEFS = [
             + '대상(또는 선택/전체) 엔티티의 각 컬럼 logicalName(코멘트 첫 줄)·description(전문)과 테이블 logicalName·description 을 갱신한다(코멘트 없는 항목은 보존). '
             + 'onlyEmpty=true 면 빈 값만 채움(기본은 덮어쓰기), target(logical|description|both)으로 적용 필드 제한. '
             + '코멘트를 보겠다고 run_select 로 information_schema 를 조회하거나 컬럼마다 update_attribute 를 반복하지 말 것 — 이 툴 1회 호출로 전체 적용·승인 1회. 데스크탑(사이드카) 전용.' },
+  { name: 'localize_attribute_names', kind: 'write', danger: false, run: _agentToolLocalizeAttributeNames,
+    desc: '컬럼 논리명을 한글로 일괄 채움(표준사전 역변환→DB코멘트 순, 1회 호출) — "컬럼 논리명 한글화"는 이 툴(batch_update_names로 손수 매핑 금지)', params: 'ids?|keyword?|all?(대상 엔티티, 없으면 전체), onlyEmpty?(기본 true), limit?',
+    detail: '"컬럼 논리명을 한글로 바꿔줘"·"전부 한글화" 류를 이 툴 하나로 끝낸다(standardize_attribute_names 의 역방향). '
+            + '각 컬럼 물리명을 ① 표준용어사전에서 역변환(영문약어 토큰→한글 용어, 모든 토큰 해소 시 채택) ② 실패하면 연결 DB 컬럼 코멘트(첫 줄) 순으로 한글 논리명을 채운다. '
+            + 'onlyEmpty(기본 true)면 빈/물리명과 같은 논리명만 채우고 이미 한글인 것은 보존. 둘 다로 해소 못한 컬럼은 unresolved 로 보고하니, '
+            + '그 소수만 batch_update_names 의 items 에 {entityId, attrName, logicalName} 로 직접 채운다(테이블별 호출, items 비우지 말 것). '
+            + '112개 한글명을 LLM 이 직접 batch_update_names items 에 만들어 넣지 말 것 — 이 툴이 결정적으로 일괄 처리한다. 데스크탑(사이드카) 전용.' },
 
   // ── 추가 툴 (선택·일괄·분석·내보내기·다이어그램·섹션·메모·버전) ──
   { name: 'get_statistics', kind: 'read', danger: false, run: _agentToolGetStatistics,
@@ -1754,7 +1899,7 @@ const AGENT_TOOL_DEFS = [
     desc: '스키마 검증(PK·자료형·네이밍)', params: 'convention?(snake_case|camelCase|PascalCase)',
     detail: 'PK 부재·자료형 누락·네이밍 컨벤션 위반을 점검해 이슈 목록을 반환한다(읽기 전용). "스키마 검증해줘".' },
   { name: 'generate_markdown', kind: 'read', danger: false, run: _agentToolGenerateMarkdown,
-    desc: '테이블 정의를 마크다운 텍스트로 생성', params: 'ids?|keyword?, style?(table|list)',
+    desc: '테이블 정의를 마크다운 텍스트로 반환(채팅에 표시·파일/새창 아님)', params: 'ids?|keyword?, style?(table|list)',
     detail: '대상(또는 전체) 테이블의 컬럼 정의를 마크다운으로 만들어 텍스트로 반환한다(파일 저장 아님, 읽기 전용). "문서용 마크다운 만들어줘".' },
   { name: 'list_notes', kind: 'read', danger: false, run: _agentToolListNotes,
     desc: '캔버스 메모 목록', params: '(없음)',
@@ -1763,13 +1908,17 @@ const AGENT_TOOL_DEFS = [
     desc: '스냅샷 목록', params: '(없음)',
     detail: '저장된 스냅샷(id·이름·시각) 목록을 반환한다(읽기 전용).' },
   { name: 'batch_update_entities', kind: 'write', danger: false, run: _agentToolBatchUpdateEntities,
-    desc: '여러 테이블 속성 일괄 수정', params: 'ids?|keyword?, updates{description?,color?,rowCount?}',
-    detail: '대상(또는 현재 선택) 테이블들의 설명·색상(color)·예상행수(rowCount)를 일괄 수정한다. color는 blue|green|orange|red|purple|yellow|teal|null.' },
+    desc: '여러 테이블의 설명·색상·예상행수만 일괄 수정(이름은 못 바꿈 — 논리명/물리명 변경은 batch_update_names)',
+    params: 'ids?|keyword?, updates{description?,color?,rowCount?}',
+    detail: '대상(또는 현재 선택) 테이블들의 설명(description)·색상(color)·예상행수(rowCount) 메타데이터만 일괄 수정한다. '
+            + '★논리명/물리명(테이블·컬럼 이름)은 바꾸지 않는다 — 이름 변경은 batch_update_names(여러 건)·update_entity/update_attribute(단건)를 쓸 것. '
+            + 'color는 blue|green|orange|red|purple|yellow|teal|null.' },
   { name: 'batch_rename_attributes', kind: 'write', danger: false, run: _agentToolBatchRenameAttributes,
-    desc: '컬럼명 일괄 변경(패턴/컨벤션)', params: 'ids?, fromPattern→toPattern 또는 convention(snake_case|camelCase|PascalCase|UPPER|lower), target?(physical|logical)',
+    desc: '컬럼명을 패턴 치환/네이밍 컨벤션으로 일괄 변경(snake_case 등 — 개별 이름을 직접 지정하려면 batch_update_names)', params: 'ids?, fromPattern→toPattern 또는 convention(snake_case|camelCase|PascalCase|UPPER|lower), target?(physical|logical)',
     detail: '대상 테이블 컬럼명을 패턴 치환 또는 네이밍 컨벤션으로 일괄 변경한다. "FK 컬럼명을 snake_case로 통일".' },
   { name: 'batch_update_names', kind: 'write', danger: false, run: _agentToolBatchUpdateNames,
-    desc: '테이블·컬럼 논리명/물리명을 항목별로 일괄 변경(한 번에)', params: 'items:[{entityId, attrName?, logicalName?, physicalName?, type?, description?}]',
+    desc: '여러 테이블·컬럼의 논리명(한글 표시명)·물리명(영문 DB명)을 항목별로 일괄 변경 — 이름 바꾸기는 이 툴(테이블/컬럼 모두)',
+    params: 'items:[{entityId, attrName?, logicalName?, physicalName?, type?, description?}]',
     detail: '여러 테이블·컬럼의 논리명·물리명을 명시한 매핑 목록(items)으로 한 번에 변경한다(컬럼마다 update_attribute 를 반복하지 말 것 — 1회 호출=1회 승인). '
             + '각 항목에 attrName 이 있으면 그 컬럼을, 없으면 그 테이블 자체의 이름을 바꾼다. attrName 은 현재 물리명 또는 논리명으로 컬럼을 찾는다. '
             + 'logicalName=한글 표시명, physicalName=영문 DB명(UPPER_SNAKE_CASE 권장). 항목별 성공/실패를 results 로 반환(일부 실패해도 나머지는 적용). '
@@ -1835,7 +1984,7 @@ const AGENT_TOOL_DEFS = [
     desc: 'JSON 스키마 가져오기', params: 'data{entities[],relations[]}, mode?(add|replace)',
     detail: '되돌리기 주의(replace) — JSON 엔티티/관계를 현재 다이어그램에 추가(add)하거나 교체(replace)한다.' },
   { name: 'generate_table_spec', kind: 'read', danger: false, run: _agentToolGenerateTableSpec,
-    desc: '테이블 정의서 생성(HTML 새 창, 인쇄/PDF)', params: 'ids?|keyword?, title?',
+    desc: '테이블 정의서(테이블별 컬럼 표) 생성 — HTML 새 창, 인쇄/PDF', params: 'ids?|keyword?, title?',
     detail: '대상(또는 전체) 테이블의 정의서(논리/물리·컬럼·PK/FK·NN·기본값·설명)를 새 창에 인쇄용 HTML 문서로 연다(→ 인쇄/PDF 저장). 좁은 채팅이 아니라 정식 문서. 클라 전용.' },
   { name: 'export_table_spec_xlsx', kind: 'read', danger: false, run: _agentToolExportTableSpecXlsx,
     desc: '테이블 정의서 엑셀(.xlsx) 다운로드', params: 'ids?|keyword?, title?, fileName?',
@@ -1844,13 +1993,13 @@ const AGENT_TOOL_DEFS = [
     desc: 'ERD 구조 메트릭(허브·결합도·fan-in/out)', params: '(없음)',
     detail: '엔티티별 fan-in/fan-out·degree·허브 테이블·평균 결합도·고립 엔티티를 반환한다(읽기 전용, get_statistics 심화).' },
   { name: 'suggest_normalization', kind: 'read', danger: false, run: _agentToolSuggestNormalization,
-    desc: '정규화 위반 + 수정안 제시', params: '(없음)',
+    desc: '정규화 위반 + 분해/수정안 상세 제시(빠른 위반 목록만이면 normalize_check)', params: '(없음)',
     detail: 'PK 없음·반복 컬럼 의심·N:M 관계를 찾아 각각 **수정 권고안**과 함께 반환한다(normalize_check는 진단만, 이건 권고까지).' },
   { name: 'generate_data_dictionary', kind: 'read', danger: false, run: _agentToolGenerateDataDictionary,
-    desc: '데이터 사전(컬럼 정의서) HTML 새 창', params: 'ids?|keyword?, title?',
+    desc: '데이터 사전(전 테이블 컬럼 일람표) HTML 새 창', params: 'ids?|keyword?, title?',
     detail: '대상(또는 전체) 테이블의 전 컬럼을 한 표(테이블·논리/물리·타입·종류·설명)로 묶은 데이터 사전을 새 창에 인쇄용 HTML로 연다. 클라 전용.' },
   { name: 'generate_erd_report', kind: 'read', danger: false, run: _agentToolGenerateErdReport,
-    desc: 'ERD 종합 명세서 HTML 새 창', params: 'title?',
+    desc: 'ERD 종합 명세서(개요+테이블+관계+통계 전체) HTML 새 창', params: 'title?',
     detail: '요약 통계 + 엔티티 목록 + 관계 목록 + 정규화/이슈 진단을 묶은 종합 명세서를 새 창에 인쇄용 HTML로 연다. 클라 전용.' },
   { name: 'generate_term_compliance', kind: 'read', danger: false, run: _agentToolGenerateTermCompliance,
     desc: '표준용어 준수 점검(위반은 standardize_attribute_names로 수정)', params: 'ids?|keyword?, limit?',
@@ -1951,6 +2100,7 @@ function _agentToolLabel(tool, args) {
     case 'generate_term_compliance': return '표준용어 준수 점검';
     case 'standardize_attribute_names': return '표준용어 어긋난 컬럼 물리명 수정' + (sel ? ': ' + sel : '');
     case 'apply_db_comments': return 'DB 코멘트 → 논리명/설명 일괄 적용' + (sel ? ': ' + sel : '');
+    case 'localize_attribute_names': return '컬럼 논리명 한글화(사전→코멘트)' + (sel ? ': ' + sel : '');
     case 'copy_entities_to_diagram': return '엔티티 복사 → ' + (a.target || a.toDiagram || a.diagram || a.name || '다이어그램');
     case 'reverse_engineer_db': return '리버스 엔지니어링' + (a.name || a.diagramName ? ' → ' + (a.name || a.diagramName) : '') + (a.mode === 'append' ? '(현재에 추가)' : '');
     case 'list_themes': return '테마 목록 조회';

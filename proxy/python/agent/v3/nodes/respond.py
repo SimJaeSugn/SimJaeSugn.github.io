@@ -23,6 +23,18 @@ def respond_node(state: AgentState) -> dict:
                 ) if reason else "\n[상태] 사용자 확인이 필요 — 무엇이 필요한지 구체적으로 되물으세요."
     elif route == "abort":
         hint = "\n[상태] 회복 불가하여 안전하게 종료됨" + (f" (사유: {reason})" if reason else "") + " — 사유를 간단히 설명하세요."
+    # v3 추가: 준수 검증 결과 반영 — verify 가 미충족(fail/partial)으로 종료했으면
+    # respond 가 성공을 지어내지 못하게 한다(검증 실패→결과는 성공 환각 버그 차단).
+    verdict = state.get("verdict") or {}
+    adherence = verdict.get("adherence")
+    if verdict and (verdict.get("fulfilled") is False or adherence in ("fail", "partial")):
+        miss = "; ".join(verdict.get("missing") or []) or (verdict.get("note") or "일부 목표가 충족되지 않음")
+        hint += ("\n[검증 결과] 자동 준수 검증에서 이 요청이 **완전히 충족되지 않았습니다**(판정: "
+                 + str(adherence or "partial") + ", 미충족: " + miss + "). "
+                 "절대 '완료'·'성공'·'미완료 항목 없음'이라고 단정하지 마세요. "
+                 "[수행 결과]에 실제로 실행된 툴 결과가 없으면 작업이 수행되지 않은 것입니다 — "
+                 "실제로 수행된 부분과 충족되지 않은 부분을 사실대로 구분해 보고하고, "
+                 "미완료 사유와 사용자가 이어서 할 다음 단계(또는 필요한 정보)를 안내하세요.")
     # v3 추가: 사용자가 기억시킨 영구 지침 — 최종 응답에서도 항상 참조
     system = RESPOND_SYSTEM + "\n\n[메모리(사용자가 기억시킨 영구 지침)]\n" + render_memory_section()
     llm = get_main_llm()
