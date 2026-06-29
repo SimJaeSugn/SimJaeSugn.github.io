@@ -468,27 +468,73 @@ function deleteDiagram(id, e) {
   if (diagrams.length <= 1) { alert('마지막 다이어그램은 삭제할 수 없습니다.'); return; }
   const d = diagrams.find(x => x.id === id);
   if (!d) return;
-  askConfirm(`'${d.name}' 다이어그램을 삭제합니다.`, () => {
-    // ▼ 신규: DB 다이어그램이면 원격 행도 삭제 (실패해도 로컬 삭제는 진행)
-    if (d.source === 'db' && d.connection?.profileName && typeof erdDbDelete === 'function') {
-      // 보류 중인 디바운스 저장 취소(좀비 PUT 방지)
-      if (typeof erdDbCancelSave === 'function') erdDbCancelSave(d.id);
-      erdDbDelete(d.id, d.connection.profileName).catch(() => {});
+
+  // ▼ DB 연결 다이어그램: 로컬에서만 삭제 / DB 원본까지 삭제 선택을 묻는다
+  if (d.source === 'db' && d.connection?.profileName) {
+    _pendingDbDelId = id;
+    const msg = document.getElementById('dbDelChoiceMsg');
+    if (msg) msg.textContent = `'${d.name}' 은(는) DB 연결 다이어그램입니다. 어떻게 삭제할까요?`;
+    const ov = document.getElementById('dbDelChoiceOverlay');
+    if (ov) ov.classList.add('active');
+    else { // 모달 부재 시 폴백: 로컬 삭제만
+      askConfirm(`'${d.name}' 다이어그램을 삭제합니다.`, () => _removeDiagramLocal(d), '삭제');
     }
-    const idx = diagrams.indexOf(d);
-    diagrams.splice(idx, 1);
-    if (activeDiagramId === id) {
-      const next = diagrams[Math.max(0, idx - 1)];
-      activeDiagramId = next.id;
-      loadDiagramIntoWorkspace(next);
-      updateZoomLabel();
-      render();
-      // 삭제 후 새 활성 다이어그램이 로컬이면 폴링 중단
-      if (typeof erdDbStopPoll === 'function' && next.source !== 'db') erdDbStopPoll();
-    }
-    renderDiagramPanel();
-    saveState();
-  }, '삭제');
+    return;
+  }
+
+  // 로컬 다이어그램: 기존 동작
+  askConfirm(`'${d.name}' 다이어그램을 삭제합니다.`, () => _removeDiagramLocal(d), '삭제');
+}
+
+// DB 삭제 선택 대기 중인 다이어그램 id
+let _pendingDbDelId = null;
+
+function closeDbDelChoice() {
+  const ov = document.getElementById('dbDelChoiceOverlay');
+  if (ov) ov.classList.remove('active');
+  _pendingDbDelId = null;
+}
+
+// mode: 'local' = 로컬에서만 삭제(DB 원본 보존), 'remote' = DB 원본까지 삭제
+function confirmDbDelChoice(mode) {
+  const ov = document.getElementById('dbDelChoiceOverlay');
+  if (ov) ov.classList.remove('active');
+  const id = _pendingDbDelId;
+  _pendingDbDelId = null;
+  if (!id) return;
+  const d = diagrams.find(x => x.id === id);
+  if (!d) return;
+
+  if (mode === 'remote' && d.connection?.profileName && typeof erdDbDelete === 'function') {
+    if (typeof erdDbCancelSave === 'function') erdDbCancelSave(d.id);
+    erdDbDelete(d.id, d.connection.profileName).catch(() => {});
+    if (typeof showToast === 'function') showToast('DB 원본까지 삭제했습니다.');
+  } else if (typeof showToast === 'function') {
+    showToast('로컬에서만 삭제했습니다 (DB 원본 보존).');
+  }
+  _removeDiagramLocal(d);
+}
+
+// 로컬 워크스페이스에서 다이어그램 제거(원격 삭제와 무관한 공통 로직)
+function _removeDiagramLocal(d) {
+  if (!d) return;
+  const id = d.id;
+  // 보류 중인 디바운스 저장 취소(좀비 PUT 방지)
+  if (typeof erdDbCancelSave === 'function') erdDbCancelSave(id);
+  const idx = diagrams.indexOf(d);
+  if (idx < 0) return;
+  diagrams.splice(idx, 1);
+  if (activeDiagramId === id) {
+    const next = diagrams[Math.max(0, idx - 1)];
+    activeDiagramId = next.id;
+    loadDiagramIntoWorkspace(next);
+    updateZoomLabel();
+    render();
+    // 삭제 후 새 활성 다이어그램이 로컬이면 폴링 중단
+    if (typeof erdDbStopPoll === 'function' && next.source !== 'db') erdDbStopPoll();
+  }
+  renderDiagramPanel();
+  saveState();
 }
 
 const DIAG_TAB_COLORS = [
