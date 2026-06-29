@@ -100,6 +100,28 @@ async def _load_full_schema(adapter, config) -> dict:
     )
 
 
+# ── M6: 메타테이블 숨김 헬퍼 ─────────────────────────────────────────────────────
+# 에이전트 introspection 결과에서 UXERManager 내부 메타테이블을 제외한다.
+_UXER_META_TABLES_P = {"UXER_ERD_DIAGRAM"}  # 대문자 비교용
+
+
+def _is_not_meta_p(name: str) -> bool:
+    return (name or "").upper() not in _UXER_META_TABLES_P
+
+
+def _filter_meta_schema(schema: dict) -> dict:
+    """tables/views/fks 에서 메타테이블을 제거한 새 dict 반환. 원본 불변."""
+    return {
+        "tables": [t for t in schema.get("tables", [])
+                   if _is_not_meta_p(t.get("tableName"))],
+        "views":  [v for v in schema.get("views", [])
+                   if _is_not_meta_p(v.get("viewName"))],
+        "fks":    [f for f in schema.get("fks", [])
+                   if _is_not_meta_p(f.get("fromTable"))
+                   and _is_not_meta_p(f.get("toTable"))],
+    }
+
+
 def _all_tables(schema: dict) -> list:
     """테이블 + 뷰를 {tableName, isView, columns} 통일 형태로."""
     out = list(schema.get("tables") or [])
@@ -318,10 +340,12 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
 
         if name == "fetch_db_schema":
             schema = await _load_full_schema(adapter, config)
+            schema = _filter_meta_schema(schema)  # M6: 메타테이블 제외
             return {"ok": True, "schema": schema, "tableCount": len(schema.get("tables", []))}
 
         if name == "list_db_tables":
             schema = await _load_full_schema(adapter, config)
+            schema = _filter_meta_schema(schema)  # M6: 메타테이블 제외
             tables = [{"tableName": t.get("tableName"), "isView": False, "columnCount": len(t.get("columns") or [])}
                       for t in schema.get("tables", [])]
             views = [{"tableName": v.get("viewName"), "isView": True, "columnCount": len(v.get("columns") or [])}
@@ -334,6 +358,7 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
             if not target:
                 return {"ok": False, "error": "table 인자가 필요합니다."}
             schema = await _load_full_schema(adapter, config)
+            schema = _filter_meta_schema(schema)  # M6: 메타테이블 제외
             t = _find_table(schema, target)
             if not t:
                 return {"ok": False, "error": "테이블을 찾을 수 없습니다: " + target,

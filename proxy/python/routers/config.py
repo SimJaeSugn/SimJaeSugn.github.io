@@ -53,26 +53,20 @@ def _save_store(store: dict):
     _invalidate_cache()
 
 
-def load_config() -> Optional[dict]:
-    global _active_config_cache
-    if _active_config_cache:
-        return _active_config_cache
-    store = _load_raw_store()
-    if not store:
-        return None
-    profile = next((p for p in store["profiles"] if p["name"] == store["active"]), None)
+def _load_profile_config(store: dict, name: str) -> Optional[dict]:
+    """store에서 name 프로파일을 찾아 비밀번호를 복호화한 dict를 반환."""
+    profile = next((p for p in store["profiles"] if p["name"] == name), None)
     if not profile:
         return None
     if not profile.get("password"):
-        _active_config_cache = dict(profile)
-        return _active_config_cache
+        return dict(profile)
     password = None
     try:
         password = decrypt(profile["password"])
     except Exception:
         try:
             password = decrypt_legacy(profile["password"])
-            idx = next((i for i, p in enumerate(store["profiles"]) if p["name"] == store["active"]), -1)
+            idx = next((i for i, p in enumerate(store["profiles"]) if p["name"] == name), -1)
             if idx != -1:
                 store["profiles"][idx] = {
                     **store["profiles"][idx],
@@ -82,8 +76,27 @@ def load_config() -> Optional[dict]:
                 _save_store(store)
         except Exception:
             return None
-    _active_config_cache = {**profile, "password": password}
-    return _active_config_cache
+    return {**profile, "password": password}
+
+
+def load_config(profile_name: str = None) -> Optional[dict]:
+    global _active_config_cache
+    # ── 경로 ①: active 프로파일 (기존 동작 완전 보존) ──────────────
+    if not profile_name:
+        if _active_config_cache:
+            return _active_config_cache
+        store = _load_raw_store()
+        if not store:
+            return None
+        config = _load_profile_config(store, store["active"])
+        if config:
+            _active_config_cache = config
+        return config
+    # ── 경로 ②: 명시 프로파일 (캐시 없음) ────────────────────────────
+    store = _load_raw_store()
+    if not store:
+        return None
+    return _load_profile_config(store, profile_name)
 
 
 # ── GET /config ──────────────────────────────────────────────────────────────

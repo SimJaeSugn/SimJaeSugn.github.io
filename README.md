@@ -463,11 +463,14 @@ https://<계정>.github.io/<저장소명>/
 ## 13. 포워드 엔지니어링
 
 `도구` → `Remote` → `📤 포워드엔지니어링`  
-또는 엔티티 우클릭 → `📤 포워드 엔지니어링`
+또는 엔티티 우클릭 → `📤 포워드 엔지니어링`  
+또는 **DB 다이어그램 탭의 ⬆ 버튼** (DB 연결 다이어그램에서만 표시)
 
 **ERD → 실제 DB** 방향. 현재 ERD의 DDL을 연결된 운영 DB에 직접 실행합니다.
 
 > **사전 조건**: Node.js 미들웨어(포트 3737)가 실행 중이고 DB 접속 설정이 완료된 상태여야 합니다. ([18장 DB 프로파일 관리](#18-db-프로파일-관리) 참고)
+
+> **DB 다이어그램 주의**: DB 다이어그램의 연결 프로파일과 현재 활성 프로파일이 다를 경우, 실행 전 경고 다이얼로그가 표시됩니다. 포워드 엔지니어링은 현재 **활성 연결 기준**으로 DDL을 실행합니다.
 
 ### 사용 순서
 
@@ -480,7 +483,8 @@ https://<계정>.github.io/<저장소명>/
 
 ## 14. 리버스 엔지니어링
 
-`도구` → `Remote` → `🔄 리버스엔지니어링`
+`도구` → `Remote` → `🔄 리버스엔지니어링`  
+또는 **새 다이어그램 생성 시 "DB 스키마에서 리버스 엔지니어링" 선택** (DB 연결 다이어그램 생성 시 초기 채움)
 
 **실제 DB → ERD** 방향. 연결된 운영 DB의 스키마를 읽어 ERD를 자동으로 생성합니다.
 
@@ -491,6 +495,12 @@ https://<계정>.github.io/<저장소명>/
 1. 불러올 테이블 목록 확인 후 선택
 2. `가져오기` 버튼 클릭
 3. 선택한 테이블이 엔티티로 변환되어 캔버스에 추가됨
+
+### DB 다이어그램 초기 채움
+
+새 DB 연결 다이어그램 생성 시 **"DB 스키마에서 리버스 엔지니어링"** 옵션을 선택하면 생성과 동시에 해당 DB 프로파일의 전체 테이블·관계가 캔버스에 채워집니다.
+
+> **보안 주의**: DB 연결 다이어그램을 공유하면 해당 DB 전체에 접근할 수 있습니다. **읽기전용 계정** 사용을 권장합니다. 메타테이블 저장·동기화에는 INSERT/UPDATE 권한이 필요합니다. `UXER_ERD_DIAGRAM` 내부 메타테이블은 스키마 조회 결과에서 자동으로 제외됩니다.
 
 ---
 
@@ -883,6 +893,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/reverse_engineer.js` | 운영 DB 스키마 역공학 |
 | `js/forward_engineer.js` | DDL 생성 (Forward Engineering) |
 | `js/profile_manager.js` | DB 접속 프로파일 관리 |
+| `js/erd_db_store.js` | DB 저장·공유 다이어그램 클라이언트 — `/erd-store/*` API 래퍼(init·list·load·save·delete), 1.5s 디바운스 자동저장(`erdDbScheduleSave`), 8s 폴링(M4 타인 변경 감지), 낙관적 잠금(409 충돌 재로드). 데스크탑 전용(웹은 graceful 비활성화) |
 | `js/pc_store.js` | PC앱(Electron) 워크스페이스 영속화 — Ctrl+S로 모든 다이어그램+스냅샷을 사이드카 단일 파일에 저장/복원 (웹은 미사용) |
 | `js/splash.js` · `css/splash.css` | 시작 화면(스플래시) — 시작 시 **두 모드 중 무작위**: ① lite(브랜드 경량 재현: 로고·회전 캡션·'112 컬럼 표준화' 카운터) ② promo(원본 홍보영상 `splash/promo/promo.html` iframe). 모든 데이터 로드 완료 시 '시작하기'(닫기) 활성. promo 로드 실패 시 lite 폴백. `localStorage`(`aerm_splash_disabled`)로 영구 비활성 — 소프트웨어 정보(About) 모달 토글·'다음에 표시 안 함' 체크 |
 | `splash/promo/` | 원본 홍보영상 번들(promo 모드) — `promo.html`(iframe 호스트) + `animations.js`·`promo-scenes.js`(JSX 사전 트랜스파일·IIFE) + `*.jsx` 소스. 로컬 React(`vendor/react*.min.js`)로 오프라인 재생, CDN/Babel 런타임 불필요. 빌드법은 `splash/promo/README.md` |
@@ -938,6 +949,7 @@ SimJaeSugn.github.io/
 │   ├── broadcast.js
 │   ├── shortcuts.js
 │   ├── minimap_worker.js
+│   ├── erd_db_store.js            ← DB 저장·공유 다이어그램 (erd-store API, 디바운스 저장, 폴링)
 │   ├── pc_store.js                ← PC앱 워크스페이스 영속화 (Ctrl+S 단일 파일 저장+스냅샷)
 │   ├── main.js
 │   ├── config.js
@@ -969,7 +981,7 @@ SimJaeSugn.github.io/
 │   │   │   ├── db/
 │   │   │   │   ├── connector.js
 │   │   │   │   └── adapters/      ← mysql / postgres / oracle / mssql
-│   │   │   ├── routes/            ← config / execute / health / schema
+│   │   │   ├── routes/            ← config / execute / health / schema / erd_store (DB 저장·공유)
 │   │   │   ├── tray.js            ← 시스템 트레이 아이콘·메뉴
 │   │   │   ├── tray_win_bin.js    ← Windows 트레이 헬퍼 바이너리 (base64 내장)
 │   │   │   └── utils/             ← crypto / keystore / auditLogger
@@ -979,7 +991,7 @@ SimJaeSugn.github.io/
 │       ├── main.py                ← FastAPI 진입점
 │       ├── requirements.txt
 │       ├── build.ps1              ← PyInstaller 빌드
-│       ├── routers/               ← config / execute / health / schema / agent · stddict (표준사전) · workspace (PC앱 저장) · v2/agent (v2 격리 미러) · v3/agent (v3 ReAct 격리 미러)
+│       ├── routers/               ← config / execute / health / schema / erd_store (DB 저장·공유) · agent · stddict (표준사전) · workspace (PC앱 저장) · v2/agent (v2 격리 미러) · v3/agent (v3 ReAct 격리 미러)
 │       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy · v2/ · v3/) — 자연어 ERD 제어
 │       ├── db/                    ← connector(외부 DB 라우팅) · system_db(내부 시스템 DB aerm_storage) · adapters/(postgres/mysql/mssql/oracle)
 │       └── utils/                 ← crypto / keystore / audit_logger

@@ -307,8 +307,9 @@ ORDER BY 2 DESC, 1
 
 // GET /schema/tables — 테이블·뷰 이름 목록만 반환 (2단계 선택용)
 router.get('/tables', async (req, res) => {
-  const config = loadConfig();
-  if (!config) return res.status(400).json({ error: '접속정보가 설정되지 않았습니다.' });
+  const profileName = req.query.profileName || null;
+  const config = loadConfig(profileName);
+  if (!config) return res.status(400).json({ error: profileName ? `프로파일 '${profileName}'을 찾을 수 없습니다.` : '접속정보가 설정되지 않았습니다.' });
   try {
     const adapter = getAdapter(config.dbType);
     let query;
@@ -332,8 +333,9 @@ router.get('/tables', async (req, res) => {
 
 // GET /schema
 router.get('/', async (req, res) => {
-  const config = loadConfig();
-  if (!config) return res.status(400).json({ error: '접속정보가 설정되지 않았습니다.' });
+  const profileName = req.query.profileName || null;
+  const config = loadConfig(profileName);
+  if (!config) return res.status(400).json({ error: profileName ? `프로파일 '${profileName}'을 찾을 수 없습니다.` : '접속정보가 설정되지 않았습니다.' });
 
   try {
     const queries = getQueries(config.dbType, config.schema || 'public');

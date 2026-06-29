@@ -10,16 +10,192 @@ let expandedEntities = new Set();
 function showNewDiagModal() {
   const inp = document.getElementById('newDiagNameInput');
   inp.value = '';
+  // 소스 선택 초기화
+  const srcLocal = document.getElementById('newDiagSrcLocal');
+  if (srcLocal) srcLocal.checked = true;
+  _toggleNewDiagDbRow(false);
   document.getElementById('newDiagOverlay').classList.add('active');
   setTimeout(() => inp.focus(), 50);
+  // 프로파일 목록 비동기 로드 (웹이면 실패해도 무방)
+  if (typeof erdDbLoadProfileOptions === 'function') {
+    erdDbLoadProfileOptions().then(profiles => _fillProfileSelect(profiles)).catch(() => {});
+  }
 }
+
+function _toggleNewDiagDbRow(show) {
+  const row = document.getElementById('newDiagDbRow');
+  if (row) row.style.display = show ? '' : 'none';
+  // M5: 초기 채움 옵션 행
+  const fillRow = document.getElementById('newDiagInitFillRow');
+  if (fillRow) fillRow.style.display = show ? '' : 'none';
+  // M6: 경고 박스
+  const warn = document.getElementById('newDiagDbWarning');
+  if (warn) warn.style.display = show ? '' : 'none';
+  // 로컬 선택 시 초기 채움 라디오 "빈 캔버스" 로 리셋
+  if (!show) {
+    const blank = document.getElementById('newDiagFillBlank');
+    if (blank) blank.checked = true;
+  }
+}
+
+function _fillProfileSelect(profiles) {
+  const sel = document.getElementById('newDiagProfileSelect');
+  if (!sel) return;
+  // DOM 조작으로 XSS 방지 (value 와 textContent 를 분리 설정)
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  if (!profiles.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '(프로파일 없음)';
+    sel.appendChild(opt);
+    return;
+  }
+  profiles.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name + (p.dbType ? ' (' + p.dbType + ')' : '');
+    sel.appendChild(opt);
+  });
+}
+
 function closeNewDiagModal() {
   document.getElementById('newDiagOverlay').classList.remove('active');
 }
-function confirmNewDiag() {
+
+// ── M5: DB 다이어그램 리버스 엔지니어링 초기 채움 헬퍼 ──────────────────────────
+// reverse_engineer.js 의 전역 빌더를 그대로 재사용한다.
+// 성공: { entities, relations, notesV2 } / 실패: null
+async function _runDbDiagInitFill(profileName) {
+  if (typeof _buildEntitiesFromSchema !== 'function') {
+    showToast('리버스 엔지니어링 기능을 사용할 수 없습니다(reverse_engineer.js 미로드).');
+    return null;
+  }
+  try {
+    const res = await fetch(
+      `${MW_URL}/schema?profileName=${encodeURIComponent(profileName)}`,
+      { signal: AbortSignal.timeout(60000) }
+    );
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      showToast('스키마 조회 실패: ' + (d.error || 'HTTP ' + res.status));
+      return null;
+    }
+    let { tables, views, fks } = await res.json();
+    tables = tables || []; views = views || []; fks = fks || [];
+    if (!tables.length && !views.length) {
+      return { entities: [], relations: [], notesV2: [] };
+    }
+    const { entities, entityIdMap } = _buildEntitiesFromSchema(tables, views, false);
+    _markFkColumnsFromSchema(entities, entityIdMap, fks, false);
+    const relations = _buildRelationsFromFks(fks, entityIdMap);
+    const notesV2  = _buildViewNotes(views, entities, entityIdMap);
+    return { entities, relations, notesV2 };
+  } catch (e) {
+    showToast('초기 채움 실패: ' + e.message);
+    return null;
+  }
+}
+
+// ── M5-2: DB 다이어그램 전용 포워드 엔지니어링 진입점 ────────────────────────────
+// 다이어그램의 profileName 과 활성 프로파일이 다를 경우 경고를 표시한다.
+async function _openFEForDbDiagram(diag) {
+  if (!diag || diag.source !== 'db') {
+    if (typeof openForwardEngineerModal === 'function') openForwardEngineerModal();
+    return;
+  }
+  const diagProfile = diag.connection?.profileName || '';
+
+  // 활성 프로파일 이름 조회 (비교용)
+  // _mwGetConfig() → GET /config 는 profileName 미포함.
+  // GET /config/profiles 의 active 필드를 사용해야 한다.
+  let activeProfile = '';
+  try {
+    const pr = await fetch(`${MW_URL}/config/profiles`, { signal: AbortSignal.timeout(5000) });
+    if (pr.ok) { const pd = await pr.json(); activeProfile = pd.active || ''; }
+  } catch {}
+
+  const mismatch = diagProfile && activeProfile && (diagProfile !== activeProfile);
+  if (mismatch) {
+    const proceed = confirm(
+      `이 다이어그램은 "${diagProfile}" DB에 연결되어 있습니다.\n` +
+      `포워드 엔지니어링은 현재 활성 연결("${activeProfile}")에 DDL을 실행합니다.\n` +
+      `대상이 맞는지 확인 후 진행하세요. 계속하시겠습니까?`
+    );
+    if (!proceed) return;
+  }
+  if (typeof openForwardEngineerModal === 'function') openForwardEngineerModal();
+}
+
+async function confirmNewDiag() {
   const name = document.getElementById('newDiagNameInput').value.trim() || '새 다이어그램';
-  closeNewDiagModal();
-  const d = createEmptyDiagram(name);
+  const isDb = document.getElementById('newDiagSrcDb')?.checked;
+  const profileName = document.getElementById('newDiagProfileSelect')?.value;
+
+  if (isDb) {
+    // ── DB 다이어그램 생성 ──────────────────────────────────────────
+    if (!profileName) {
+      if (typeof showToast === 'function') showToast('프로파일을 선택하세요.');
+      return;
+    }
+    const ping = await _mwPing();
+    if (!ping) { _showMwNotRunning(); return; }
+    closeNewDiagModal();
+    const ok = await erdDbInit(profileName);
+    if (!ok) return;
+    const d = createEmptyDiagram(name);
+    d.source = 'db';
+    d.connection = { profileName };
+    d.remoteVersion = 0;
+
+    // ── M5: 초기 채움 분기 ────────────────────────────────────────────────────
+    const fillMode = document.querySelector('input[name="newDiagInitFill"]:checked')?.value || 'blank';
+    let initEntities = [], initRelations = [], initNotesV2 = [];
+    if (fillMode === 're') {
+      showToast('DB 스키마를 읽는 중...');
+      const fill = await _runDbDiagInitFill(profileName);
+      if (fill) {
+        initEntities  = fill.entities;
+        initRelations = fill.relations;
+        initNotesV2   = fill.notesV2;
+      }
+      // fill=null 이면 실패 토스트는 _runDbDiagInitFill 내부에서 출력됨
+      // 실패해도 빈 캔버스 다이어그램으로 진행 (UX 단절 방지)
+    }
+
+    const payload = JSON.stringify({
+      entities:  initEntities,
+      relations: initRelations,
+      sections:  [],
+      notes:     [],
+      notesV2:   initNotesV2,
+      vx: 40, vy: 40, scale: 1,
+    });
+    const savedVersion = await erdDbSave(d.id, d.name, payload, profileName, 0);
+    d.remoteVersion = savedVersion != null ? savedVersion : 1;
+    // 초기 채움 내용을 다이어그램 객체에도 반영 (loadDiagramIntoWorkspace 가 읽음)
+    if (initEntities.length) {
+      d.entities  = initEntities;
+      d.relations = initRelations;
+      d.notesV2   = initNotesV2;
+    }
+    _applyNewDiag(d);
+    // 생성 직후 타이머 정리 (초기 저장 완료, 즉각 재저장 불필요)
+    if (typeof _erdDbSaveTimers !== 'undefined') {
+      clearTimeout(_erdDbSaveTimers[d.id]);
+      delete _erdDbSaveTimers[d.id];
+    }
+    if (typeof erdDbStartPoll === 'function') erdDbStartPoll();
+    if (initEntities.length)
+      showToast(`리버스 엔지니어링 초기 채움 완료 (테이블 ${initEntities.length}개, 관계 ${initRelations.length}개)`);
+  } else {
+    // ── 로컬 다이어그램 생성 (기존 로직) ────────────────────────────
+    closeNewDiagModal();
+    const d = createEmptyDiagram(name);
+    _applyNewDiag(d);
+  }
+}
+
+function _applyNewDiag(d) {
   flushCurrentState();
   diagrams.push(d);
   activeDiagramId = d.id;
@@ -47,6 +223,14 @@ function switchDiagram(id) {
   updateZoomLabel();
   render();
   saveState();
+  // ▼ 신규: DB 다이어그램 전환 시 최신 데이터 재로드 + 폴링 관리
+  const _sw = getActiveDiagram();
+  if (_sw && _sw.source === 'db' && typeof erdDbSwitchLoad === 'function') {
+    erdDbSwitchLoad(_sw).catch(() => {});
+    if (typeof erdDbStartPoll === 'function') erdDbStartPoll();
+  } else if (typeof erdDbStopPoll === 'function') {
+    erdDbStopPoll(); // 로컬 다이어그램으로 전환 시 폴링 중단
+  }
 }
 
 function renameDiagram(id, e) {
@@ -67,6 +251,10 @@ function renameDiagram(id, e) {
     d.name = newName;
     renderDiagramPanel();
     saveState();
+    // ▼ 신규: DB 다이어그램이면 이름 변경도 즉시 저장 예약
+    if (d.source === 'db' && typeof erdDbScheduleSave === 'function') {
+      erdDbScheduleSave(d);
+    }
   };
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', ev => {
@@ -81,6 +269,12 @@ function deleteDiagram(id, e) {
   const d = diagrams.find(x => x.id === id);
   if (!d) return;
   askConfirm(`'${d.name}' 다이어그램을 삭제합니다.`, () => {
+    // ▼ 신규: DB 다이어그램이면 원격 행도 삭제 (실패해도 로컬 삭제는 진행)
+    if (d.source === 'db' && d.connection?.profileName && typeof erdDbDelete === 'function') {
+      // 보류 중인 디바운스 저장 취소(좀비 PUT 방지)
+      if (typeof erdDbCancelSave === 'function') erdDbCancelSave(d.id);
+      erdDbDelete(d.id, d.connection.profileName).catch(() => {});
+    }
     const idx = diagrams.indexOf(d);
     diagrams.splice(idx, 1);
     if (activeDiagramId === id) {
@@ -89,6 +283,8 @@ function deleteDiagram(id, e) {
       loadDiagramIntoWorkspace(next);
       updateZoomLabel();
       render();
+      // 삭제 후 새 활성 다이어그램이 로컬이면 폴링 중단
+      if (typeof erdDbStopPoll === 'function' && next.source !== 'db') erdDbStopPoll();
     }
     renderDiagramPanel();
     saveState();

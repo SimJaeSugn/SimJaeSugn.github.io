@@ -70,10 +70,10 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | DELETE | /config/profiles/:name | 프로파일 삭제 |
 | POST | /config/profiles/:name/activate | 프로파일 전환 |
 | POST | /config/profiles/:name/reveal | 저장된 비밀번호 복호화 확인 |
-| POST | /execute | SQL 실행 |
-| POST | /execute/stream | SQL SSE 스트림 |
-| GET | /schema/tables | 테이블·뷰 목록 |
-| GET | /schema | 전체 스키마 (테이블·뷰·FK) |
+| POST | /execute | SQL 실행 (body: sql, profileName?) |
+| POST | /execute/stream | SQL SSE 스트림 (body: sql/sqls, profileName?) |
+| GET | /schema/tables | 테이블·뷰 목록 (query: profileName?). UXER_ERD_DIAGRAM 내부 메타테이블은 자동 제외 |
+| GET | /schema | 전체 스키마 (테이블·뷰·FK) (query: profileName?). UXER_ERD_DIAGRAM 내부 메타테이블 자동 제외 |
 | GET | /schema/comments | 테이블·컬럼 코멘트 (에이전트 apply_db_comments 용) |
 | POST | /agent/stream | 자연어 질의 → 그래프 실행 SSE (meta·token·interrupt·done·error) — Python 프록시 전용 |
 | POST | /agent/resume | interrupt 결과 회신 → 그래프 재개 SSE (툴 실행 위임 루프) |
@@ -109,6 +109,11 @@ Node.js 미들웨어와 동일한 API 구조 및 포트(3737)를 사용합니다
 | PUT | /workspace | PC앱 워크스페이스 저장 (단일 파일 `aerm_workspace.json`) |
 | POST | /export/table-spec | ERD 테이블 목록(JSON) → 엑셀 테이블 정의서(.xlsx) 생성·반환 (openpyxl, 목차+테이블정의서 2시트). 에이전트 export_table_spec_xlsx 툴이 호출 |
 | POST | /export/data-dictionary | ERD 전 컬럼(JSON) → 엑셀 데이터 사전(.xlsx) 생성·반환 (openpyxl, 평면 컬럼 목록). 에이전트 export_data_dictionary_xlsx 툴이 호출 |
+| POST | /erd-store/init | 연결 DB에 UXER_ERD_DIAGRAM 테이블 멱등 생성 (query: profileName?) |
+| GET | /erd-store/list | 저장된 다이어그램 목록 조회 (payload 제외, 최신순) (query: profileName?) |
+| GET | /erd-store/:diagramId | 단건 다이어그램 조회 (payload 포함) (query: profileName?) |
+| PUT | /erd-store/:diagramId | 다이어그램 저장 — expectedVersion=0이면 INSERT, >0이면 UPDATE+낙관적 잠금(충돌 시 409) (body: name, payload, expectedVersion, updatedBy?, profileName?) |
+| DELETE | /erd-store/:diagramId | 다이어그램 삭제 (없으면 404) (query: profileName?) |
 
 > `/agent/*` 는 자연어 ERD 제어(LangGraph 기반) 엔드포인트로 **Python 프록시 전용**이다(Node.js 미들웨어에는 없음).
 > `langgraph` · `langchain-openai` · `langchain-core` 의존성이 필요하며 `requirements.txt`에 포함된다.
@@ -139,6 +144,7 @@ proxy/python/
 │   ├── stddict.py         ← /stddict 라우터 (표준사전 sqlite 직접 CRUD·엑셀 import)
 │   ├── workspace.py       ← /workspace 라우터 (PC앱 워크스페이스 단일 파일 저장/복원)
 │   ├── export.py          ← /export 라우터 (ERD → 엑셀 테이블 정의서 .xlsx, openpyxl)
+│   ├── erd_store.py       ← /erd-store 라우터 (연결 DB에 ERD 다이어그램 저장·공유, 낙관적 잠금)
 │   ├── v2/                ← v2 라우터 패키지 (agent v1 격리 미러)
 │   │   └── agent.py       ← /agent/v2/stream·/resume·/key·/config·/eval 라우터
 │   └── v3/                ← v3 라우터 패키지 (ReAct 하이브리드 격리 미러)

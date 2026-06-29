@@ -39,8 +39,9 @@ function parseSqls(body) {
 
 // POST /execute - 단일 SQL 실행
 router.post('/', async (req, res) => {
-  const config = loadConfig();
-  if (!config) return res.status(400).json({ error: '접속정보가 설정되지 않았습니다.' });
+  const profileName = req.body.profileName || null;
+  const config = loadConfig(profileName);
+  if (!config) return res.status(400).json({ error: profileName ? `프로파일 '${profileName}'을 찾을 수 없습니다.` : '접속정보가 설정되지 않았습니다.' });
 
   const sql = req.body.sql;
   if (!sql || !sql.trim()) return res.status(400).json({ error: 'SQL이 비어있습니다.' });
@@ -60,9 +61,10 @@ router.post('/', async (req, res) => {
 
 // POST /execute/stream - 다중 SQL SSE 스트리밍
 router.post('/stream', async (req, res) => {
-  const config = loadConfig();
+  const profileName = req.body.profileName || null;
+  const config = loadConfig(profileName);
   if (!config) {
-    res.status(400).json({ error: '접속정보가 설정되지 않았습니다.' });
+    res.status(400).json({ error: profileName ? `프로파일 '${profileName}'을 찾을 수 없습니다.` : '접속정보가 설정되지 않았습니다.' });
     return;
   }
 

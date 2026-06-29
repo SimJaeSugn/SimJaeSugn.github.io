@@ -1,8 +1,7 @@
 import asyncio
 import pyodbc
 
-_conn = None
-_conn_config_key = None
+_conns: dict = {}  # config_key -> pyodbc.Connection
 
 
 def _config_key(config: dict) -> str:
@@ -10,19 +9,18 @@ def _config_key(config: dict) -> str:
 
 
 def _get_conn(config: dict):
-    global _conn, _conn_config_key
     key = _config_key(config)
-    if _conn and _conn_config_key == key:
+    conn = _conns.get(key)
+    if conn:
         try:
-            _conn.execute("SELECT 1")
-            return _conn
+            conn.execute("SELECT 1")
+            return conn
         except Exception:
-            pass
-    if _conn:
-        try:
-            _conn.close()
-        except Exception:
-            pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+            del _conns[key]
     port = config.get("port", 1433)
     trust_cert = "yes" if config.get("trustServerCertificate", True) else "no"
     encrypt = "yes" if config.get("encrypt", True) else "no"
@@ -36,10 +34,10 @@ def _get_conn(config: dict):
         f"TrustServerCertificate={trust_cert};"
         f"Connection Timeout=10;"
     )
-    _conn = pyodbc.connect(conn_str, timeout=10)
-    _conn.timeout = 30
-    _conn_config_key = key
-    return _conn
+    conn = pyodbc.connect(conn_str, timeout=10)
+    conn.timeout = 30
+    _conns[key] = conn
+    return conn
 
 
 async def execute(config: dict, sql: str) -> dict:
@@ -76,17 +74,50 @@ def _execute_sync(config: dict, sql: str) -> dict:
     return {"rows": result_rows, "rowCount": row_count, "fields": fields}
 
 
+def _execute_params_sync(config: dict, sql: str, params: list) -> dict:
+    """파라미터 바인딩 실행 (? 플레이스홀더). SELECT는 rows 반환, DML은 rowCount 반환 + 커밋."""
+    conn = _get_conn(config)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(sql, params)
+        if cursor.description:
+            fields = [col[0] for col in cursor.description]
+            rows = [dict(zip(fields, row)) for row in cursor.fetchall()]
+            return {"rows": rows, "rowCount": len(rows), "fields": fields}
+        # DML — 항상 커밋 (pyodbc 기본 autocommit=False)
+        conn.commit()
+        return {"rows": [], "rowCount": cursor.rowcount or 0, "fields": []}
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+
+
+async def execute_params(config: dict, sql: str, params: list) -> dict:
+    """파라미터 바인딩 비동기 실행 (executor 래핑)."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _execute_params_sync, config, sql, params)
+
+
 async def test(config: dict) -> bool:
     result = await execute(config, "SELECT 1 AS ok")
     return len(result["rows"]) > 0
 
 
-async def close_pool() -> None:
-    global _conn, _conn_config_key
-    if _conn:
-        try:
-            _conn.close()
-        except Exception:
-            pass
-        _conn = None
-        _conn_config_key = None
+async def close_pool(key: str = None) -> None:
+    global _conns
+    if key:
+        conn = _conns.pop(key, None)
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    else:
+        for c in list(_conns.values()):
+            try:
+                c.close()
+            except Exception:
+                pass
+        _conns = {}

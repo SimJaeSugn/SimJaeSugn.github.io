@@ -681,11 +681,58 @@
 
 <!-- ── New Diagram Modal ─────────────────────── -->
 <div class="modal-overlay" id="newDiagOverlay" onmousedown="overlayClose(event,'newDiagOverlay')">
-  <div class="modal" style="width:360px" onmousedown.stop>
+  <div class="modal" style="width:380px" onmousedown.stop>
     <h3>새 다이어그램</h3>
     <div class="form-group">
       <label>다이어그램 이름</label>
       <input class="form-input" id="newDiagNameInput" placeholder="새 다이어그램" />
+    </div>
+    <!-- 신규: 저장 위치 선택 -->
+    <div class="form-group">
+      <label>저장 위치</label>
+      <div style="display:flex;gap:16px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="newDiagSrc" id="newDiagSrcLocal" value="local" checked
+            onchange="_toggleNewDiagDbRow(false)">
+          로컬
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="newDiagSrc" id="newDiagSrcDb" value="db"
+            onchange="_toggleNewDiagDbRow(true)">
+          DB 연결 (공유)
+        </label>
+      </div>
+    </div>
+    <!-- 신규: DB 프로파일 행 (로컬 선택 시 숨김) -->
+    <div class="form-group" id="newDiagDbRow" style="display:none">
+      <label>DB 프로파일</label>
+      <select class="form-input" id="newDiagProfileSelect">
+        <option value="">(로딩 중...)</option>
+      </select>
+    </div>
+    <!-- M5: 초기 채움 옵션 (DB 연결 선택 시에만 표시) -->
+    <div class="form-group" id="newDiagInitFillRow" style="display:none">
+      <label>초기 채움</label>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="newDiagInitFill"
+                 id="newDiagFillBlank" value="blank" checked>
+          빈 캔버스
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="newDiagInitFill"
+                 id="newDiagFillRE" value="re">
+          DB 스키마에서 리버스 엔지니어링 (전체 테이블)
+        </label>
+      </div>
+    </div>
+    <!-- M6: 자격증명 공유 경고 + 읽기전용 계정 안내 -->
+    <div id="newDiagDbWarning" style="display:none;background:#2a1f0a;border:1px solid #a07030;
+         border-radius:8px;padding:12px 14px;font-size:12.5px;color:#f0c060;line-height:1.6;margin-top:8px">
+      <b>주의</b> DB 접속정보를 공유하면 이 DB 전체에 접근할 수 있습니다.
+      읽기전용 계정 사용을 권장합니다.<br>
+      메타테이블 저장·동기화에는 INSERT/UPDATE 권한이 필요합니다.
+      읽기전용 계정이면 타인 편집 내용을 볼 수는 있지만 직접 편집은 저장되지 않습니다.
     </div>
     <div class="modal-actions">
       <button class="btn-cancel-m" onclick="closeNewDiagModal()">취소</button>
@@ -1331,6 +1378,7 @@
 <script src="js/agent_v3/panel_v3.js"></script>
 <script src="js/agent_v3/client_v3.js"></script>
 <script src="js/agent_v3/observe_v3.js"></script>
+<script src="js/erd_db_store.js"></script>
 <script src="js/pc_store.js"></script>
 <script src="js/main.js"></script>
 

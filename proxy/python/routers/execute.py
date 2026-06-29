@@ -52,12 +52,13 @@ def _parse_sqls(body_sqls, body_sql) -> List[str]:
 
 class ExecuteBody(BaseModel):
     sql: str
+    profileName: Optional[str] = None
 
 
 @router.post("")
 @router.post("/")
 async def execute_sql(body: ExecuteBody):
-    config = load_config()
+    config = load_config(profile_name=body.profileName)
     if not config:
         raise HTTPException(status_code=400, detail="접속정보가 설정되지 않았습니다.")
     if not body.sql or not body.sql.strip():
@@ -81,11 +82,12 @@ class StreamBody(BaseModel):
     sqls: Optional[List[str]] = None
     sql: Optional[str] = None
     stopOnError: Optional[bool] = False
+    profileName: Optional[str] = None
 
 
 @router.post("/stream")
 async def execute_stream(body: StreamBody):
-    config = load_config()
+    config = load_config(profile_name=body.profileName)
     if not config:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="접속정보가 설정되지 않았습니다.")
