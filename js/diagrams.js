@@ -35,6 +35,13 @@ function _toggleNewDiagDbRow(show) {
   if (!show) {
     const blank = document.getElementById('newDiagFillBlank');
     if (blank) blank.checked = true;
+    // ▼ 신규: 기존 다이어그램 선택 행 숨김·리셋
+    const existRow = document.getElementById('newDiagExistingRow');
+    if (existRow) existRow.style.display = 'none';
+    _resetExistingSelect();
+    // 이름 입력란 readonly 해제·비움
+    const inp = document.getElementById('newDiagNameInput');
+    if (inp) { inp.readOnly = false; inp.value = ''; }
   }
 }
 
@@ -60,6 +67,127 @@ function _fillProfileSelect(profiles) {
 
 function closeNewDiagModal() {
   document.getElementById('newDiagOverlay').classList.remove('active');
+}
+
+// ── 기존 DB 다이어그램 열기 — 헬퍼·이벤트 핸들러 ──────────────────────────────
+
+function _resetExistingSelect() {
+  const sel = document.getElementById('newDiagExistingSelect');
+  if (!sel) return;
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  const opt = document.createElement('option');
+  opt.value = '';
+  opt.textContent = '(프로파일을 먼저 선택하세요)';
+  sel.appendChild(opt);
+  sel.disabled = true;
+  const hint = document.getElementById('newDiagExistingHint');
+  if (hint) hint.textContent = '';
+}
+
+async function _fillExistingDiagSelect(profileName) {
+  const sel = document.getElementById('newDiagExistingSelect');
+  const hint = document.getElementById('newDiagExistingHint');
+  if (!sel) return;
+
+  // 비동기 경쟁 가드 — 프로파일 빠른 전환 시 stale 응답 무시
+  const seq = String((Number(sel.dataset.reqSeq) || 0) + 1);
+  sel.dataset.reqSeq = seq;
+
+  // 로딩 중 상태
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  sel.disabled = true;
+  const loadOpt = document.createElement('option');
+  loadOpt.textContent = '(조회 중...)';
+  sel.appendChild(loadOpt);
+  if (hint) hint.textContent = '';
+
+  if (!profileName) {
+    loadOpt.textContent = '(프로파일을 먼저 선택하세요)';
+    return;
+  }
+
+  const result = await erdDbList(profileName);
+
+  // 이 응답이 도착하기 전 더 최신 요청이 시작됐으면 무시(stale)
+  if (sel.dataset.reqSeq !== seq) return;
+
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+
+  if (!result) {
+    // 네트워크/HTTP 오류
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '(조회 실패 — 프록시 실행 여부 확인)';
+    sel.appendChild(opt);
+    sel.disabled = true;
+    if (hint) hint.textContent = '사이드카가 실행 중인지 확인하세요.';
+    return;
+  }
+
+  if (!result.items || result.items.length === 0) {
+    // 저장된 다이어그램 없음
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '(이 DB에 저장된 다이어그램 없음)';
+    sel.appendChild(opt);
+    sel.disabled = true;
+    if (hint) hint.textContent = '새 다이어그램을 먼저 저장해야 합니다.';
+    return;
+  }
+
+  // 정상: 목록 채우기
+  result.items.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item.diagram_id;
+    const dateStr = item.updated_at
+      ? ' / ' + String(item.updated_at).slice(0, 16).replace('T', ' ')
+      : '';
+    opt.textContent = item.name + ' (v' + item.version + dateStr + ')';
+    sel.appendChild(opt);
+  });
+  sel.disabled = false;
+  if (hint) hint.textContent = result.items.length + '개 다이어그램';
+
+  // 첫 항목 자동 선택 후 이름 입력란 자동 채움
+  _onNewDiagExistingSelectChange();
+}
+
+function _onNewDiagInitFillChange(val) {
+  const existRow = document.getElementById('newDiagExistingRow');
+  const inp = document.getElementById('newDiagNameInput');
+  if (val === 'existing') {
+    if (existRow) existRow.style.display = 'flex';
+    const profileName = document.getElementById('newDiagProfileSelect')?.value || '';
+    _fillExistingDiagSelect(profileName);
+  } else {
+    if (existRow) existRow.style.display = 'none';
+    _resetExistingSelect();
+    if (inp) { inp.readOnly = false; /* value는 사용자가 이미 입력했을 수 있으므로 유지 */ }
+  }
+}
+
+function _onNewDiagProfileChange() {
+  const fillMode = document.querySelector('input[name="newDiagInitFill"]:checked')?.value;
+  if (fillMode === 'existing') {
+    const profileName = document.getElementById('newDiagProfileSelect')?.value || '';
+    _fillExistingDiagSelect(profileName);
+  }
+}
+
+function _onNewDiagExistingSelectChange() {
+  const sel = document.getElementById('newDiagExistingSelect');
+  const inp = document.getElementById('newDiagNameInput');
+  if (!sel || !inp) return;
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.value) {
+    // 옵션 텍스트에서 이름 부분만 추출 (괄호 전까지)
+    const label = opt.textContent.replace(/ \(v[\s\S]*$/, '').trim();
+    inp.value = label;
+    inp.readOnly = true;
+  } else {
+    inp.value = '';
+    inp.readOnly = false;
+  }
 }
 
 // ── M5: DB 다이어그램 리버스 엔지니어링 초기 채움 헬퍼 ──────────────────────────
@@ -139,6 +267,78 @@ async function confirmNewDiag() {
     }
     const ping = await _mwPing();
     if (!ping) { _showMwNotRunning(); return; }
+
+    // ── ▼ 신규: 기존 DB 다이어그램 열기 분기 ────────────────────────────────────
+    const fillMode = document.querySelector('input[name="newDiagInitFill"]:checked')?.value || 'blank';
+    if (fillMode === 'existing') {
+      const selectedId = document.getElementById('newDiagExistingSelect')?.value;
+      if (!selectedId) {
+        if (typeof showToast === 'function') showToast('열 다이어그램을 선택하세요.');
+        return;
+      }
+
+      // 중복 방지: 이미 로컬에 같은 diagram_id 가 있으면 전환만
+      const existing = diagrams.find(x => x.id === selectedId);
+      if (existing) {
+        closeNewDiagModal();
+        switchDiagram(selectedId);
+        showToast('이미 열려 있는 다이어그램으로 전환했습니다.');
+        return;
+      }
+
+      // 원격에서 로드
+      showToast('다이어그램을 불러오는 중...');
+      const loaded = await erdDbLoad(selectedId, profileName);
+      if (!loaded) {
+        showToast('다이어그램 로드 실패. 프록시 연결을 확인하세요.');
+        return;
+      }
+
+      // payload 파싱
+      let p;
+      try {
+        p = typeof loaded.payload === 'string'
+          ? JSON.parse(loaded.payload)
+          : loaded.payload;
+      } catch {
+        if (typeof showToast === 'function') showToast('다이어그램 데이터 파싱 실패.');
+        return;
+      }
+      // payload 가 null/비객체여도 빈 다이어그램으로 안전하게 진행(TypeError 방어)
+      if (!p || typeof p !== 'object') p = {};
+
+      // 다이어그램 객체 구성 — createEmptyDiagram 대신 리터럴 직접 사용
+      // (기존 diagram_id 를 그대로 보존해야 하므로 makeDiagramId() 우회)
+      const d = {
+        id:            loaded.diagram_id,
+        name:          loaded.name,
+        entities:      p.entities  || [],
+        relations:     p.relations || [],
+        sections:      p.sections  || [],
+        notes:         p.notes     || [],
+        notesV2:       p.notesV2   || [],
+        collapsed:     p.collapsed || [],
+        vx:            p.vx    ?? 40,
+        vy:            p.vy    ?? 40,
+        scale:         p.scale ?? 1,
+        source:        'db',
+        connection:    { profileName },
+        remoteVersion: loaded.version,
+      };
+
+      closeNewDiagModal();
+      _applyNewDiag(d);
+      // 로드 직후 타이머 정리 — 이미 최신 상태이므로 echo PUT 방지 (blank/re 분기와 동일)
+      if (typeof _erdDbSaveTimers !== 'undefined') {
+        clearTimeout(_erdDbSaveTimers[d.id]);
+        delete _erdDbSaveTimers[d.id];
+      }
+      if (typeof erdDbStartPoll === 'function') erdDbStartPoll();
+      showToast('"' + loaded.name + '" 다이어그램을 불러왔습니다.');
+      return;
+    }
+    // ── ▲ 신규 분기 끝 ──────────────────────────────────────────────────────────
+
     closeNewDiagModal();
     const ok = await erdDbInit(profileName);
     if (!ok) return;
@@ -148,7 +348,7 @@ async function confirmNewDiag() {
     d.remoteVersion = 0;
 
     // ── M5: 초기 채움 분기 ────────────────────────────────────────────────────
-    const fillMode = document.querySelector('input[name="newDiagInitFill"]:checked')?.value || 'blank';
+    // fillMode 는 위 existing 분기에서 이미 선언됨 (blank / re 중 하나)
     let initEntities = [], initRelations = [], initNotesV2 = [];
     if (fillMode === 're') {
       showToast('DB 스키마를 읽는 중...');

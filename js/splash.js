@@ -33,6 +33,7 @@
   if (!overlay || !splashGetEnabled()) {
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     window.splashMarkDataLoaded = function () {};
+    window.splashExtendFailsafe = function () {};
     return;
   }
 
@@ -73,6 +74,15 @@
 
   // 안전장치 — 12초 내 로딩 신호가 없어도 닫을 수 있게
   var failsafe = setTimeout(markLoaded, 12000);
+
+  // PC앱이 사이드카 준비를 기다려야 할 때 failsafe 연장 허용
+  // 예) main.js 가 loadWorkspacePC() 시작 전에 splashExtendFailsafe(30000) 호출
+  // ms 는 "이 호출 시점부터" 경과 시간(기존 12초 타이머를 대체 재설정).
+  window.splashExtendFailsafe = function (ms) {
+    if (loaded || closed) return; // 이미 완료됐으면 무시
+    clearTimeout(failsafe);
+    failsafe = setTimeout(markLoaded, ms);
+  };
 
   // ── 닫기 ───────────────────────────────────────────────────────
   function splashClose(force) {

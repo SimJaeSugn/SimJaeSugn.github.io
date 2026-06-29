@@ -27,6 +27,8 @@ if (!undoStack.length) undoStack.push(JSON.stringify({ diagrams, activeDiagramId
 // localStorage 로 1차 렌더 후, 파일이 있으면 그 내용으로 덮어쓴다(파일=데스크탑 영속 저장소).
 // 복원이 끝날 때까지 로딩 오버레이로 ERD를 덮어 사용자 입력을 차단한다.
 if (!_restoredFromUrl && typeof isPcApp === 'function' && isPcApp() && typeof loadWorkspacePC === 'function') {
+  // 사이드카 부팅 대기(최대 20s) + 파일 fetch(5s)를 커버하도록 failsafe 연장
+  if (typeof splashExtendFailsafe === 'function') splashExtendFailsafe(30000);
   _pcShowLoading();
   loadWorkspacePC().then(ok => {
     if (ok) {

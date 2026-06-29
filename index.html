@@ -706,7 +706,8 @@
     <!-- 신규: DB 프로파일 행 (로컬 선택 시 숨김) -->
     <div class="form-group" id="newDiagDbRow" style="display:none">
       <label>DB 프로파일</label>
-      <select class="form-input" id="newDiagProfileSelect">
+      <select class="form-input" id="newDiagProfileSelect"
+              onchange="_onNewDiagProfileChange()">
         <option value="">(로딩 중...)</option>
       </select>
     </div>
@@ -716,14 +717,32 @@
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
           <input type="radio" name="newDiagInitFill"
-                 id="newDiagFillBlank" value="blank" checked>
+                 id="newDiagFillBlank" value="blank" checked
+                 onchange="_onNewDiagInitFillChange(this.value)">
           빈 캔버스
         </label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
           <input type="radio" name="newDiagInitFill"
-                 id="newDiagFillRE" value="re">
+                 id="newDiagFillRE" value="re"
+                 onchange="_onNewDiagInitFillChange(this.value)">
           DB 스키마에서 리버스 엔지니어링 (전체 테이블)
         </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="newDiagInitFill"
+                 id="newDiagFillExisting" value="existing"
+                 onchange="_onNewDiagInitFillChange(this.value)">
+          기존 DB 다이어그램 열기
+        </label>
+        <div id="newDiagExistingRow"
+             style="display:none;flex-direction:column;gap:4px;margin-top:4px">
+          <select class="form-input" id="newDiagExistingSelect"
+                  style="font-size:13px"
+                  onchange="_onNewDiagExistingSelectChange()">
+            <option value="">(프로파일을 먼저 선택하세요)</option>
+          </select>
+          <span id="newDiagExistingHint"
+                style="font-size:11.5px;color:#9aa3b2"></span>
+        </div>
       </div>
     </div>
     <!-- M6: 자격증명 공유 경고 + 읽기전용 계정 안내 -->
