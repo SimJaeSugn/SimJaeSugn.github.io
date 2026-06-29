@@ -104,7 +104,7 @@ function renderExplorerDiagrams() {
     // M5-2: DB 다이어그램 전용 포워드 엔지니어링 버튼
     const _feBtnHtml = (d.source === 'db')
       ? `<button class="diag-btn" title="포워드 엔지니어링 (ERD→DB DDL 실행)"
-           onclick="event.stopPropagation();_openFEForDbDiagram(diagrams.find(x=&gt;x.id===${JSON.stringify(d.id)}))">⬆</button>`
+           onclick="event.stopPropagation();_openFEForDbDiagram('${d.id}')">⬆</button>`
       : '';
 
     item.innerHTML = `

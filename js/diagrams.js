@@ -226,7 +226,11 @@ async function _runDbDiagInitFill(profileName) {
 
 // ── M5-2: DB 다이어그램 전용 포워드 엔지니어링 진입점 ────────────────────────────
 // 다이어그램의 profileName 과 활성 프로파일이 다를 경우 경고를 표시한다.
-async function _openFEForDbDiagram(diag) {
+async function _openFEForDbDiagram(diagOrId) {
+  // id 문자열(인라인 핸들러 경유) 또는 다이어그램 객체 모두 허용.
+  const diag = (typeof diagOrId === 'string')
+    ? diagrams.find(x => x.id === diagOrId)
+    : diagOrId;
   if (!diag || diag.source !== 'db') {
     if (typeof openForwardEngineerModal === 'function') openForwardEngineerModal();
     return;
