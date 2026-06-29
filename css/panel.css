@@ -362,6 +362,12 @@
 .ex-diag-item.active .ex-diag-name { color: var(--ac); font-weight: bold; }
 .ex-diag-item .diag-item-btns { margin-left: auto; }
 .ex-diag-item:hover .diag-item-btns { opacity: 1; }
+/* DB 연결 다이어그램 배지 */
+.diag-db-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 5px;
+  border-radius: 3px; border: 1px solid var(--ac);
+  color: var(--ac); line-height: 1.4; flex-shrink: 0;
+}
 
 /* 다이어그램 섹션 추가(＋) 버튼 */
 .ex-sec-add {

@@ -4,6 +4,7 @@ const configRouter = require('./routes/config');
 const executeRouter = require('./routes/execute');
 const schemaRouter = require('./routes/schema');
 const healthRouter = require('./routes/health');
+const erdStoreRouter = require('./routes/erd_store');
 const { setupTray } = require('./tray');
 const { version } = require('../package.json');
 
@@ -39,6 +40,7 @@ app.use('/config', configRouter);
 app.use('/execute', executeRouter);
 app.use('/schema', schemaRouter);
 app.use('/health', healthRouter);
+app.use('/erd-store', erdStoreRouter);
 
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message);

@@ -2439,6 +2439,7 @@ function loadSavedTheme() {
 // ── 커맨드 팔레트 (메뉴 전체 검색) ──────────────────────────────
 const CMD_LIST = [
   // 파일
+  { label: '새 DB 연결 다이어그램',       category: '파일', icon: '🗄',               action: () => showNewDiagModal() },
   { label: '엔티티 추가',                category: '파일', icon: '📋', scId: 'addEnt',  action: () => openAddEntityModal() },
   { label: '관계 추가',                  category: '파일', icon: '⟷', scId: 'addRel',  action: () => openAddRelationModal() },
   { label: '다이어그램 내보내기',         category: '파일', icon: '💾', scId: 'save',    action: () => exportData() },

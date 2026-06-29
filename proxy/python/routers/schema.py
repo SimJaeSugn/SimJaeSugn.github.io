@@ -1,9 +1,19 @@
 import re
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from db.connector import get_adapter
 from routers.config import load_config
 
 router = APIRouter()
+
+# ── M6: 메타테이블 숨김 상수 ─────────────────────────────────────────────────────
+# UXERManager 내부 메타테이블을 업무 스키마 조회 결과에서 제외한다.
+_UXER_META_TABLES = {"UXER_ERD_DIAGRAM"}  # 대문자 비교용
+
+
+def _filter_meta(name: str) -> bool:
+    """True 이면 포함(False 이면 필터 제외)."""
+    return (name or "").upper() not in _UXER_META_TABLES
 
 
 def _pg_validate_schema(schema) -> str:
@@ -329,10 +339,11 @@ def _build_result(col_rows, view_rows, fk_rows, unique_rows=None) -> dict:
 # ── GET /schema/tables ────────────────────────────────────────────────────────
 
 @router.get("/tables")
-async def get_tables():
-    config = load_config()
+async def get_tables(profileName: Optional[str] = None):
+    config = load_config(profile_name=profileName)
     if not config:
-        raise HTTPException(status_code=400, detail="접속정보가 설정되지 않았습니다.")
+        msg = f"프로파일 '{profileName}'을 찾을 수 없습니다." if profileName else "접속정보가 설정되지 않았습니다."
+        raise HTTPException(status_code=400, detail=msg)
     try:
         adapter = get_adapter(config["dbType"])
         db_type = config["dbType"]
@@ -349,6 +360,8 @@ async def get_tables():
             raise ValueError(f"지원하지 않는 DB 타입: {db_type}")
         result = await adapter.execute(config, query)
         items = [{"name": _s(_norm(r).get("name")), "type": _s(_norm(r).get("type"))} for r in (result.get("rows") or [])]
+        # M6: 메타테이블 제외
+        items = [it for it in items if _filter_meta(it["name"])]
         return {"items": items}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -358,10 +371,11 @@ async def get_tables():
 
 @router.get("")
 @router.get("/")
-async def get_schema():
-    config = load_config()
+async def get_schema(profileName: Optional[str] = None):
+    config = load_config(profile_name=profileName)
     if not config:
-        raise HTTPException(status_code=400, detail="접속정보가 설정되지 않았습니다.")
+        msg = f"프로파일 '{profileName}'을 찾을 수 없습니다." if profileName else "접속정보가 설정되지 않았습니다."
+        raise HTTPException(status_code=400, detail=msg)
     try:
         queries = _get_queries(config["dbType"], config.get("schema") or "public")
         adapter = get_adapter(config["dbType"])
@@ -378,6 +392,14 @@ async def get_schema():
             fk_result.get("rows") or [],
             uq_result.get("rows") or [],
         )
+        # M6: 메타테이블 제외 (tables·views 에서 필터, fks 는 해당 테이블 FK 도 연쇄 제거)
+        result["tables"] = [t for t in result["tables"]
+                            if _filter_meta(t.get("tableName"))]
+        result["views"]  = [v for v in result["views"]
+                            if _filter_meta(v.get("viewName"))]
+        result["fks"]    = [f for f in result["fks"]
+                            if _filter_meta(f.get("fromTable"))
+                            and _filter_meta(f.get("toTable"))]
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -493,10 +515,11 @@ def _build_comments(table_rows, col_rows) -> dict:
 # ── GET /schema/comments — 테이블·컬럼 코멘트(에이전트 apply_db_comments 용) ──
 
 @router.get("/comments")
-async def get_comments():
-    config = load_config()
+async def get_comments(profileName: Optional[str] = None):
+    config = load_config(profile_name=profileName)
     if not config:
-        raise HTTPException(status_code=400, detail="접속정보가 설정되지 않았습니다.")
+        msg = f"프로파일 '{profileName}'을 찾을 수 없습니다." if profileName else "접속정보가 설정되지 않았습니다."
+        raise HTTPException(status_code=400, detail=msg)
     try:
         table_q, col_q = _get_comment_queries(config["dbType"], config.get("schema") or "public")
         adapter = get_adapter(config["dbType"])

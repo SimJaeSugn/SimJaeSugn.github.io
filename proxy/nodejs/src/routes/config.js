@@ -52,20 +52,13 @@ function saveStore(store) {
   invalidateCache();
 }
 
-// ---- 활성 프로파일 평문 반환 (기존 loadConfig 시그니처 유지) ----
+// ---- 특정 프로파일 평문 반환 헬퍼 (캐시 없음) ----
 
-function loadConfig() {
-  if (_activeConfigCache) return _activeConfigCache;
-  const store = loadRawStore();
-  if (!store) return null;
-
-  const profile = store.profiles.find(p => p.name === store.active);
+function _loadProfileConfig(store, name) {
+  const profile = store.profiles.find(p => p.name === name);
   if (!profile) return null;
 
-  if (!profile.password) {
-    _activeConfigCache = { ...profile };
-    return _activeConfigCache;
-  }
+  if (!profile.password) return { ...profile };
 
   let password;
   try {
@@ -74,7 +67,7 @@ function loadConfig() {
     try {
       password = decryptLegacy(profile.password);
       // 레거시 키 마이그레이션: 해당 프로파일의 암호화 갱신
-      const idx = store.profiles.findIndex(p => p.name === store.active);
+      const idx = store.profiles.findIndex(p => p.name === name);
       if (idx !== -1) {
         store.profiles[idx] = {
           ...store.profiles[idx],
@@ -87,9 +80,28 @@ function loadConfig() {
       return null;
     }
   }
+  return { ...profile, password };
+}
 
-  _activeConfigCache = { ...profile, password };
-  return _activeConfigCache;
+// ---- 활성(또는 지정) 프로파일 평문 반환 ----
+// profileName=null → 활성 프로파일 + _activeConfigCache (기존 동작 100% 보존)
+// profileName 지정  → 해당 프로파일, 캐시 없음
+
+function loadConfig(profileName = null) {
+  // Path ②: 지정 프로파일
+  if (profileName) {
+    const store = loadRawStore();
+    if (!store) return null;
+    return _loadProfileConfig(store, profileName);
+  }
+  // Path ①: 활성 프로파일 (기존 동작 + 캐시)
+  if (_activeConfigCache) return _activeConfigCache;
+  const store = loadRawStore();
+  if (!store) return null;
+
+  const result = _loadProfileConfig(store, store.active);
+  if (result) _activeConfigCache = result;
+  return result;
 }
 
 function getDefaultPort(dbType) {

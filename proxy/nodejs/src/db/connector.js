@@ -11,9 +11,9 @@ function getAdapter(dbType) {
   return adapter;
 }
 
-async function closeAllPools() {
+async function closeAllPools(key = null) {
   for (const adapter of Object.values(adapters)) {
-    if (typeof adapter.closePool === 'function') await adapter.closePool();
+    if (typeof adapter.closePool === 'function') await adapter.closePool(key);
   }
 }
 

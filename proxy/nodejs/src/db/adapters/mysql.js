@@ -1,8 +1,7 @@
 'use strict';
 const mysql = require('mysql2/promise');
 
-let _pool = null;
-let _poolConfig = null;
+const _pools = new Map();  // configKey -> Pool
 
 function configKey(config) {
   return JSON.stringify({ host: config.host, port: config.port || 3306, database: config.database, user: config.username });
@@ -10,9 +9,8 @@ function configKey(config) {
 
 function getPool(config) {
   const key = configKey(config);
-  if (_pool && _poolConfig === key) return _pool;
-  if (_pool) { _pool.end().catch(() => {}); }
-  _pool = mysql.createPool({
+  if (_pools.has(key)) return _pools.get(key);
+  const pool = mysql.createPool({
     host: config.host,
     port: config.port || 3306,
     database: config.database,
@@ -23,8 +21,8 @@ function getPool(config) {
     connectionLimit: 10,
     idleTimeout: 30000
   });
-  _poolConfig = key;
-  return _pool;
+  _pools.set(key, pool);
+  return pool;
 }
 
 async function execute(config, sql) {
@@ -44,17 +42,35 @@ async function execute(config, sql) {
   }
 }
 
+async function executeParams(config, sql, params) {
+  const pool = getPool(config);
+  const conn = await pool.getConnection();
+  try {
+    const [rows, fields] = await conn.execute(sql, params);
+    const isArray = Array.isArray(rows);
+    return {
+      rows: isArray ? rows : [],
+      rowCount: isArray ? rows.length : (rows.affectedRows || 0),
+      fields: Array.isArray(fields) ? fields.map(f => f.name) : []
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 async function test(config) {
   const result = await execute(config, 'SELECT 1 AS ok');
   return result.rows.length > 0;
 }
 
-async function closePool() {
-  if (_pool) {
-    try { await _pool.end(); } catch (_) {}
-    _pool = null;
-    _poolConfig = null;
+async function closePool(key = null) {
+  if (key) {
+    const pool = _pools.get(key);
+    if (pool) { try { await pool.end(); } catch (_) {} _pools.delete(key); }
+  } else {
+    for (const pool of _pools.values()) { try { await pool.end(); } catch (_) {} }
+    _pools.clear();
   }
 }
 
-module.exports = { execute, test, closePool };
+module.exports = { execute, executeParams, test, closePool };

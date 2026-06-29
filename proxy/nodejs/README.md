@@ -299,6 +299,9 @@ DB 연결 상태를 실시간으로 확인. 접속정보가 없거나 DB 연결�
 ### GET /schema/tables
 저장된 접속정보로 테이블·뷰 이름 목록만 가볍게 조회. 리버스 엔지니어링 2단계 선택 UI에서 사용.
 
+쿼리 파라미터 `profileName`(선택)으로 활성 프로파일 외 다른 프로파일의 DB를 지정할 수 있다.  
+예: `GET /schema/tables?profileName=운영DB`
+
 **응답**
 ```json
 {
@@ -322,6 +325,9 @@ DB 연결 상태를 실시간으로 확인. 접속정보가 없거나 DB 연결�
 ### GET /schema
 저장된 접속정보로 DB 스키마(테이블·뷰·FK)를 한 번에 조회. 리버스 엔지니어링 기능에서 사용.
 PostgreSQL 은 활성 프로파일의 `schema` 필드(기본 `public`)를 대상 스키마로 사용한다.
+
+쿼리 파라미터 `profileName`(선택)으로 활성 프로파일 외 다른 프로파일의 DB를 지정할 수 있다.  
+예: `GET /schema?profileName=운영DB`
 
 **응답**
 ```json
@@ -387,8 +393,10 @@ PostgreSQL 은 활성 프로파일의 `schema` 필드(기본 `public`)를 대상
 
 **요청 Body**
 ```json
-{ "sql": "SELECT * FROM users LIMIT 10" }
+{ "sql": "SELECT * FROM users LIMIT 10", "profileName": "운영DB" }
 ```
+
+> `profileName` 은 선택 필드. 생략 시 활성 프로파일을 사용한다.
 
 **응답 (성공)**
 ```json
@@ -419,9 +427,12 @@ PostgreSQL 은 활성 프로파일의 `schema` 필드(기본 `public`)를 대상
     "CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT)",
     "ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id)"
   ],
-  "stopOnError": true
+  "stopOnError": true,
+  "profileName": "운영DB"
 }
 ```
+
+> `profileName` 은 선택 필드. 생략 시 활성 프로파일을 사용한다.
 
 > `stopOnError: true` 를 설정하면 SQL 실행 중 오류 발생 시 즉시 중단하고 `done` 이벤트를 전송한다. 기본값은 `false` (오류 무시 후 계속 실행).
 
@@ -505,6 +516,46 @@ async function executeWithStream(sqls, onProgress, onError, onDone) {
 
 ---
 
+### POST /erd-store/init
+연결 DB에 `UXER_ERD_DIAGRAM` 테이블을 멱등 생성한다. 쿼리 파라미터 `profileName`으로 다른 프로파일의 DB를 지정할 수 있다.
+
+**응답**
+```json
+{ "ok": true, "message": "UXER_ERD_DIAGRAM 테이블이 준비됐습니다." }
+```
+
+---
+
+### GET /erd-store/list
+저장된 다이어그램 목록을 최신순으로 반환한다 (payload 제외). 쿼리 파라미터 `profileName` 선택.
+
+**응답**
+```json
+{ "ok": true, "items": [{ "diagram_id": "...", "name": "...", "version": "1", "updated_at": "...", "updated_by": null }] }
+```
+
+---
+
+### GET /erd-store/:diagramId
+단건 다이어그램(payload 포함)을 반환한다. 없으면 404.
+
+---
+
+### PUT /erd-store/:diagramId
+다이어그램을 저장한다. `expectedVersion=0`이면 INSERT, `>0`이면 UPDATE(낙관적 잠금 — 버전 불일치 시 409).
+
+**요청 Body**
+```json
+{ "name": "HR ERD", "payload": "{...}", "expectedVersion": 0, "updatedBy": "kim", "profileName": null }
+```
+
+---
+
+### DELETE /erd-store/:diagramId
+다이어그램을 삭제한다. 없으면 404.
+
+---
+
 ## CORS 허용 Origin
 
 ```
@@ -528,7 +579,8 @@ proxy/nodejs/
 │   │   ├── config.js         GET/POST /config, POST /config/test, 프로파일 CRUD
 │   │   ├── execute.js        POST /execute, POST /execute/stream (감사 로그 포함)
 │   │   ├── health.js         GET /health (DB 연결 상태 확인)
-│   │   └── schema.js         GET /schema (리버스 엔지니어링)
+│   │   ├── schema.js         GET /schema (리버스 엔지니어링)
+│   │   └── erd_store.js      GET/POST/PUT/DELETE /erd-store (연결 DB에 ERD 저장·공유, 낙관적 잠금)
 │   ├── db/
 │   │   ├── connector.js      dbType → 어댑터 라우팅, 전체 풀 종료
 │   │   └── adapters/

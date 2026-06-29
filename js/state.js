@@ -46,12 +46,21 @@ function createDefaultDiagram(name = '기본 ERD') {
     id: makeDiagramId(), name,
     entities: DEFAULT_ENTITIES.map(e => JSON.parse(JSON.stringify(e))),
     relations: DEFAULT_RELATIONS.map(r => ({ ...r })),
-    vx: 40, vy: 40, scale: 1
+    vx: 40, vy: 40, scale: 1,
+    source: 'local',   // 'local' | 'db'
+    connection: null,  // { profileName } — source==='db' 일 때
+    remoteVersion: null, // 메타 테이블 version 동기화용
   };
 }
 
 function createEmptyDiagram(name = '새 다이어그램') {
-  return { id: makeDiagramId(), name, entities: [], relations: [], vx: 40, vy: 40, scale: 1 };
+  return {
+    id: makeDiagramId(), name, entities: [], relations: [],
+    vx: 40, vy: 40, scale: 1,
+    source: 'local',   // 'local' | 'db'
+    connection: null,  // { profileName } — source==='db' 일 때
+    remoteVersion: null, // 메타 테이블 version 동기화용
+  };
 }
 
 // 현재 작업 배열을 활성 다이어그램 객체로 플러시
@@ -106,11 +115,22 @@ function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, snapshot);
   } catch {}
+  // ▼ 신규: DB 다이어그램 자동저장 훅 — echo 루프는 _erdDbApplying 플래그로 방지
+  const _ad = getActiveDiagram();
+  if (_ad && _ad.source === 'db' && typeof erdDbScheduleSave === 'function'
+      && !(typeof _erdDbApplying !== 'undefined' && _erdDbApplying)) {
+    erdDbScheduleSave(_ad);
+  }
 }
 
 function undo() {
   if (document.querySelector('.modal-overlay.active')) return;
   if (undoStack.length <= 1) return;
+  // DB 다이어그램 remoteVersion은 undo 대상 아님 — 스냅샷에 stale 값이 저장되므로 보존.
+  // 미보존 시: undo 후 다음 편집 → erdDbSave(expectedVersion=stale) → 409 →
+  // erdDbSwitchLoad가 서버 상태로 덮어써 사용자 편집 손실.
+  const _dbVersions = {};
+  diagrams.forEach(d => { if (d.source === 'db') _dbVersions[d.id] = d.remoteVersion; });
   const current = undoStack.pop();
   redoStack.push(current);
   const prev = undoStack[undoStack.length - 1];
@@ -118,19 +138,26 @@ function undo() {
   try {
     const s = JSON.parse(prev);
     restoreFromSnapshot(s);
-    try { localStorage.setItem(STORAGE_KEY, prev); } catch {}
+    // 서버 최신 버전 복원 (undo 이후 PUT이 409를 낳지 않도록)
+    diagrams.forEach(d => { if (d.source === 'db' && _dbVersions[d.id] != null) d.remoteVersion = _dbVersions[d.id]; });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeWorkspace())); } catch {}
   } catch {}
 }
 
 function redo() {
   if (document.querySelector('.modal-overlay.active')) return;
   if (!redoStack.length) return;
+  // DB 다이어그램 remoteVersion은 redo 대상 아님 — undo 와 동일한 이유로 보존.
+  const _dbVersions = {};
+  diagrams.forEach(d => { if (d.source === 'db') _dbVersions[d.id] = d.remoteVersion; });
   const next = redoStack.pop();
   undoStack.push(next);
   try {
     const s = JSON.parse(next);
     restoreFromSnapshot(s);
-    try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+    // 서버 최신 버전 복원 (redo 이후 PUT이 409를 낳지 않도록)
+    diagrams.forEach(d => { if (d.source === 'db' && _dbVersions[d.id] != null) d.remoteVersion = _dbVersions[d.id]; });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeWorkspace())); } catch {}
   } catch {}
 }
 

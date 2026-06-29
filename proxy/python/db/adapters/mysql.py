@@ -1,7 +1,6 @@
 import aiomysql
 
-_pool = None
-_pool_config_key = None
+_pools: dict = {}  # config_key -> aiomysql.Pool
 
 
 def _config_key(config: dict) -> str:
@@ -9,14 +8,11 @@ def _config_key(config: dict) -> str:
 
 
 async def _get_pool(config: dict):
-    global _pool, _pool_config_key
     key = _config_key(config)
-    if _pool and _pool_config_key == key:
-        return _pool
-    if _pool:
-        _pool.close()
-        await _pool.wait_closed()
-    _pool = await aiomysql.create_pool(
+    pool = _pools.get(key)
+    if pool:
+        return pool
+    pool = await aiomysql.create_pool(
         host=config["host"],
         port=config.get("port", 3306),
         db=config["database"],
@@ -26,8 +22,8 @@ async def _get_pool(config: dict):
         minsize=1,
         maxsize=10,
     )
-    _pool_config_key = key
-    return _pool
+    _pools[key] = pool
+    return pool
 
 
 async def execute(config: dict, sql: str) -> dict:
@@ -66,18 +62,40 @@ async def execute(config: dict, sql: str) -> dict:
             return {"rows": result_rows, "rowCount": row_count, "fields": fields}
 
 
+async def execute_params(config: dict, sql: str, params: list) -> dict:
+    """파라미터 바인딩 실행 (%s 플레이스홀더). SELECT는 rows 반환, DML은 rowCount 반환 + 커밋."""
+    pool = await _get_pool(config)
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(sql, params)
+            if cur.description is not None:
+                rows = [dict(r) for r in await cur.fetchall()]
+                return {"rows": rows, "rowCount": len(rows), "fields": list(rows[0].keys()) if rows else []}
+            # DML — 항상 커밋 (aiomysql 기본 autocommit=False)
+            await conn.commit()
+            return {"rows": [], "rowCount": cur.rowcount or 0, "fields": []}
+
+
 async def test(config: dict) -> bool:
     result = await execute(config, "SELECT 1 AS ok")
     return len(result["rows"]) > 0
 
 
-async def close_pool() -> None:
-    global _pool, _pool_config_key
-    if _pool:
-        _pool.close()
-        try:
-            await _pool.wait_closed()
-        except Exception:
-            pass
-        _pool = None
-        _pool_config_key = None
+async def close_pool(key: str = None) -> None:
+    global _pools
+    if key:
+        pool = _pools.pop(key, None)
+        if pool:
+            pool.close()
+            try:
+                await pool.wait_closed()
+            except Exception:
+                pass
+    else:
+        for p in list(_pools.values()):
+            p.close()
+            try:
+                await p.wait_closed()
+            except Exception:
+                pass
+        _pools = {}

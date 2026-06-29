@@ -15,7 +15,7 @@ def get_adapter(db_type: str):
     return adapter
 
 
-async def close_all_pools() -> None:
+async def close_all_pools(key: str = None) -> None:
     for adapter in _adapters.values():
         if hasattr(adapter, "close_pool"):
-            await adapter.close_pool()
+            await adapter.close_pool(key)

@@ -96,11 +96,24 @@ function renderExplorerDiagrams() {
     const tabColor = COLORS.find(c => c.id === (d.tabColor || null)) || COLORS[0];
     item.style.borderLeftColor = tabColor.bg;
 
+    // ▼ 신규: DB 다이어그램 배지
+    const _dbBadge = (d.source === 'db' && d.connection?.profileName)
+      ? `<span class="diag-db-badge" title="DB 연결: ${escHtml(d.connection.profileName)}">DB</span>`
+      : '';
+
+    // M5-2: DB 다이어그램 전용 포워드 엔지니어링 버튼
+    const _feBtnHtml = (d.source === 'db')
+      ? `<button class="diag-btn" title="포워드 엔지니어링 (ERD→DB DDL 실행)"
+           onclick="event.stopPropagation();_openFEForDbDiagram(diagrams.find(x=&gt;x.id===${JSON.stringify(d.id)}))">⬆</button>`
+      : '';
+
     item.innerHTML = `
       <span class="diag-color-dot" title="탭 색상 변경" style="background:${tabColor.bg};"
         onclick="openDiagColorPicker('${d.id}',event)"></span>
       <span class="ex-diag-name" title="${escHtml(d.name)}">${escHtml(d.name)}</span>
+      ${_dbBadge}
       <div class="diag-item-btns">
+        ${_feBtnHtml}
         <button class="diag-btn" title="이름 변경" onclick="renameDiagram('${d.id}',event)">✏</button>
         <button class="diag-btn danger" title="삭제" onclick="deleteDiagram('${d.id}',event)">✕</button>
       </div>`;
