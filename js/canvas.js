@@ -17,6 +17,7 @@ let draggingEntity = null;
 let panStart = null;
 let dragOffset = { x: 0, y: 0 };
 let hoveredEntity = null;
+let hoveredAttr   = null; // { entity, index } — 마우스 오버된 속성 행
 let draggingSegment = null;
 let hoveredRelSeg   = null;
 let draggingLabel   = null; // { rel, type:'card'|'label', startWorld, origOffset }
@@ -990,6 +991,13 @@ function drawEntity(e) {
     } else if (attr.kind === 'fk') {
       ctx.fillStyle = COLOR.fkBg; ctx.fillRect(x + 1, ry, W - 2, ROW_H);
     }
+    // 마우스 오버된 속성 행 하이라이트 (반투명 액센트 + 좌측 바, pk/fk 위에 겹쳐 칠함)
+    if (hoveredAttr && hoveredAttr.entity === e && hoveredAttr.index === i) {
+      ctx.fillStyle = hexAlpha(COLOR.lineHover, 0.16);
+      ctx.fillRect(x + 1, ry, W - 2, ROW_H);
+      ctx.fillStyle = COLOR.lineHover;
+      ctx.fillRect(x + 1, ry, 2.5, ROW_H);
+    }
     if (i > 0) {
       ctx.beginPath();
       ctx.moveTo(x + 1, ry); ctx.lineTo(x + W - 1, ry);
@@ -1173,13 +1181,13 @@ function drawRelations() {
     if (curved) {
       // 곡선 모드: 전체 경로를 한번에 그림
       ctx.strokeStyle = lineColor;
-      ctx.lineWidth = isActive ? 2 : 1.5;
+      ctx.lineWidth = isActive ? 4 : 3;
       _drawRelPath(wp, true);
     } else {
       for (let j = 0; j < n - 1; j++) {
         const isHov = isActive && hoveredRelSeg?.type === 'seg' && hoveredRelSeg?.segIdx === j;
         ctx.strokeStyle = isHov ? COLOR.lineCard : lineColor;
-        ctx.lineWidth = isHov ? 2.5 : (isActive ? 2 : isConnected ? 2 : 1.5);
+        ctx.lineWidth = isHov ? 5 : (isActive ? 4 : isConnected ? 4 : 3);
         ctx.beginPath(); ctx.moveTo(wp[j][0], wp[j][1]); ctx.lineTo(wp[j+1][0], wp[j+1][1]); ctx.stroke();
       }
     }
@@ -1189,7 +1197,7 @@ function drawRelations() {
     if (isConnected) {
       ctx.save();
       ctx.strokeStyle = hexAlpha(rel.color || COLOR.lineHover, 0.25);
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 12;
       ctx.setLineDash([]);
       _drawRelPath(wp, curved);
       ctx.restore();
@@ -2273,7 +2281,17 @@ canvas.addEventListener('mousemove', e => {
   const prevLbl = hoveredLabel;
   const prevNote = hoveredNote;
   const prevPort = hoveredPort;
+  const prevAttr = hoveredAttr;
   hoveredEntity  = hitEnt;
+
+  // 마우스 오버된 속성 행 hit-test (펼쳐진 엔티티 본문 영역 내)
+  let hitAttr = null;
+  if (hitEnt && !collapsedEntities.has(hitEnt.id) && w.x >= hitEnt.x && w.x <= hitEnt.x + W) {
+    const idx = Math.floor((w.y - (hitEnt.y + HEADER_H)) / ROW_H);
+    if (idx >= 0 && idx < hitEnt.attrs.length) hitAttr = { entity: hitEnt, index: idx };
+  }
+  hoveredAttr = hitAttr;
+  const attrChanged = (prevAttr?.entity !== hoveredAttr?.entity) || (prevAttr?.index !== hoveredAttr?.index);
   hoveredRelSeg  = hitSeg;
   hoveredSection = hitSec || (hitSecResize?.section ?? null);
   hoveredLabel   = hitLblHov;
@@ -2282,7 +2300,7 @@ canvas.addEventListener('mousemove', e => {
   updateTooltip(e.clientX, e.clientY, w.x, w.y, hitPort ? null : hitEnt);
   const sbCoords = document.getElementById('sb-coords');
   if (sbCoords) sbCoords.textContent = `${Math.round(w.x)}, ${Math.round(w.y)}`;
-  if (hoveredEntity !== prevEnt || (hoveredRelSeg?.rel ?? null) !== prevRelRef || hoveredSection !== prevSec || hoveredLabel !== prevLbl || hoveredNote !== prevNote || hoveredPort !== prevPort) render();
+  if (hoveredEntity !== prevEnt || (hoveredRelSeg?.rel ?? null) !== prevRelRef || hoveredSection !== prevSec || hoveredLabel !== prevLbl || hoveredNote !== prevNote || hoveredPort !== prevPort || attrChanged) render();
 });
 
 canvas.addEventListener('mouseleave', () => {
@@ -2463,7 +2481,7 @@ canvas.addEventListener('mouseleave', () => {
   panStart = null; selectionBox = null;
   _pendingDeselect = false;
   canvas.classList.remove('dragging');
-  hoveredEntity = null; hoveredRelSeg = null; hoveredSection = null;
+  hoveredEntity = null; hoveredRelSeg = null; hoveredSection = null; hoveredAttr = null;
   canvas.style.cursor = sectionMode ? 'crosshair' : 'default'; render();
 });
 
