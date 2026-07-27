@@ -59,6 +59,21 @@ DB_DOCS = {
             "유니코드 문자열: N'...' · 배치 구분: GO · 문자열: 작은따옴표"
         ),
     },
+    "supabase": {
+        "title": "Supabase (PostgreSQL)",
+        "dataTypes": (
+            "PostgreSQL 과 동일 — 정수: SMALLINT, INTEGER, BIGINT · 자동증가: GENERATED ALWAYS AS IDENTITY(권장), SERIAL · "
+            "실수: NUMERIC(p,s), REAL, DOUBLE PRECISION · 문자: VARCHAR(n), TEXT · 불리언: BOOLEAN · "
+            "날짜: DATE, TIMESTAMPTZ(권장) · 기타: UUID(기본키 관습), JSONB"
+        ),
+        "syntax": (
+            "PostgreSQL 문법 그대로 사용 · 기본 스키마 public (auth·storage·realtime 등은 Supabase 내부 스키마 — 건드리지 말 것) · "
+            "PK 관습: id UUID DEFAULT gen_random_uuid() PRIMARY KEY · "
+            "생성/수정시각: created_at TIMESTAMPTZ DEFAULT NOW() · "
+            "RLS: 새 테이블은 ALTER TABLE t ENABLE ROW LEVEL SECURITY 후 POLICY 를 만들어야 API 로 접근 가능 · "
+            "페이징: LIMIT n OFFSET m · 문자열: 작은따옴표"
+        ),
+    },
 }
 
 # 툴 이름 → DB 유형

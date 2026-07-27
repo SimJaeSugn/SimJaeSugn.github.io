@@ -5,7 +5,9 @@ _pools: dict = {}  # config_key -> asyncpg.Pool
 
 
 def _config_key(config: dict) -> str:
-    return f"{config['host']}:{config.get('port', 5432)}:{config['database']}:{config['username']}"
+    # dbType 포함 — 같은 호스트라도 연결 옵션(예: supabase 의 TLS·준비문 캐시)이 다르면 풀을 분리한다.
+    return (f"{config.get('dbType', 'postgres')}:{config['host']}:{config.get('port', 5432)}"
+            f":{config['database']}:{config['username']}")
 
 
 async def _get_pool(config: dict):
@@ -13,6 +15,13 @@ async def _get_pool(config: dict):
     pool = _pools.get(key)
     if pool:
         return pool
+    # 선택적 연결 옵션 — 미지정 시 기존 동작 그대로(asyncpg 기본값)
+    kwargs = {}
+    if config.get("ssl"):
+        kwargs["ssl"] = config["ssl"]                       # 예: "require" (Supabase)
+    if config.get("statementCacheSize") is not None:
+        # 0 = 준비문 캐시 비활성 — PgBouncer 트랜잭션 풀링 호환 (Supabase 포트 6543)
+        kwargs["statement_cache_size"] = int(config["statementCacheSize"])
     pool = await asyncpg.create_pool(
         host=config["host"],
         port=config.get("port", 5432),
@@ -22,6 +31,7 @@ async def _get_pool(config: dict):
         min_size=1,
         max_size=10,
         command_timeout=30,
+        **kwargs,
     )
     _pools[key] = pool
     return pool

@@ -17,7 +17,8 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 _store_cache = None
 _active_config_cache = None
 
-DEFAULT_PORTS = {"postgres": 5432, "mysql": 3306, "mssql": 1433, "oracle": 1521}
+DEFAULT_PORTS = {"postgres": 5432, "mysql": 3306, "mssql": 1433, "oracle": 1521,
+                 "supabase": 5432}
 
 
 def _get_default_port(db_type: str) -> Optional[int]:

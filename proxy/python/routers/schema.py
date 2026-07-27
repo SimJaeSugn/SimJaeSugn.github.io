@@ -1,7 +1,7 @@
 import re
 from typing import Optional
 from fastapi import APIRouter, HTTPException
-from db.connector import get_adapter
+from db.connector import get_adapter, sql_dialect
 from routers.config import load_config
 
 router = APIRouter()
@@ -244,6 +244,7 @@ ORDER BY 2 DESC, 1
 # ── 쿼리 선택 ─────────────────────────────────────────────────────────────────
 
 def _get_queries(db_type: str, schema: str = "public") -> dict:
+    db_type = sql_dialect(db_type)   # supabase → postgres
     if db_type == "postgres":
         sch = _pg_validate_schema(schema)
         return {"columns": _pg_columns(sch), "views": _pg_views(sch), "fks": _pg_fks(sch), "unique": _pg_unique(sch)}
@@ -346,7 +347,7 @@ async def get_tables(profileName: Optional[str] = None):
         raise HTTPException(status_code=400, detail=msg)
     try:
         adapter = get_adapter(config["dbType"])
-        db_type = config["dbType"]
+        db_type = sql_dialect(config["dbType"])   # supabase → postgres
         schema = config.get("schema") or "public"
         if db_type == "postgres":
             query = _pg_tables_list(_pg_validate_schema(schema))
@@ -472,6 +473,7 @@ FROM user_col_comments WHERE comments IS NOT NULL
 
 
 def _get_comment_queries(db_type: str, schema: str = "public"):
+    db_type = sql_dialect(db_type)   # supabase → postgres
     if db_type == "postgres":
         sch = _pg_validate_schema(schema)
         return _pg_table_comments(sch), _pg_column_comments(sch)

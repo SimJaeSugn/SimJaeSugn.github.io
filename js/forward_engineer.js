@@ -14,8 +14,8 @@ let _feConflicts = {};          // physicalName → 'drop'|'rename'|'skip'
 let _feExistingTables = [];     // GET /schema/tables 결과 [{name,type}]
 let _feDetectedDialect = 'mysql'; // 미들웨어 설정에서 감지한 dialect
 
-// dbType(미들웨어) → dialect(DDL) 매핑
-const _feDialectMap = { mysql: 'mysql', postgres: 'postgresql', oracle: 'oracle', mssql: 'mssql' };
+// dbType(미들웨어) → dialect(DDL) 매핑 (supabase = PostgreSQL)
+const _feDialectMap = { mysql: 'mysql', postgres: 'postgresql', oracle: 'oracle', mssql: 'mssql', supabase: 'postgresql' };
 
 // ── 모달 열기 ─────────────────────────────────────────────────────
 async function openForwardEngineerModal() {

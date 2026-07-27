@@ -475,7 +475,7 @@ https://<계정>.github.io/<저장소명>/
 ### 사용 순서
 
 1. 엔티티 선택 (전체 또는 개별)
-2. DDL 방언(MySQL · PostgreSQL · Oracle · SQL Server) 확인
+2. DDL 방언(MySQL · PostgreSQL · Oracle · SQL Server) 확인 — Supabase 프로파일은 PostgreSQL 로 자동 감지됩니다
 3. 기존 테이블 충돌 처리 방식 선택 (DROP · RENAME · SKIP)
 4. `실행` 버튼 → DDL이 운영 DB에 반영됨
 
@@ -590,13 +590,27 @@ https://<계정>.github.io/<저장소명>/
 
 | 기능 | 설명 |
 |---|---|
-| **프로파일 추가** | DB 종류(MySQL · PostgreSQL · Oracle · SQL Server) 및 접속 정보 저장 |
+| **프로파일 추가** | DB 종류(MySQL · PostgreSQL · Oracle · SQL Server · **Supabase**) 및 접속 정보 저장 |
 | **프로파일 전환** | 목록에서 선택하면 해당 DB로 즉시 전환 |
 | **프로파일 편집** | 기존 접속 정보 수정 |
 | **프로파일 삭제** | 불필요한 접속 정보 제거 |
 | **비밀번호 확인** | 저장된 비밀번호를 복호화해 평문으로 확인(토글 표시) |
 
 > 접속 정보는 미들웨어 서버에 암호화되어 저장됩니다. 미들웨어가 실행 중이어야 이 기능을 사용할 수 있습니다.
+
+### Supabase 연결
+
+DB 종류에서 **Supabase (PostgreSQL)** 를 선택하면 Supabase 안내 영역이 나타납니다.
+Supabase 대시보드 **Connect** 의 연결 문자열을 붙여넣고 `적용` 을 누르면 호스트·포트·데이터베이스·사용자명·비밀번호가 자동으로 채워집니다.
+
+```
+postgresql://postgres.<project-ref>:<비밀번호>@aws-1-<region>.pooler.supabase.com:6543/postgres
+```
+
+- Supabase 는 **TLS 필수**이며, 트랜잭션 풀러(포트 6543)를 쓰면 준비문 캐시를 꺼야 합니다 — 둘 다 자동 적용됩니다.
+- 직접 연결 호스트 `db.<project-ref>.supabase.co` 는 **IPv6 전용**입니다. IPv4 환경에서는 **Connection Pooler** 호스트(세션 5432 / 트랜잭션 6543)를 사용하세요. 이때 사용자명은 `postgres.<project-ref>` 형식입니다.
+- 비밀번호는 프로젝트의 **데이터베이스 비밀번호**(API 키가 아님)입니다.
+- 연결 후 리버스 엔지니어링·포워드 엔지니어링·SQL 실행·에이전트 DB 툴이 PostgreSQL 과 동일하게 동작하며, 대상 스키마는 `public` 입니다(`auth`·`storage` 등 Supabase 내부 스키마는 조회되지 않습니다).
 
 ---
 
@@ -863,7 +877,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
           ┌────────────────▼─────────────────┐
           │              운영 DB              │
           │  MySQL · PostgreSQL · Oracle ·   │
-          │  SQL Server                      │
+          │  SQL Server · Supabase           │
           └──────────────────────────────────┘
 ```
 
@@ -880,7 +894,7 @@ AgenticERM은 세 가지 실행 환경을 지원하는 레이어 구조입니다
 | `js/bottom_panel.js` | 하단 패널 (VSCode 스타일 서브탭 · 연결 DB SQL 실행/결과) |
 | `js/icons.js` | Lucide 아이콘 초기화 (`vendor/lucide.min.js` 로컬 번들 · `data-lucide` → SVG) |
 | `js/agent_panel.js` | 우측 패널 `속성`/`Agent` 탭 전환 · 채팅 UI · 스트림/interrupt 루프 |
-| `js/agent_tools.js` | Agent 클라이언트 툴 **68종**(엔티티·관계·속성 CRUD, 선택·뷰·하이라이트, 일괄·관계자동화·논리물리명 일괄변경·컬럼 논리명 한글화, 분석·검증·통계, 섹션·메모, 다이어그램·스냅샷·다이어그램간 엔티티 복사·리버스 엔지니어링(DB→ERD), 테이블정의서·데이터사전·ERD명세서 산출물·콘텐츠 파일저장, 표준용어 점검·준수수정, DB 코멘트 일괄 적용, 테마·단축키·메뉴·컬럼템플릿 정보 등) · 드래프트 커밋·원자적 undo · 표준용어사전 연동 · async 툴 지원. 서버 측 DB 툴은 `agent/tools_proxy.py`(24종, 접속정보·프로파일관리·introspection·데이터분석·포워드엔지니어링). v1·v2·v3 공유 |
+| `js/agent_tools.js` | Agent 클라이언트 툴 **68종**(엔티티·관계·속성 CRUD, 선택·뷰·하이라이트, 일괄·관계자동화·논리물리명 일괄변경·컬럼 논리명 한글화, 분석·검증·통계, 섹션·메모, 다이어그램·스냅샷·다이어그램간 엔티티 복사·리버스 엔지니어링(DB→ERD), 테이블정의서·데이터사전·ERD명세서 산출물·콘텐츠 파일저장, 표준용어 점검·준수수정, DB 코멘트 일괄 적용, 테마·단축키·메뉴·컬럼템플릿 정보 등) · 드래프트 커밋·원자적 undo · 표준용어사전 연동 · async 툴 지원. 서버 측 DB 툴은 `agent/tools_proxy.py`(25종, 접속정보·프로파일관리·introspection·데이터분석·포워드엔지니어링·DB 유형별 문법문서). v1·v2·v3 공유 |
 | `js/layout.js` | 계층형·격자형·원형 자동 배치 알고리즘 |
 | `js/export.js` | PNG·SVG·Markdown·HTML·DDL 내보내기 |
 | `js/import.js` | JSON·DDL 가져오기 및 파싱 |
@@ -986,7 +1000,7 @@ SimJaeSugn.github.io/
 │   │   │   ├── index.js           ← Express 서버 진입점
 │   │   │   ├── db/
 │   │   │   │   ├── connector.js
-│   │   │   │   └── adapters/      ← mysql / postgres / oracle / mssql
+│   │   │   │   └── adapters/      ← mysql / postgres / oracle / mssql / supabase
 │   │   │   ├── routes/            ← config / execute / health / schema / erd_store (DB 저장·공유)
 │   │   │   ├── tray.js            ← 시스템 트레이 아이콘·메뉴
 │   │   │   ├── tray_win_bin.js    ← Windows 트레이 헬퍼 바이너리 (base64 내장)
@@ -999,7 +1013,7 @@ SimJaeSugn.github.io/
 │       ├── build.ps1              ← PyInstaller 빌드
 │       ├── routers/               ← config / execute / health / schema / erd_store (DB 저장·공유) · agent · stddict (표준사전) · workspace (PC앱 저장) · v2/agent (v2 격리 미러) · v3/agent (v3 ReAct 격리 미러)
 │       ├── agent/                 ← LangGraph 에이전트 (graph · nodes / · common / · db_docs · tools_proxy · v2/ · v3/) — 자연어 ERD 제어
-│       ├── db/                    ← connector(외부 DB 라우팅) · system_db(내부 시스템 DB aerm_storage) · adapters/(postgres/mysql/mssql/oracle)
+│       ├── db/                    ← connector(외부 DB 라우팅·sql_dialect) · system_db(내부 시스템 DB aerm_storage) · adapters/(postgres/mysql/mssql/oracle/supabase)
 │       └── utils/                 ← crypto / keystore / audit_logger
 │
 ├── electron/                      ← Electron 데스크탑 앱 패키저

@@ -236,13 +236,94 @@ async function _submitEditProfile(name) {
 
 function _pmAutoPort(typeId, portId) {
   const type = document.getElementById(typeId).value;
-  const defaults = { postgres: 5432, mysql: 3306, mssql: 1433, oracle: 1521 };
+  const defaults = { postgres: 5432, mysql: 3306, mssql: 1433, oracle: 1521, supabase: 5432 };
   const portEl = document.getElementById(portId);
   if (!portEl.dataset.userEdited) portEl.value = defaults[type] || 5432;
 }
 
 function _pmToggleOracle(typeEl, sectionEl) {
   if (sectionEl) sectionEl.style.display = typeEl.value === 'oracle' ? '' : 'none';
+}
+
+function _pmToggleSupabase(typeEl, sectionEl) {
+  const on = typeEl.value === 'supabase';
+  if (sectionEl) sectionEl.style.display = on ? '' : 'none';
+  if (!on) return;
+  // Supabase 기본값 — 비어 있을 때만 채운다(사용자 입력 보존)
+  const prefix = String(typeEl.id || '').replace(/Type$/, '');
+  const fill = (id, val) => { const el = document.getElementById(id); if (el && !el.value.trim()) el.value = val; };
+  fill(prefix + 'Database', 'postgres');
+  fill(prefix + 'Username', 'postgres');
+}
+
+// ── Supabase 연결 문자열 파서 ─────────────────────────────────────
+// Supabase 대시보드(Connect)가 주는 URI 를 그대로 붙여넣어 접속 항목을 채운다.
+//   postgresql://postgres.abcdefgh:PW@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres
+// 반환: {host, port, database, username, password} — 파싱 실패 시 null.
+function _pmParseSupabaseUrl(raw) {
+  const str = String(raw || '').trim().replace(/^"|"$/g, '');
+  if (!str) return null;
+  const m = str.match(/^(?:postgres(?:ql)?:\/\/)?(?:([^:/@\s]+)(?::([^@\s]*))?@)?([^:/?\s]+)(?::(\d+))?(?:\/([^?\s]+))?/i);
+  if (!m) return null;
+  const [, user, pw, host, port, db] = m;
+  if (!host || !/\./.test(host)) return null;   // 호스트 없이 사용자명만 붙여넣은 경우 방지
+  const dec = v => { try { return decodeURIComponent(v); } catch { return v; } };
+  // [YOUR-PASSWORD] 같은 자리표시자는 비밀번호로 채우지 않는다
+  const pwVal = pw && !/^\[.*\]$/.test(pw) ? dec(pw) : '';
+  return {
+    host: host,
+    port: port ? parseInt(port, 10) : 5432,
+    database: db ? dec(db).split('?')[0] : 'postgres',
+    username: user ? dec(user) : 'postgres',
+    password: pwVal
+  };
+}
+
+// 파싱 결과를 add/edit 폼에 채운다. prefix = 'pmAdd' | 'pmEdit'
+function _pmApplySupabaseUrl(prefix) {
+  const inputEl = document.getElementById(prefix + 'SbUrl');
+  const errId = prefix === 'pmAdd' ? 'pmAddErr' : 'pmEditErr';
+  const parsed = _pmParseSupabaseUrl(inputEl ? inputEl.value : '');
+  if (!parsed) {
+    _pmErrShow(errId, '연결 문자열을 인식하지 못했습니다. (예: postgresql://postgres.xxxx:비밀번호@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres)');
+    return;
+  }
+  _pmErrClear(errId);
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val !== '') el.value = val; };
+  set(prefix + 'Host', parsed.host);
+  const portEl = document.getElementById(prefix + 'Port');
+  if (portEl) { portEl.value = parsed.port; portEl.dataset.userEdited = '1'; }
+  set(prefix + 'Database', parsed.database);
+  set(prefix + 'Username', parsed.username);
+  set(prefix + 'Password', parsed.password);
+  if (inputEl) inputEl.value = '';   // 비밀번호가 평문으로 남지 않도록 즉시 비움
+  showToast(parsed.password
+    ? 'Supabase 연결 문자열을 적용했습니다.'
+    : 'Supabase 연결 문자열을 적용했습니다. 비밀번호는 직접 입력하세요.');
+}
+
+// Supabase 안내 블록 HTML (add/edit 공용)
+function _pmSupabaseSectionHtml(prefix) {
+  return `
+    <div id="${prefix}SupabaseSection" style="display:none">
+      <div class="form-row" style="background:var(--bg-surface);border:1px solid var(--bd2);border-radius:6px;padding:10px 12px;margin-bottom:4px">
+        <p style="margin:0 0 8px;font-size:12px;color:var(--tx-sub);line-height:1.6">
+          <strong>Supabase 연결 안내</strong><br>
+          Supabase 대시보드 <strong>Connect</strong> 의 연결 문자열을 아래에 붙여넣으면 항목이 자동으로 채워집니다.<br>
+          · 직접 연결(<code>db.&lt;ref&gt;.supabase.co</code>)은 IPv6 전용입니다. IPv4 환경이면
+            <strong>Connection Pooler</strong>(<code>…pooler.supabase.com</code>, 세션 5432 / 트랜잭션 6543)를 사용하세요.<br>
+          · 풀러 사용자명은 <code>postgres.&lt;project-ref&gt;</code> 형식이며, 비밀번호는 프로젝트의 <strong>데이터베이스 비밀번호</strong>입니다.<br>
+          · 리버스·포워드 엔지니어링은 <code>public</code> 스키마를 대상으로 동작합니다(TLS 필수 — 자동 적용).
+        </p>
+        <label class="form-label">연결 문자열 붙여넣기 (선택)</label>
+        <div style="display:flex;gap:6px">
+          <input class="form-input" id="${prefix}SbUrl" type="text" style="flex:1"
+            placeholder="postgresql://postgres.xxxx:비밀번호@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres">
+          <button type="button" class="btn" style="flex-shrink:0"
+            onclick="_pmApplySupabaseUrl('${prefix}')">적용</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function _pmUpdateOracleCmd(inputEl, cmdId) {
@@ -475,11 +556,12 @@ function _renderRightPanel(mode, data) {
       <div class="form-row">
         <label class="form-label">DB 종류</label>
         <select class="form-input" id="pmAddType"
-          onchange="_pmAutoPort('pmAddType','pmAddPort');_pmToggleOracle(this,document.getElementById('pmAddOracleSection'))">
+          onchange="_pmAutoPort('pmAddType','pmAddPort');_pmToggleOracle(this,document.getElementById('pmAddOracleSection'));_pmToggleSupabase(this,document.getElementById('pmAddSupabaseSection'))">
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="mssql">SQL Server</option>
           <option value="oracle">Oracle</option>
+          <option value="supabase">Supabase (PostgreSQL)</option>
         </select>
       </div>
       <div class="form-row" style="display:flex;gap:8px">
@@ -505,6 +587,7 @@ function _renderRightPanel(mode, data) {
         <label class="form-label">비밀번호</label>
         <input class="form-input" id="pmAddPassword" type="password" placeholder="••••••••">
       </div>
+      ${_pmSupabaseSectionHtml('pmAdd')}
       <div id="pmAddOracleSection" style="display:none">
         <div class="form-row" style="background:var(--bg-surface);border:1px solid var(--bd2);border-radius:6px;padding:10px 12px;margin-bottom:4px">
           <p style="margin:0 0 8px;font-size:12px;color:var(--tx-sub);line-height:1.6">
@@ -531,6 +614,10 @@ function _renderRightPanel(mode, data) {
         <button class="btn-save-m" id="pmAddSaveBtn" onclick="_submitAddProfile()">저장</button>
       </div>`;
     _pmAutoPort('pmAddType', 'pmAddPort');
+    _pmToggleSupabase(
+      document.getElementById('pmAddType'),
+      document.getElementById('pmAddSupabaseSection')
+    );
     return;
   }
 
@@ -543,11 +630,12 @@ function _renderRightPanel(mode, data) {
       <div class="form-row">
         <label class="form-label">DB 종류</label>
         <select class="form-input" id="pmEditType"
-          onchange="_pmToggleOracle(this,document.getElementById('pmEditOracleSection'))">
+          onchange="_pmToggleOracle(this,document.getElementById('pmEditOracleSection'));_pmToggleSupabase(this,document.getElementById('pmEditSupabaseSection'))">
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="mssql">SQL Server</option>
           <option value="oracle">Oracle</option>
+          <option value="supabase">Supabase (PostgreSQL)</option>
         </select>
       </div>
       <div class="form-row" style="display:flex;gap:8px">
@@ -573,6 +661,7 @@ function _renderRightPanel(mode, data) {
         <input class="form-input" id="pmEditPassword" type="password"
           placeholder="변경 시 입력 (미입력 시 유지)">
       </div>
+      ${_pmSupabaseSectionHtml('pmEdit')}
       <div id="pmEditOracleSection" style="display:none">
         <div class="form-row" style="background:var(--bg-surface);border:1px solid var(--bd2);border-radius:6px;padding:10px 12px;margin-bottom:4px">
           <p style="margin:0 0 8px;font-size:12px;color:var(--tx-sub);line-height:1.6">
@@ -611,6 +700,10 @@ function _renderRightPanel(mode, data) {
     _pmToggleOracle(
       document.getElementById('pmEditType'),
       document.getElementById('pmEditOracleSection')
+    );
+    _pmToggleSupabase(
+      document.getElementById('pmEditType'),
+      document.getElementById('pmEditSupabaseSection')
     );
   }
 }

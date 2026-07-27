@@ -43,12 +43,24 @@ python main.py --port 3737
 
 ## 지원 DB
 
-| DB | 드라이버 | 비고 |
-|----|---------|------|
-| PostgreSQL | asyncpg | 비동기 |
-| MySQL | aiomysql | 비동기 |
-| SQL Server | pyodbc | 동기 (run_in_executor 래핑) |
-| Oracle | oracledb | 동기 (run_in_executor 래핑) |
+| dbType 값 | DB | 드라이버 | 비고 |
+|-----------|----|---------|------|
+| `postgres` | PostgreSQL | asyncpg | 비동기 |
+| `mysql` | MySQL | aiomysql | 비동기 |
+| `mssql` | SQL Server | pyodbc | 동기 (run_in_executor 래핑) |
+| `oracle` | Oracle | oracledb | 동기 (run_in_executor 래핑) |
+| `supabase` | Supabase (PostgreSQL) | asyncpg | 비동기 · TLS 필수 + 준비문 캐시 off (풀러 호환) |
+
+> **Supabase** — PostgreSQL 이므로 SQL 방언·스키마 조회(리버스)·DDL 실행(포워드)은 `postgres` 와 동일하다
+> (`db/connector.py` 의 `sql_dialect()` 가 `supabase → postgres` 로 정규화). 다른 것은 연결 조건뿐이라
+> `db/adapters/supabase.py` 가 다음을 주입해 `postgres` 어댑터에 위임한다.
+> - `ssl="require"` — Supabase 는 평문 연결을 받지 않는다.
+> - `statement_cache_size=0` — 트랜잭션 풀러(포트 **6543**, PgBouncer)는 prepared statement 미지원.
+> - 기본값 보정 — 포트 5432, `database`/`username` 미입력 시 `postgres`.
+>
+> 호스트는 대시보드 **Connect** 의 값을 쓴다. 직접 연결 `db.<ref>.supabase.co` 는 **IPv6 전용**이라
+> IPv4 환경에서는 풀러(`aws-…-<region>.pooler.supabase.com`, 세션 5432 / 트랜잭션 6543)를 사용하고,
+> 이때 사용자명은 `postgres.<project-ref>` 형식이다. 연결 실패 시 이 원인들을 오류 메시지에 덧붙여 안내한다.
 
 ---
 
@@ -165,13 +177,14 @@ proxy/python/
 │       ├── common/        ← state(AgentState — v1 필드+scratchpad·loop_count·react_*·verify_count·clarify_count·auto_approve) · schemas(ReActStep·META_TOOL_CATALOG·MEMORY_TOOL_CATALOG·ASK_USER·V3Verdict·V3VerifyProbe·MAX_LOOP·MAX_VERIFY·MAX_CLARIFY) · prompts(REACT_SYSTEM·plan/reflect·VERIFY_SYSTEM·VERIFY_PROBE_SYSTEM·render_scratchpad) · memory(영구 메모리 md R/W — ~/.uxermanager/agent_v3_memory.md, mtime 자동 재로드)
 │       └── nodes/         ← prep(턴 리셋+자동승인 감지) · analyze(격리복제+[메모리]) · answer(격리복제+[메모리]) · react(추론+라우팅) · meta(plan/reflect 메타툴) · memory_exec(remember/recall/forget) · act(proxy_exec·client_exec) · approve(쓰기/위험 승인) · verify(준수 검증+확인 probe) · clarify(되묻기 interrupt) · respond(격리복제+[메모리])
 ├── db/
-│   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB)
+│   ├── connector.py       ← dbType → 어댑터 라우팅 (외부 DB) · sql_dialect(supabase→postgres 방언 정규화)
 │   ├── system_db.py       ← 내부 시스템 DB(aerm_storage) 고정 접속·레거시 정리 — 프로파일 미노출
 │   └── adapters/
-│       ├── postgres.py    ← asyncpg 어댑터
+│       ├── postgres.py    ← asyncpg 어댑터 (선택 연결옵션 ssl·statementCacheSize)
 │       ├── mysql.py       ← aiomysql 어댑터
 │       ├── mssql.py       ← pyodbc 어댑터
-│       └── oracle.py      ← oracledb 어댑터
+│       ├── oracle.py      ← oracledb 어댑터
+│       └── supabase.py    ← Supabase 어댑터 (TLS·준비문캐시off 주입 후 postgres 위임, 연결오류 안내)
 └── utils/
     ├── crypto.py          ← AES-256-GCM 암호화 (Node.js 미들웨어와 호환)
     ├── keystore.py        ← ~/.uxermanager/key 관리

@@ -6,7 +6,7 @@ DB 미설정/오류 시 예외 대신 {ok:False, error} 를 반환해 그래프�
 """
 import asyncio
 
-from db.connector import get_adapter, close_all_pools
+from db.connector import get_adapter, close_all_pools, sql_dialect
 from routers.config import load_config, _load_raw_store, _save_store, _get_default_port
 from utils.crypto import encrypt
 from agent.db_docs import DB_DOC_CATALOG, DOC_TOOLS, get_db_doc
@@ -30,7 +30,7 @@ PROXY_TOOL_CATALOG = [
      "detail": "등록된 모든 DB 접속 프로파일(이름·유형·host·database·사용자·활성여부)과 현재 활성 프로파일을 반환한다. 비밀번호는 제외. 추가·수정·삭제·전환은 manage_db_profile."},
     {"name": "manage_db_profile", "kind": "write", "location": "proxy", "danger": True,
      "desc": "DB 접속 프로파일 추가·수정·삭제·활성화", "params": "action(add|update|delete|activate), name, [dbType,host,port,database,username,password,schema,clientLibDir]",
-     "detail": "DB 접속 프로파일을 관리한다. action=add(신규 등록 — dbType·host·database·username·password 필요), update(부분 수정), delete(활성·마지막 프로파일은 불가), activate(활성 전환 — 연결 풀 재설정). "
+     "detail": "DB 접속 프로파일을 관리한다. action=add(신규 등록 — dbType·host·database·username·password 필요; dbType 은 postgres|mysql|mssql|oracle|supabase), update(부분 수정), delete(활성·마지막 프로파일은 불가), activate(활성 전환 — 연결 풀 재설정). "
                "접속정보를 바꾸는 작업이라 사용자 승인(approve)을 거친다. 어느 프로파일이 있는지 모르면 먼저 list_db_profiles."},
     {"name": "list_db_tables", "kind": "read", "location": "proxy", "danger": False,
      "desc": "연결된 DB의 테이블·뷰 이름 목록(경량)", "params": "(없음)",
@@ -287,7 +287,8 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
     if not config:
         return {"ok": False, "error": "DB 접속정보가 설정되지 않았습니다. (DB 연결 후 사용하세요)"}
     args = args or {}
-    db_type = config["dbType"]
+    raw_db_type = config["dbType"]           # 어댑터 조회용(연결 옵션이 유형별로 다름)
+    db_type = sql_dialect(raw_db_type)       # SQL 방언(supabase → postgres)
 
     # 접속 프로파일 정보 — DB 쿼리/어댑터 불필요(드라이버 오류와 무관하게 진단 가능)하므로 try 밖에서 처리.
     # 비밀번호는 보안상 절대 포함하지 않는다.
@@ -307,7 +308,7 @@ async def run_proxy_tool(name: str, args: dict) -> dict:
         return {"ok": True, "connection": info}
 
     try:
-        adapter = get_adapter(db_type)
+        adapter = get_adapter(raw_db_type)
 
         if name == "run_sql":
             sql = (args.get("sql") or "").strip()

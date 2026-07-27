@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from db.connector import get_adapter
+from db.connector import get_adapter, sql_dialect
 from routers.config import load_config
 
 router = APIRouter()
@@ -14,6 +14,7 @@ router = APIRouter()
 
 def _now_expr(db_type: str) -> str:
     """DB타입별 현재시각 SQL 표현식 (인라인 사용, 바인딩 불필요)."""
+    db_type = sql_dialect(db_type)   # supabase → postgres
     if db_type == "mssql":
         return "GETUTCDATE()"
     if db_type == "oracle":
@@ -23,6 +24,7 @@ def _now_expr(db_type: str) -> str:
 
 def _ph(db_type: str, n: int) -> str:
     """DB타입별 n번째(1-based) 파라미터 플레이스홀더."""
+    db_type = sql_dialect(db_type)   # supabase → postgres
     if db_type == "postgres":
         return f"${n}"
     if db_type == "mysql":
@@ -36,6 +38,7 @@ def _ph(db_type: str, n: int) -> str:
 
 def _init_ddl(db_type: str) -> str:
     """DB타입별 UXER_ERD_DIAGRAM 멱등 생성 DDL."""
+    db_type = sql_dialect(db_type)   # supabase → postgres
     if db_type == "postgres":
         return """CREATE TABLE IF NOT EXISTS UXER_ERD_DIAGRAM (
   diagram_id  VARCHAR(64)  NOT NULL,

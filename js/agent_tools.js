@@ -305,9 +305,17 @@ function _agentToolListRelations(draft, args) {
 function _agentToolGenerateDdl(draft, args) {
   const view = _agentReadView(draft);
   args = args || {};
-  const dialect = ['mysql', 'postgres', 'oracle', 'mssql'].includes(args.dialect)
-    ? args.dialect
-    : ((typeof getActiveDiagram === 'function' && getActiveDiagram() && getActiveDiagram().dbType) || 'mysql');
+  // buildDDL 방언은 mysql|postgresql|oracle|mssql — DB 유형명(postgres·supabase)도 받아 정규화한다
+  const _dialectAlias = { postgres: 'postgresql', postgre: 'postgresql', supabase: 'postgresql', sqlserver: 'mssql' };
+  const _normDialect = v => {
+    const s = String(v || '').toLowerCase();
+    return _dialectAlias[s] || s;
+  };
+  const asked = _normDialect(args.dialect);
+  const fallback = _normDialect((typeof getActiveDiagram === 'function' && getActiveDiagram() && getActiveDiagram().dbType) || 'mysql');
+  const dialect = ['mysql', 'postgresql', 'oracle', 'mssql'].includes(asked)
+    ? asked
+    : (['mysql', 'postgresql', 'oracle', 'mssql'].includes(fallback) ? fallback : 'mysql');
   // 대상 엔티티: entityIds 지정 → 해소 / 없으면 현재 선택 / 그것도 없으면 전체
   let ids = [];
   if (Array.isArray(args.entityIds) && args.entityIds.length) {
@@ -1839,7 +1847,7 @@ const AGENT_TOOL_DEFS = [
     desc: 'ERD(캔버스) 관계 목록 조회(연결 DB의 실제 FK 제약은 get_db_constraints)', params: 'entityId?(생략 시 전체)',
     detail: '현재 ERD(캔버스)에서 특정 엔티티(또는 전체)에 연결된 관계를 반환한다(읽기 전용). 연결 DB 실물 FK 제약은 get_db_constraints.' },
   { name: 'generate_ddl',    kind: 'read',  danger: false, run: _agentToolGenerateDdl,
-    desc: 'ERD로부터 CREATE TABLE DDL(SQL) 생성', params: 'dialect?(mysql|postgres|oracle|mssql), entityIds?',
+    desc: 'ERD로부터 CREATE TABLE DDL(SQL) 생성', params: 'dialect?(mysql|postgresql|oracle|mssql, supabase=postgresql), entityIds?',
     detail: '선택(또는 지정/전체) 엔티티의 CREATE TABLE 문을 텍스트로 생성한다. DB에 실행하지 않음(run_sql 과 다름). '
           + 'dialect 생략 시 현재 다이어그램 DB 유형. "테이블 생성 SQL 만들어줘"는 이 툴을 사용한다.' },
   { name: 'get_selection',   kind: 'read',  danger: false, run: _agentToolGetSelection,

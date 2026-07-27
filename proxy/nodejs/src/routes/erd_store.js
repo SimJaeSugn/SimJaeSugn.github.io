@@ -1,18 +1,20 @@
 'use strict';
 const express = require('express');
 const router = express.Router();
-const { getAdapter } = require('../db/connector');
+const { getAdapter, sqlDialect } = require('../db/connector');
 const { loadConfig } = require('./config');
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 function _nowExpr(dbType) {
+  dbType = sqlDialect(dbType);   // supabase → postgres
   if (dbType === 'mssql') return 'GETUTCDATE()';
   if (dbType === 'oracle') return 'SYSTIMESTAMP';
   return 'NOW()';
 }
 
 function _ph(dbType, n) {
+  dbType = sqlDialect(dbType);   // supabase → postgres
   if (dbType === 'postgres') return `$${n}`;
   if (dbType === 'mysql') return '?';
   if (dbType === 'mssql') return `@p${n}`;
@@ -21,6 +23,7 @@ function _ph(dbType, n) {
 }
 
 function _initDdl(dbType) {
+  dbType = sqlDialect(dbType);   // supabase → postgres
   if (dbType === 'postgres') {
     return `CREATE TABLE IF NOT EXISTS UXER_ERD_DIAGRAM (
   diagram_id  VARCHAR(64)  NOT NULL,

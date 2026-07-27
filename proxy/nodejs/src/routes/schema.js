@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAdapter } = require('../db/connector');
+const { getAdapter, sqlDialect } = require('../db/connector');
 const { loadConfig } = require('./config');
 
 // ── PostgreSQL 스키마 화이트리스트 검증 ─────────────────────────────
@@ -189,7 +189,7 @@ WHERE ac.constraint_type = 'U'
 `;
 
 function getQueries(dbType, schema = 'public') {
-  switch (dbType) {
+  switch (sqlDialect(dbType)) {   // supabase → postgres
     case 'postgres': {
       const sch = pgValidateSchema(schema);
       return { columns: PG_COLUMNS(sch), views: PG_VIEWS(sch), fks: PG_FKS(sch), unique: PG_UNIQUE(sch) };
@@ -313,7 +313,7 @@ router.get('/tables', async (req, res) => {
   try {
     const adapter = getAdapter(config.dbType);
     let query;
-    switch (config.dbType) {
+    switch (sqlDialect(config.dbType)) {   // supabase → postgres
       case 'postgres': query = PG_TABLES_LIST(pgValidateSchema(config.schema || 'public')); break;
       case 'mysql':    query = MY_TABLES_LIST; break;
       case 'mssql':    query = MS_TABLES_LIST; break;

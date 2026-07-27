@@ -74,6 +74,14 @@ npm start
 | `mysql`    | MySQL         | 3306      |
 | `mssql`    | SQL Server    | 1433      |
 | `oracle`   | Oracle DB     | 1521      |
+| `supabase` | Supabase (PostgreSQL) | 5432 (풀러 트랜잭션 모드는 6543) |
+
+> **Supabase** — PostgreSQL 이므로 SQL 방언·스키마 조회(리버스)·DDL 실행(포워드)은 `postgres` 와 동일하다
+> (`db/connector.js` 의 `sqlDialect()` 가 `supabase → postgres` 로 정규화).
+> `db/adapters/supabase.js` 가 TLS(`ssl: { rejectUnauthorized: false }` — Supabase 는 평문 연결 불가)와
+> 기본값(포트 5432, `database`/`username` = `postgres`)을 주입해 `postgres` 어댑터에 위임한다.
+> 직접 연결 `db.<ref>.supabase.co` 는 **IPv6 전용**이므로 IPv4 환경에서는 풀러
+> (`aws-…-<region>.pooler.supabase.com`, 세션 5432 / 트랜잭션 6543, 사용자명 `postgres.<project-ref>`)를 사용한다.
 
 > **Oracle DB 12.1 미만 연결 시** — node-oracledb 기본(Thin) 모드는 Oracle DB 12.1 이상만 지원한다.  
 > 구버전 DB(예: Oracle 11g)에 연결하려면 **Oracle Instant Client**를 설치하고 **시스템 PATH**에 등록해야 한다.  
@@ -582,12 +590,13 @@ proxy/nodejs/
 │   │   ├── schema.js         GET /schema (리버스 엔지니어링)
 │   │   └── erd_store.js      GET/POST/PUT/DELETE /erd-store (연결 DB에 ERD 저장·공유, 낙관적 잠금)
 │   ├── db/
-│   │   ├── connector.js      dbType → 어댑터 라우팅, 전체 풀 종료
+│   │   ├── connector.js      dbType → 어댑터 라우팅, 전체 풀 종료, sqlDialect(supabase→postgres)
 │   │   └── adapters/
-│   │       ├── postgres.js   pg Pool 드라이버 (커넥션 풀링)
+│   │       ├── postgres.js   pg Pool 드라이버 (커넥션 풀링, 선택 ssl 옵션)
 │   │       ├── mysql.js      mysql2 Pool 드라이버 (커넥션 풀링)
 │   │       ├── mssql.js      mssql ConnectionPool 드라이버 (커넥션 풀링)
-│   │       └── oracle.js     oracledb Pool 드라이버 (Thick/Thin 자동 전환, 커넥션 풀링)
+│   │       ├── oracle.js     oracledb Pool 드라이버 (Thick/Thin 자동 전환, 커넥션 풀링)
+│   │       └── supabase.js   Supabase 어댑터 (TLS·기본값 주입 후 postgres 위임, 연결오류 안내)
 │   └── utils/
 │       ├── crypto.js         AES-256-GCM 암호화/복호화 (레거시 마이그레이션 포함)
 │       ├── keystore.js       ~/.uxermanager/key 기반 암호화 키 생성·로드

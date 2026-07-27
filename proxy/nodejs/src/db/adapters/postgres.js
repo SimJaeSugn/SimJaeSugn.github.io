@@ -4,7 +4,8 @@ const { Pool } = require('pg');
 const _pools = new Map();  // configKey -> Pool
 
 function configKey(config) {
-  return JSON.stringify({ host: config.host, port: config.port || 5432, database: config.database, user: config.username });
+  // dbType 포함 — 같은 호스트라도 연결 옵션(예: supabase 의 TLS)이 다르면 풀을 분리한다.
+  return JSON.stringify({ dbType: config.dbType || 'postgres', host: config.host, port: config.port || 5432, database: config.database, user: config.username });
 }
 
 function getPool(config) {
@@ -16,6 +17,8 @@ function getPool(config) {
     database: config.database,
     user: config.username,
     password: config.password,
+    // 선택적 TLS 옵션 — 미지정 시 기존 동작 그대로(평문)
+    ...(config.ssl ? { ssl: config.ssl } : {}),
     connectionTimeoutMillis: 10000,
     statement_timeout: 30000,
     max: 10,
